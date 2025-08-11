@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { Button } from "./ui/button";
-import { createClient } from "@/lib/supabase/server";
+import { Button } from "@/features/shared";
+import { createServerClient as createClient } from "@/features/shared";
 import { LogoutButton } from "./logout-button";
 
 export async function AuthButton() {
