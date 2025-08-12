@@ -21,3 +21,6 @@ export { cn, hasEnvVars } from './utils/utils';
 export { createClient } from './lib/supabase/client';
 export { createClient as createServerClient } from './lib/supabase/server';
 export { updateSession } from './lib/supabase/middleware';
+
+// Database layer
+export * from './lib/database';
