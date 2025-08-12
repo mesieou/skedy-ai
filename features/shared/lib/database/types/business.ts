@@ -15,20 +15,14 @@ export interface Business extends BaseEntity {
   subscription_type: string;
   payment_methods: string[];
   preferred_payment_method: string;
-  deposit_type?: string;
+  deposit_type: 'percentage' | 'fixed';
   deposit_percentage?: number | null;
-  deposit_fixed_amount?: number;
-  website_url?: string;
-  whatsapp_number?: string;
-  whatsapp_phone_number_id?: string;
-  stripe_connect_account_id?: string;
-  stripe_account_status?: string;
-  ai_config?: {
-    personality?: string;
-    response_style?: string;
-    business_hours?: Record<string, string>;
-    services?: string[];
-  };
+  deposit_fixed_amount?: number | null;
+  website_url?: string | null;
+  whatsapp_number?: string | null;
+  whatsapp_phone_number_id?: string | null;
+  stripe_connect_account_id?: string | null;
+  stripe_account_status?: string | null;
 }
 
 export type CreateBusinessData = Omit<Business, 'id' | 'created_at' | 'updated_at'>;
