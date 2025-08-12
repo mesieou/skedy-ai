@@ -1,10 +1,26 @@
 import { BaseEntity } from "./base";
 
+// Chat session enums
+export enum ChatChannel {
+  WHATSAPP = 'whatsapp',
+  FACEBOOK = 'facebook',
+  WEBSITE = 'website',
+  EMAIL = 'email',
+  PHONE = 'phone'
+}
+
+export enum ChatSessionStatus {
+  ACTIVE = 'active',
+  ENDED = 'ended',
+  PAUSED = 'paused',
+  TRANSFERRED = 'transferred'
+}
+
 export interface ChatSession extends BaseEntity {
-  channel: string;
+  channel: ChatChannel;
   user_id: string;
   business_id: string;
-  status: string;
+  status: ChatSessionStatus;
   ended_at?: string | null;
   all_messages?: Record<string, unknown> | null;
 }

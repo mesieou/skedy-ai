@@ -1,5 +1,36 @@
 import type { BaseEntity } from './base';
 
+// Business enums
+export enum BusinessCategory {
+  TRANSPORT = 'transport',
+  CLEANING = 'cleaning',
+  HANDYMAN = 'handyman',
+  GARDENING = 'gardening',
+  BEAUTY = 'beauty',
+  FITNESS = 'fitness',
+  OTHER = 'other'
+}
+
+export enum SubscriptionType {
+  FREE = 'free',
+  BASIC = 'basic',
+  PREMIUM = 'premium',
+  ENTERPRISE = 'enterprise'
+}
+
+export enum PaymentMethod {
+  CREDIT_CARD = 'credit_card',
+  BANK_TRANSFER = 'bank_transfer',
+  CASH = 'cash',
+  PAYPAL = 'paypal',
+  STRIPE = 'stripe'
+}
+
+export enum DepositType {
+  PERCENTAGE = 'percentage',
+  FIXED = 'fixed'
+}
+
 export interface Business extends BaseEntity {
   name: string;
   email: string;
@@ -7,15 +38,15 @@ export interface Business extends BaseEntity {
   address: string;
   time_zone: string;
   language: string;
-  business_category: string;
+  business_category: BusinessCategory;
   charges_gst: boolean;
   gst_rate?: number;
   currency_code: string;
   number_of_providers: number;
-  subscription_type: string;
-  payment_methods: string[];
-  preferred_payment_method: string;
-  deposit_type: 'percentage' | 'fixed';
+  subscription_type: SubscriptionType;
+  payment_methods: PaymentMethod[];
+  preferred_payment_method: PaymentMethod;
+  deposit_type: DepositType;
   deposit_percentage?: number | null;
   deposit_fixed_amount?: number | null;
   website_url?: string | null;

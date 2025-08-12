@@ -1,13 +1,33 @@
 import { BaseEntity } from "./base";
 
+// Notification enums
+export enum DeliveryMethod {
+  EMAIL = 'email',
+  SMS = 'sms',
+  PUSH = 'push'
+}
+
+export enum DeliveryStatus {
+  PENDING = 'pending',
+  SENT = 'sent',
+  DELIVERED = 'delivered',
+  FAILED = 'failed',
+  BOUNCED = 'bounced'
+}
+
+export enum NotificationStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive'
+}
+
 export interface Notification extends BaseEntity {
   sent_at?: string | null;
   user_id: string;
   business_id: string;
   content: string;
-  delivery_method: 'email' | 'sms' | 'push';
-  delivery_status: string;
-  status: 'active' | 'inactive';
+  delivery_method: DeliveryMethod;
+  delivery_status: DeliveryStatus;
+  status: NotificationStatus;
   booking_id?: string | null;
   chat_session_id?: string | null;
 }

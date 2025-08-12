@@ -5,7 +5,7 @@ export interface PriceComponentTier extends BaseEntity {
   min_quantity: number;
   max_quantity: number;
   price: number;
-  time_minutes?: number | null;
+  duration_estimate_mins?: number | Record<string, number> | null;
 }
 
 export type CreatePriceComponentTierData = Omit<PriceComponentTier, 'id' | 'created_at' | 'updated_at'>;

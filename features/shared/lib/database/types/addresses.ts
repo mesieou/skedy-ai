@@ -1,8 +1,16 @@
 import { BaseEntity } from "./base";
 
+// Address enums
+export enum AddressType {
+  CUSTOMER = 'customer',
+  BUSINESS = 'business',
+  PICKUP = 'pickup',
+  DROPOFF = 'dropoff'
+}
+
 export interface Address extends BaseEntity {
   service_id: string;
-  type: string;
+  type: AddressType;
   address_line_1: string;
   address_line_2?: string | null;
   city: string;
