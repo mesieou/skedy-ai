@@ -24,6 +24,7 @@ describe('UserRepository', () => {
     
     // Clean up and create a business first
     await userSeeder.cleanup();
+    await authUserSeeder.cleanup();
     await businessSeeder.cleanup();
     
     const business = await businessSeeder.createBusinessWith(removalistBusinessData);
@@ -32,6 +33,7 @@ describe('UserRepository', () => {
 
   afterAll(async () => {
     await userSeeder.cleanup();
+    await authUserSeeder.cleanup();
     await businessSeeder.cleanup();
   });
 
