@@ -18,8 +18,9 @@ export * from './components/ui/checkbox';
 export { cn, hasEnvVars } from './utils/utils';
 
 // Supabase clients
-export { createClient } from './lib/supabase/client';
-export { createClient as createServerClient } from './lib/supabase/server';
+export { createPublishableClient, createClient } from './lib/supabase/client';
+export { createAuthenticatedServerClient, createClient as createServerClient } from './lib/supabase/server';
+export { createSecretClient, createAdminClient } from './lib/supabase/admin-client';
 export { updateSession } from './lib/supabase/middleware';
 
 // Database layer

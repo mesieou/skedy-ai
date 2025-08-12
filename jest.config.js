@@ -12,11 +12,14 @@ const config = {
   ],
   
   // Module name mapping for imports (correct property name)
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@/features/(.*)$': '<rootDir>/features/$1',
     '^@/app/(.*)$': '<rootDir>/app/$1',
     '^@/(.*)$': '<rootDir>/$1'
   },
+  
+  // Load environment variables from .env.test
+  setupFiles: ['<rootDir>/jest.env.js'],
   
   // Coverage collection
   collectCoverageFrom: [

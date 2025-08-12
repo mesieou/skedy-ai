@@ -1,5 +1,6 @@
 // features/shared/lib/database/base-repository.ts
-import { createClient as createServerClient } from '../supabase/server';
+import { createAuthenticatedServerClient } from '../supabase/server';
+import { createSecretClient } from '../supabase/admin-client';
 import type { BaseEntity, QueryOptions, QueryConditions } from './types/base';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -12,7 +13,12 @@ export class BaseRepository<T extends BaseEntity> {
 
   protected async getClient() {
     if (!this.supabase) {
-      this.supabase = await createServerClient();
+      // Use secret client for tests and API routes, authenticated server client for app pages
+      if (process.env.NODE_ENV === 'test' || process.env.USE_SECRET_CLIENT === 'true') {
+        this.supabase = createSecretClient();
+      } else {
+        this.supabase = await createAuthenticatedServerClient();
+      }
     }
     return this.supabase;
   }
@@ -28,7 +34,7 @@ export class BaseRepository<T extends BaseEntity> {
       query = query.eq(key, value);
     });
 
-    const { data, error } = await query.single();
+    const { data, error } = await query.maybeSingle();
     if (error) throw new Error(`Failed to find ${this.tableName}: ${error.message}`);
     return data as unknown as T | null;
   }

@@ -2,11 +2,12 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 /**
- * Especially important if using Fluid compute: Don't put this client in a
- * global variable. Always create a new client within each function when using
- * it.
+ * Authenticated user server client with publishable key + cookies
+ * Use for: Server components, server actions in app pages
+ * Access: Logged-in user's data (via session cookies)
+ * NOT for: API routes or webhooks (no user session)
  */
-export async function createClient() {
+export async function createAuthenticatedServerClient() {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -32,3 +33,6 @@ export async function createClient() {
     },
   );
 }
+
+// Keep legacy export for compatibility
+export const createClient = createAuthenticatedServerClient;

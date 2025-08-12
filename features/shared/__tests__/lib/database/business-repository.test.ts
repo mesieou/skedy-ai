@@ -1,0 +1,74 @@
+import { BusinessRepository } from '../../../lib/database/repositories/business-repository';
+import { BusinessSeeder } from '../../../lib/database/seeds/business-seeder';
+import { removalistBusinessData } from '../../../lib/database/seeds/data/business-data';
+import type { Business } from '../../../lib/database/types/business';
+
+describe('BusinessRepository', () => {
+  let repository: BusinessRepository;
+  let seeder: BusinessSeeder;
+  let testBusiness: Business; // Shared business for all tests
+
+  beforeAll(async () => {
+    repository = new BusinessRepository();
+    seeder = new BusinessSeeder();
+    await seeder.cleanup();
+    
+    // Create ONE business for all tests
+    testBusiness = await repository.create(removalistBusinessData);
+  });
+
+  afterAll(async () => {
+    await seeder.cleanup();
+  });
+
+  describe('CRUD operations', () => {
+    it('should create a business', async () => {
+      expect(testBusiness).toBeDefined();
+      expect(testBusiness.id).toBeDefined();
+      expect(testBusiness.name).toBe(removalistBusinessData.name);
+      expect(testBusiness.email).toBe(removalistBusinessData.email);
+      expect(testBusiness.phone_number).toBe(removalistBusinessData.phone_number);
+    });
+
+    it('should find business by phone number', async () => {
+      const foundBusiness = await repository.findOne({ 
+        phone_number: removalistBusinessData.phone_number 
+      });
+
+      expect(foundBusiness).toBeDefined();
+      expect(foundBusiness?.id).toBe(testBusiness.id);
+      expect(foundBusiness?.phone_number).toBe(removalistBusinessData.phone_number);
+    });
+
+    it('should update a business', async () => {
+      const updatedName = 'Updated Business Name';
+      const updatedBusiness = await repository.updateOne(
+        { id: testBusiness.id },
+        { name: updatedName }
+      );
+
+      expect(updatedBusiness.name).toBe(updatedName);
+      expect(updatedBusiness.id).toBe(testBusiness.id);
+      expect(updatedBusiness.email).toBe(removalistBusinessData.email);
+      
+      // Reset name back for other tests
+      await repository.updateOne({ id: testBusiness.id }, { name: removalistBusinessData.name });
+    });
+
+    it('should return null when business not found', async () => {
+      const nonExistentBusiness = await repository.findOne({ 
+        phone_number: '+999999999999' 
+      });
+
+      expect(nonExistentBusiness).toBeNull();
+    });
+
+    it('should delete a business by id', async () => {
+      // Delete the shared business (run last)
+      await repository.deleteOne({ id: testBusiness.id });
+
+      const deletedBusiness = await repository.findOne({ id: testBusiness.id });
+      expect(deletedBusiness).toBeNull();
+    });
+  });
+});
