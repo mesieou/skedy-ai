@@ -1,7 +1,14 @@
 import { BaseEntity } from "./base";
 
+export enum UserRole {
+  ADMIN = 'admin',
+  PROVIDER = 'provider',
+  ADMIN_PROVIDER = 'admin/provider',
+  CUSTOMER = 'customer'
+}
+
 export interface User extends BaseEntity {
-  role: string;
+  role: UserRole;
   first_name: string;
   business_id: string;
   last_name?: string | null;

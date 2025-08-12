@@ -4,6 +4,10 @@ import { createSecretClient } from '../supabase/admin-client';
 import type { BaseEntity, QueryOptions, QueryConditions } from './types/base';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+// Singleton instances to prevent multiple client creation
+let testClient: SupabaseClient | null = null;
+let serverClient: SupabaseClient | null = null;
+
 export class BaseRepository<T extends BaseEntity> {
   protected supabase: SupabaseClient | null = null;
   
@@ -15,9 +19,15 @@ export class BaseRepository<T extends BaseEntity> {
     if (!this.supabase) {
       // Use secret client for tests and API routes, authenticated server client for app pages
       if (process.env.NODE_ENV === 'test' || process.env.USE_SECRET_CLIENT === 'true') {
-        this.supabase = createSecretClient();
+        if (!testClient) {
+          testClient = createSecretClient();
+        }
+        this.supabase = testClient;
       } else {
-        this.supabase = await createAuthenticatedServerClient();
+        if (!serverClient) {
+          serverClient = await createAuthenticatedServerClient();
+        }
+        this.supabase = serverClient;
       }
     }
     return this.supabase;

@@ -1,5 +1,7 @@
+import type { CreateBusinessData } from '../../types/business';
+
 // Test business data for seeding
-export const removalistBusinessData = {
+export const removalistBusinessData: CreateBusinessData = {
   name: "Tiga Removals",
   email: "edward@tigapropertyservices.com",
   phone_number: "+61473164581",
