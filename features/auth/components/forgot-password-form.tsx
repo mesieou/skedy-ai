@@ -1,17 +1,16 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import { createClient } from "@/features/shared";
-import { Button } from "@/components/ui/button";
-import {
+import { cn, createClient } from "@/features/shared";
+import { 
+  Button,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+  Input,
+  Label
+} from "@/features/shared";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -79,7 +78,7 @@ export function ForgotPasswordForm({
                     placeholder="m@example.com"
                     required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                   />
                 </div>
                 {error && <p className="text-sm text-red-500">{error}</p>}

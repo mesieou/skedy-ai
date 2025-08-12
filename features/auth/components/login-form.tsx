@@ -1,13 +1,16 @@
 "use client";
 
-import { cn, Button } from "@/features/shared";
-import { createClient } from "@/features/shared";
-import {
+import { 
+  cn, 
+  createClient,
+  Button,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
+  Input,
+  Label
 } from "@/features/shared";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -64,7 +67,7 @@ export function LoginForm({
                   placeholder="m@example.com"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                 />
               </div>
               <div className="grid gap-2">
@@ -82,7 +85,7 @@ export function LoginForm({
                   type="password"
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                 />
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
