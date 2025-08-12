@@ -1,16 +1,15 @@
 // Business seeder with removalist data
 import { BaseSeeder } from './base-seeder';
 import { BusinessRepository } from '../repositories/business-repository';
-import type { Business } from '../types/business';
-import { removalistBusinessData } from './data/business-data';
+import type { Business, CreateBusinessData } from '../types/business';
 
 export class BusinessSeeder extends BaseSeeder<Business> {
   constructor() {
     super(new BusinessRepository());
   }
 
-  // Create removalist business specifically
-  async createRemovalist(overrides: Partial<Omit<Business, 'id' | 'created_at' | 'updated_at'>> = {}): Promise<Business> {
-    return await this.createWith(removalistBusinessData, overrides);
+  // Create business with custom data
+  async createBusinessWith(data: CreateBusinessData): Promise<Business> {
+    return await this.create(data);
   }
 }

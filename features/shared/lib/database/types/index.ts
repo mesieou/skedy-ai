@@ -2,6 +2,7 @@
 export * from './base';
 
 // Entity types
+export * from './auth-user';
 export * from './business';
 export * from './user';
 export * from './crawl-sessions';

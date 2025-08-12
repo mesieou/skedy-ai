@@ -3,7 +3,7 @@ import type { BaseEntity } from '../types/base';
 import type { BaseRepository } from '../base-repository';
 
 export class BaseSeeder<T extends BaseEntity> {
-  constructor(private repository: BaseRepository<T>) {}
+  constructor(protected repository: BaseRepository<T>) {}
 
   // Environment safety check
   private checkTestEnvironment(): void {
@@ -18,10 +18,10 @@ export class BaseSeeder<T extends BaseEntity> {
     return await this.repository.create(data);
   }
 
-  // Create with overrides
-  async createWith(baseData: Omit<T, 'id' | 'created_at' | 'updated_at'>, overrides: Partial<Omit<T, 'id' | 'created_at' | 'updated_at'>> = {}): Promise<T> {
+  // Create with overrides (supports optional ID)
+  async createWith(baseData: Omit<T, 'id' | 'created_at' | 'updated_at'>, overrides: Partial<Omit<T, 'created_at' | 'updated_at'>> = {}): Promise<T> {
     this.checkTestEnvironment();
-    const data = { ...baseData, ...overrides };
+    const data = { ...baseData, ...overrides } as Omit<T, 'id' | 'created_at' | 'updated_at'>;
     return await this.repository.create(data);
   }
 
