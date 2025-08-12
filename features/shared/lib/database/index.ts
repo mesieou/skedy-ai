@@ -5,3 +5,6 @@ export { BusinessRepository } from './repositories/business-repository';
 // Core types only
 export type { BaseEntity, QueryOptions, QueryConditions } from './types/base';
 export type { Business } from './types/business';
+
+// Seeding utilities (test environment only)
+export * from './seeds';
