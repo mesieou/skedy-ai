@@ -16,15 +16,6 @@ export const DURATION_INTERVALS = [
     { key: "360", minutes: 360 }
 ];
 
-// Type definitions for scheduling
-export interface Provider {
-  id: string;
-  timezone: string;
-  workingHours: {
-    [key: string]: { start: string; end: string } | undefined;
-  };
-}
-
 export interface TimeSlot {
   start: DateTime;
   end: DateTime;

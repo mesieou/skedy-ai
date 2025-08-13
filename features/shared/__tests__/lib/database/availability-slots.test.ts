@@ -10,7 +10,8 @@ import { adminAuthUserData, providerAuthUserData } from '../../../lib/database/s
 import { weekdayCalendarSettingsData, weekendCalendarSettingsData } from '../../../lib/database/seeds/data/calendar-settings-data';
 import type { AvailabilitySlots } from '../../../lib/database/types/availability-slots';
 import { DateTime } from 'luxon';
-import { Provider } from '@/features/scheduling/lib/types/scheduling';
+import { User } from '@/features/shared/lib/database/types/user';
+import { CalendarSettings } from '@/features/shared/lib/database/types/calendar-settings';
 
 describe('AvailabilitySlotsRepository', () => {
   let availabilitySlotsRepository: AvailabilitySlotsRepository;
@@ -20,10 +21,13 @@ describe('AvailabilitySlotsRepository', () => {
   let authUserSeeder: AuthUserSeeder;
   let calendarSettingsSeeder: CalendarSettingsSeeder;
   let businessId: string;
-  let weekdayUserId: string;
-  let weekendUserId: string;
+  let weekdayUser: User;
+  let weekendUser: User;
+  let weekdayCalendarSettings: CalendarSettings;
+  let weekendCalendarSettings: CalendarSettings;
   let testAvailabilitySlots: AvailabilitySlots;
-  let providers: Provider[];
+  let providers: User[];
+  let calendarSettings: CalendarSettings[];
   let tomorrowDate: DateTime;
 
   beforeAll(async () => {
@@ -45,54 +49,41 @@ describe('AvailabilitySlotsRepository', () => {
     businessId = business.id;
     
     // Create weekday user
-    const weekdayUser = await userSeeder.createUserWith(
+    weekdayUser = await userSeeder.createUserWith(
       { ...adminProviderUserData, business_id: businessId },
       adminAuthUserData
     );
-    weekdayUserId = weekdayUser.id;
     
     // Create weekend user
-    const weekendUser = await userSeeder.createUserWith(
+    weekendUser = await userSeeder.createUserWith(
       { ...providerUserData, business_id: businessId },
       providerAuthUserData
     );
-    weekendUserId = weekendUser.id;
 
     // Create calendar settings for each user
-    const weekdayCalendarSettings = await calendarSettingsSeeder.createCalendarSettingsWith({
+    weekdayCalendarSettings = await calendarSettingsSeeder.createCalendarSettingsWith({
       ...weekdayCalendarSettingsData,
-      user_id: weekdayUserId
+      user_id: weekdayUser.id
     });
 
-    const weekendCalendarSettings = await calendarSettingsSeeder.createCalendarSettingsWith({
+    weekendCalendarSettings = await calendarSettingsSeeder.createCalendarSettingsWith({
       ...weekendCalendarSettingsData,
-      user_id: weekendUserId
+      user_id: weekendUser.id
     });
     
     // Setup test data
     tomorrowDate = DateTime.utc().plus({ days: 1 });
-    providers = [
-      {
-        id: weekdayUserId,
-        timezone: 'UTC',
-        workingHours: weekdayCalendarSettings.working_hours as { [key: string]: { start: string; end: string } | undefined }
-      },
-      {
-        id: weekendUserId,
-        timezone: 'UTC',
-        workingHours: weekendCalendarSettings.working_hours as { [key: string]: { start: string; end: string } | undefined }
-      }
-    ];
+    providers = [weekdayUser, weekendUser];
+    calendarSettings = [weekdayCalendarSettings, weekendCalendarSettings];
 
     // Generate availability once for all tests
     testAvailabilitySlots = await availabilitySlotsRepository.generateInitialBusinessAvailability(
       businessId,
       tomorrowDate,
       providers,
+      calendarSettings,
       30
     );
-    console.log(testAvailabilitySlots);
-    console.log(testAvailabilitySlots.slots);
   });
 
   afterAll(async () => {
@@ -117,6 +108,7 @@ describe('AvailabilitySlotsRepository', () => {
       'invalid-business-id',
       tomorrowDate,
       providers,
+      calendarSettings,
       30
     )).rejects.toThrow();
   });
@@ -144,7 +136,7 @@ describe('AvailabilitySlotsRepository', () => {
     expect(dateKeys.length).toBeGreaterThan(0);
     
     // Check that each date has all duration keys
-    const firstDateSlots = testAvailabilitySlots.slots[dateKeys[0]] as { [durationKey: string]: [string, number][] };
+    const firstDateSlots = testAvailabilitySlots.slots[dateKeys[0]];
     expect(firstDateSlots).toBeDefined();
     expect(firstDateSlots['30']).toBeDefined();
     expect(firstDateSlots['45']).toBeDefined();
@@ -159,12 +151,12 @@ describe('AvailabilitySlotsRepository', () => {
   });
 
   it('should have no slots outside of working hours', async () => {
-    // Get earliest start and latest end from all providers
+    // Get earliest start and latest end from all calendar settings
     let earliestStart = 24;
     let latestEnd = 0;
     
-    providers.forEach(provider => {
-      Object.values(provider.workingHours).forEach(hours => {
+    calendarSettings.forEach(settings => {
+      Object.values(settings.working_hours).forEach(hours => {
         if (hours) {
           const startHour = parseInt(hours.start.split(':')[0]);
           const endHour = parseInt(hours.end.split(':')[0]);
@@ -177,7 +169,7 @@ describe('AvailabilitySlotsRepository', () => {
     const dateKeys = Object.keys(testAvailabilitySlots.slots);
     
     for (const dateKey of dateKeys) {
-      const daySlots = testAvailabilitySlots.slots[dateKey] as { [durationKey: string]: [string, number][] };
+      const daySlots = testAvailabilitySlots.slots[dateKey];
       
       for (const durationKey of Object.keys(daySlots)) {
         const slots = daySlots[durationKey];
@@ -199,7 +191,7 @@ describe('AvailabilitySlotsRepository', () => {
       const dayOfWeek = date.getDay(); // 0 = Sunday, 5 = Friday
       
       if (dayOfWeek === 5) { // Friday
-        const daySlots = testAvailabilitySlots.slots[dateKey] as { [durationKey: string]: [string, number][] };
+        const daySlots = testAvailabilitySlots.slots[dateKey];
         
         for (const durationKey of Object.keys(daySlots)) {
           const slots = daySlots[durationKey];
@@ -217,7 +209,7 @@ describe('AvailabilitySlotsRepository', () => {
       const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
       
       if (dayOfWeek === 0 || dayOfWeek === 6) { // Weekend
-        const daySlots = testAvailabilitySlots.slots[dateKey] as { [durationKey: string]: [string, number][] };
+        const daySlots = testAvailabilitySlots.slots[dateKey];
         
         for (const durationKey of Object.keys(daySlots)) {
           const slots = daySlots[durationKey];
@@ -241,7 +233,7 @@ describe('AvailabilitySlotsRepository', () => {
       const dayOfWeek = date.getDay(); // 1 = Monday
       
       if (dayOfWeek === 1) { // Monday
-        const daySlots = testAvailabilitySlots.slots[dateKey] as { [durationKey: string]: [string, number][] };
+        const daySlots = testAvailabilitySlots.slots[dateKey];
         
         for (const durationKey of Object.keys(daySlots)) {
           const slots = daySlots[durationKey];

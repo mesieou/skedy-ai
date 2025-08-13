@@ -1,9 +1,13 @@
 import { BaseEntity } from "./base";
 
+export type WorkingHours = {
+  [dayKey: string]: { start: string; end: string } | null | undefined;
+};
+
 export interface CalendarSettings extends BaseEntity {
   user_id: string;
   settings: Record<string, unknown>;
-  working_hours: Record<string, unknown>;
+  working_hours: WorkingHours;
   calendar_id?: string | null;
   calendar_type?: string | null;
 }

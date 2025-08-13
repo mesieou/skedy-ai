@@ -1,8 +1,10 @@
-import { DURATION_INTERVALS, Provider } from "../types/scheduling";
+import { DURATION_INTERVALS } from "../types/scheduling";
 import { AvailabilitySlots } from "@/features/shared/lib/database/types/availability-slots";
 import { Booking } from "@/features/shared/lib/database/types/bookings";
 import { DateUtils } from "@/features/shared/utils/date-utils";
 import { Business } from "@/features/shared/lib/database/types/business";
+import { User } from "@/features/shared/lib/database/types/user";
+import { CalendarSettings } from "@/features/shared/lib/database/types/calendar-settings";
 import { DateTime } from "luxon";
 import { computeBusinessAvailibityForOneDay } from "../../utils/availability-helpers";
 
@@ -23,16 +25,23 @@ export class AvailabilityManager {
 
     const updatedSlots = { ...this.availabilitySlots.slots };
 
-    for (const duration of DURATION_INTERVALS) {
-      const durationKey = duration.key;
-      const slots = (updatedSlots[durationKey] as [string, number][]) || [];
-      updatedSlots[durationKey] = this.processSlots(
-        slots,
-        dateStr,
-        duration,
-        bookingStartMs,
-        bookingEndMs
-      );
+    // Get slots for the booking date
+    if (updatedSlots[dateStr]) {
+      const dateSlots = { ...updatedSlots[dateStr] };
+      
+      for (const duration of DURATION_INTERVALS) {
+        const durationKey = duration.key;
+        const slots = dateSlots[durationKey] || [];
+        dateSlots[durationKey] = this.processSlots(
+          slots,
+          dateStr,
+          duration,
+          bookingStartMs,
+          bookingEndMs
+        );
+      }
+      
+      updatedSlots[dateStr] = dateSlots;
     }
 
     return {
@@ -42,7 +51,8 @@ export class AvailabilityManager {
   }
 
   async generateInitialBusinessAvailability(
-    providers: Provider[],
+    providers: User[],
+    calendarSettings: CalendarSettings[],
     fromDate: DateTime,
     days: number = 30
   ): Promise<AvailabilitySlots> {
@@ -60,6 +70,7 @@ export class AvailabilityManager {
       for (const duration of DURATION_INTERVALS) {
         const timeSlots = await computeBusinessAvailibityForOneDay(
           providers,
+          calendarSettings,
           currentDate,
           duration.minutes
         );

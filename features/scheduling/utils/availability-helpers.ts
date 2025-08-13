@@ -1,18 +1,20 @@
 import { DateTime, Interval } from "luxon";
-import { Provider, TimeSlot, BookingWithProvider } from "../lib/types/scheduling";
-
+import { TimeSlot, BookingWithProvider } from "../lib/types/scheduling";
+import { User } from "@/features/shared/lib/database/types/user";
+import { CalendarSettings } from "@/features/shared/lib/database/types/calendar-settings";
 
 export async function computeBusinessAvailibityForOneDay(
-  providers: Provider[],
+  providers: User[],
+  calendarSettings: CalendarSettings[],
   date: DateTime,
   slotDurationMinutes: number
 ): Promise<TimeSlot[]> {
   // 1. Get working hours for all providers on the day
-  const workingHours = getWorkingHoursForDay(providers, date);
+  const workingHours = getWorkingHoursForDay(providers, calendarSettings, date);
 
-  // 2. Generate slots for each provider separately (e.g., 60-min slots starting every hour)
-  const slotsByProvider = workingHours.map((provider) =>
-    generateSlotsForProvider(provider, slotDurationMinutes)
+  // 2. Generate slots for each provider separately
+  const slotsByProvider = workingHours.map((providerSchedule) =>
+    generateSlotsForProvider(providerSchedule, slotDurationMinutes)
   );
 
   // 3. Fetch bookings for providers on that day
@@ -32,16 +34,25 @@ export async function computeBusinessAvailibityForOneDay(
   return aggregatedSlots;
 }
 
-export function getWorkingHoursForDay(providers: Provider[], date: DateTime) {
+export function getWorkingHoursForDay(
+  providers: User[], 
+  calendarSettings: CalendarSettings[], 
+  date: DateTime
+) {
   const dayKey = date.toFormat("ccc").toLowerCase(); // e.g., "mon"
+  
   return providers
-    .map((p) => {
-      const hours = p.workingHours[dayKey];
+    .map((provider) => {
+      // Find calendar settings for this provider
+      const providerCalendarSettings = calendarSettings.find(cs => cs.user_id === provider.id);
+      if (!providerCalendarSettings) return null;
+      
+      const hours = providerCalendarSettings.working_hours[dayKey];
       if (!hours) return null;
 
-      // Build DateTimes in provider's timezone for start/end
+      // Build DateTimes in UTC for start/end
       const start = date
-        .setZone(p.timezone)
+        .toUTC()
         .set({
           hour: Number(hours.start.split(":")[0]),
           minute: Number(hours.start.split(":")[1]),
@@ -50,7 +61,7 @@ export function getWorkingHoursForDay(providers: Provider[], date: DateTime) {
         });
 
       const end = date
-        .setZone(p.timezone)
+        .toUTC()
         .set({
           hour: Number(hours.end.split(":")[0]),
           minute: Number(hours.end.split(":")[1]),
@@ -58,7 +69,7 @@ export function getWorkingHoursForDay(providers: Provider[], date: DateTime) {
           millisecond: 0,
         });
 
-      return { providerId: p.id, start, end };
+      return { providerId: provider.id, start, end };
     })
     .filter(Boolean) as Array<{ providerId: string; start: DateTime; end: DateTime }>;
 }
