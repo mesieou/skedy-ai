@@ -16,7 +16,9 @@ export interface Booking extends BaseEntity {
   business_id: string;
   status: BookingStatus;
   total_estimate_amount: number;
-  total_estimate_time: number;
+  total_estimate_time_in_minutes: number;
+  start_at: Date;
+  end_at: Date;
 }
 
 export type CreateBookingData = Omit<Booking, 'id' | 'created_at' | 'updated_at'>;

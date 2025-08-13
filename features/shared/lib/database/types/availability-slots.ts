@@ -1,10 +1,10 @@
 import { BaseEntity } from "./base";
 
-export interface AvailabilitySlot extends BaseEntity {
+export interface AvailabilitySlots extends BaseEntity {
   date: string;
   slots: Record<string, unknown>;
   business_id: string;
 }
 
-export type CreateAvailabilitySlotData = Omit<AvailabilitySlot, 'id' | 'created_at' | 'updated_at'>;
-export type UpdateAvailabilitySlotData = Partial<Omit<AvailabilitySlot, 'id' | 'created_at'>>;
+export type CreateAvailabilitySlotsData = Omit<AvailabilitySlots, 'id' | 'created_at' | 'updated_at'>;
+export type UpdateAvailabilitySlotsData = Partial<Omit<AvailabilitySlots, 'id' | 'created_at'>>;
