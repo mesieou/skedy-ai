@@ -11,7 +11,7 @@ export * from './calendar-settings';
 export * from './chat-sessions';
 export * from './bookings';
 export * from './notifications';
-export * from './services';
+export * from './service';
 export * from './booking-services';
 export * from './price-components';
 export * from './price-component-tiers';

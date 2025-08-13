@@ -1,4 +1,6 @@
 import { BaseEntity } from "./base";
+import type { CreatePriceComponentData } from './price-components';
+import type { CreatePriceComponentTierData } from './price-component-tiers';
 
 // Service enums
 export enum LocationType {
@@ -18,3 +20,11 @@ export interface Service extends BaseEntity {
 
 export type CreateServiceData = Omit<Service, 'id' | 'created_at' | 'updated_at'>;
 export type UpdateServiceData = Partial<Omit<Service, 'id' | 'created_at'>>;
+
+export interface CreateServiceWithPricingData {
+  service: CreateServiceData;
+  priceComponents: {
+    component: CreatePriceComponentData;
+    tiers: CreatePriceComponentTierData[];
+  }[];
+}
