@@ -1,7 +1,6 @@
 import { BaseEntity } from "./base";
 
 export interface AvailabilitySlots extends BaseEntity {
-  date: string;
   slots: Record<string, unknown>;
   business_id: string;
 }

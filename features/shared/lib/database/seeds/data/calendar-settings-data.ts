@@ -11,7 +11,6 @@ export const weekdayCalendarSettingsData: CreateCalendarSettingsData = {
     tue: { start: '07:00', end: '17:00' },
     wed: { start: '07:00', end: '17:00' },
     thu: { start: '07:00', end: '17:00' },
-    fri: { start: '07:00', end: '17:00' },
     sat: null,
     sun: null, 
 
@@ -25,12 +24,12 @@ export const weekendCalendarSettingsData: CreateCalendarSettingsData = {
       "bufferTime": 30,
     },
     working_hours: {
-      mon: null,
-      tue: null,
-      wed: null,
-      thu: null,
+      mon: { start: '07:00', end: '17:00' },
+      tue: { start: '07:00', end: '17:00' },
+      wed: { start: '07:00', end: '17:00' },
+      thu: { start: '07:00', end: '17:00' },
       fri: null,
-      sat: { start: '07:00', end: '17:00' },
-      sun: { start: '07:00', end: '17:00' }
+      sat: { start: '07:00', end: '13:00' },
+      sun: { start: '07:00', end: '13:00' }
     }
   };
