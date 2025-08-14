@@ -1,0 +1,155 @@
+import type { Service, PricingTier, PricingCombination } from '../../../shared/lib/database/types/service';
+import type { Business } from '../../../shared/lib/database/types/business';
+import type { Address } from '../../../shared/lib/database/types/addresses';
+
+// Address roles for booking context
+export enum AddressRole {
+  PICKUP = 'pickup',
+  DROPOFF = 'dropoff',
+  SERVICE = 'service',
+  BUSINESS_BASE = 'business_base'
+}
+
+// Travel charging models
+export enum TravelChargingModel {
+  CUSTOMER_TO_CUSTOMER = 'customer_to_customer',     // Only between customer addresses
+  BASE_TO_CUSTOMER = 'base_to_customer',             // Include base to first customer
+  FULL_ROUTE = 'full_route',                         // Entire journey including base
+  CUSTOM = 'custom'                                  // Business-specific rules
+}
+
+// Business travel configuration
+export interface BusinessTravelSettings {
+  travel_charging_model: TravelChargingModel;
+  include_return_to_base: boolean;
+  base_address_id: string;
+  free_travel_radius_km: number;
+  setup_time_mins: number;
+}
+
+// Booking address with context
+export interface BookingAddress {
+  id: string;
+  address: Address;
+  role: AddressRole;
+  sequence_order: number;
+  service_id?: string;
+  special_instructions?: string;
+}
+
+// Service with quantity for booking
+export interface ServiceWithQuantity {
+  service: Service;
+  quantity: number;
+  serviceAddresses: BookingAddress[];
+}
+
+// Calculation options
+export interface CalculationOptions {
+  travel_charging_model: TravelChargingModel;
+  include_return_to_base: boolean;
+  charge_setup_time: boolean;
+  apply_surge_pricing?: boolean;
+  surge_multiplier?: number;
+}
+
+// Input for booking calculations
+export interface BookingCalculationInput {
+  services: ServiceWithQuantity[];
+  business: Business;
+  addresses: BookingAddress[];
+  calculationOptions: CalculationOptions;
+  businessTravelSettings: BusinessTravelSettings;
+}
+
+// Route segment for travel calculation
+export interface RouteSegment {
+  from_address: string;
+  to_address: string;
+  distance_km: number;
+  duration_mins: number;
+  cost: number;
+  is_chargeable: boolean;
+  service_id?: string;
+  segment_type: 'customer_to_customer' | 'base_to_customer' | 'customer_to_base';
+}
+
+// Travel breakdown
+export interface TravelBreakdown {
+  total_distance_km: number;
+  total_travel_time_mins: number;
+  total_travel_cost: number;
+  route_segments: RouteSegment[];
+  free_travel_applied: boolean;
+  free_travel_distance_km: number;
+}
+
+// Service cost breakdown
+export interface ServiceBreakdown {
+  service_id: string;
+  service_name: string;
+  quantity: number;
+  base_cost: number;
+  travel_cost: number;
+  setup_cost: number;
+  surge_cost: number;
+  total_cost: number;
+  estimated_duration_mins: number;
+  component_breakdowns: ComponentBreakdown[];
+}
+
+// Component cost breakdown
+export interface ComponentBreakdown {
+  component_name: string;
+  pricing_combination: PricingCombination;
+  tier_used: PricingTier;
+  base_calculation: string; // e.g., "4 hours × 2 people × $72.50"
+  cost: number;
+  duration_mins: number;
+}
+
+// Helper type for the JSONB breakdown structure
+export interface PriceBreakdown {
+  service_breakdowns: ServiceBreakdown[];
+  travel_breakdown: TravelBreakdown;
+  business_fees: BusinessFeeBreakdown;
+}
+
+// Final booking calculation result - ready for database storage
+export interface BookingCalculationResult {
+  total_estimate_amount: number;
+  total_estimate_time_in_minutes: number;
+  minimum_charge_applied: boolean;
+  surge_pricing_applied: boolean;
+  deposit_amount: number;
+  remaining_balance: number;
+  deposit_paid: boolean;
+  price_breakdown: PriceBreakdown;  // ✅ Already structured for JSONB
+}
+
+// Business fees
+export interface BusinessFeeBreakdown {
+  gst_amount: number;
+  platform_fee: number;
+  payment_processing_fee: number;
+  other_fees: Array<{ name: string; amount: number }>;
+}
+
+
+
+// Google Distance API response
+export interface DistanceApiResponse {
+  distance_km: number;
+  duration_mins: number;
+  status: 'OK' | 'NOT_FOUND' | 'ZERO_RESULTS' | 'OVER_QUERY_LIMIT';
+  duration_in_traffic_mins?: number;
+}
+
+// Pricing calculation context
+export interface PricingContext {
+  datetime: Date;
+  is_peak_time: boolean;
+  is_weekend: boolean;
+  season: 'summer' | 'winter' | 'autumn' | 'spring';
+  demand_level: 'low' | 'medium' | 'high';
+}

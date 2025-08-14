@@ -41,6 +41,9 @@ export interface Business extends BaseEntity {
   business_category: BusinessCategory;
   charges_gst: boolean;
   gst_rate?: number;
+  charges_deposit: boolean;
+  payment_processing_fee_percentage: number;
+  booking_platform_fee_percentage: number;
   currency_code: string;
   number_of_providers: number;
   subscription_type: SubscriptionType;
@@ -54,6 +57,7 @@ export interface Business extends BaseEntity {
   whatsapp_phone_number_id?: string | null;
   stripe_connect_account_id?: string | null;
   stripe_account_status?: string | null;
+  minimum_charge: number;
 }
 
 export type CreateBusinessData = Omit<Business, 'id' | 'created_at' | 'updated_at'>;

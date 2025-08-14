@@ -1,9 +1,10 @@
 import type { CreateAddressData } from '../../types/addresses';
+import { AddressType } from '../../types/addresses';
 
 // Test address data for seeding
 export const pickupAddressData: CreateAddressData = {
   service_id: "placeholder-service-id", // Will be replaced with actual service_id
-  type: "pickup",
+  type: AddressType.PICKUP,
   address_line_1: "123 Collins Street",
   address_line_2: "Unit 15",
   city: "Melbourne",
@@ -14,7 +15,7 @@ export const pickupAddressData: CreateAddressData = {
 
 export const deliveryAddressData: CreateAddressData = {
   service_id: "placeholder-service-id",
-  type: "delivery",
+  type: AddressType.DROPOFF,
   address_line_1: "456 Chapel Street", 
   address_line_2: null,
   city: "South Yarra",
@@ -25,7 +26,7 @@ export const deliveryAddressData: CreateAddressData = {
 
 export const storageAddressData: CreateAddressData = {
   service_id: "placeholder-service-id",
-  type: "storage",
+  type: AddressType.BUSINESS,
   address_line_1: "789 Industrial Drive",
   address_line_2: "Warehouse 5",
   city: "Clayton",

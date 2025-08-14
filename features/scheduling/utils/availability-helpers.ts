@@ -1,5 +1,5 @@
 import { DateTime, Interval } from "luxon";
-import { TimeSlot, BookingWithProvider } from "../lib/types/scheduling";
+import { TimeSlot, BookingWithProvider } from "../lib/types/availability-manager";
 import { User } from "@/features/shared/lib/database/types/user";
 import { CalendarSettings } from "@/features/shared/lib/database/types/calendar-settings";
 

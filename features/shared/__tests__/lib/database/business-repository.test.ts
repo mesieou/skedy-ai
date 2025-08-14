@@ -28,6 +28,10 @@ describe('BusinessRepository', () => {
       expect(testBusiness.name).toBe(removalistBusinessData.name);
       expect(testBusiness.email).toBe(removalistBusinessData.email);
       expect(testBusiness.phone_number).toBe(removalistBusinessData.phone_number);
+      expect(testBusiness.minimum_charge).toBe(200);
+    expect(testBusiness.charges_deposit).toBe(true);
+    expect(testBusiness.payment_processing_fee_percentage).toBe(2.9);
+    expect(testBusiness.booking_platform_fee_percentage).toBe(2.0);
     });
 
     it('should find business by phone number', async () => {

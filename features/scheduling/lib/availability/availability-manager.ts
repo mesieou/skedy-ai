@@ -1,4 +1,4 @@
-import { DURATION_INTERVALS } from "../types/scheduling";
+import { DURATION_INTERVALS } from "../types/availability-manager";
 import { AvailabilitySlots } from "@/features/shared/lib/database/types/availability-slots";
 import { Booking } from "@/features/shared/lib/database/types/bookings";
 import { DateUtils } from "@/features/shared/utils/date-utils";

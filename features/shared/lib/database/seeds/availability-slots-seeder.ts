@@ -3,7 +3,7 @@ import { BaseSeeder } from './base-seeder';
 import { AvailabilitySlotsRepository } from '../repositories/availability-slots-repository';
 import type { AvailabilitySlots } from '../types/availability-slots';
 import { DateTime } from 'luxon';
-import { Provider } from '@/features/scheduling/lib/types/scheduling';
+import { Provider } from '@/features/scheduling/lib/types/availability-manager';
 
 export class AvailabilitySlotsSeeder extends BaseSeeder<AvailabilitySlots> {
   constructor() {
