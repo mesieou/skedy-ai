@@ -254,22 +254,30 @@ export class BookingCalculator {
 
   private calculateBusinessFees(amount: number, business: Business): BusinessFeeBreakdown {
     // Calculate GST if business charges it
+    const gst_rate = business.charges_gst ? (business.gst_rate || 0) : 0;
     const gst_amount = business.charges_gst && business.gst_rate 
       ? amount * (business.gst_rate / 100) 
       : 0;
     
     // Calculate payment processing fee only if deposit is required
+    const payment_processing_fee_percentage = business.payment_processing_fee_percentage || 0;
     const payment_processing_fee = business.charges_deposit 
       ? amount * (business.payment_processing_fee_percentage / 100)
       : 0;
     
     // Calculate platform fee using business configuration
+    const platform_fee_percentage = business.booking_platform_fee_percentage || 0;
     const platform_fee = amount * (business.booking_platform_fee_percentage / 100);
     
     return {
       gst_amount,
+      gst_rate,
       platform_fee,
+      platform_fee_amount: platform_fee, // Alias for amount
+      platform_fee_percentage,
       payment_processing_fee,
+      payment_processing_fee_amount: payment_processing_fee, // Alias for amount
+      payment_processing_fee_percentage,
       other_fees: []
     };
   }

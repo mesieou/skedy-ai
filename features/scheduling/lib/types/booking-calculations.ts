@@ -58,8 +58,6 @@ export interface BookingCalculationInput {
   services: ServiceWithQuantity[];
   business: Business;
   addresses: BookingAddress[];
-  calculationOptions: CalculationOptions;
-  businessTravelSettings: BusinessTravelSettings;
 }
 
 // Route segment for travel calculation
@@ -130,8 +128,13 @@ export interface BookingCalculationResult {
 // Business fees
 export interface BusinessFeeBreakdown {
   gst_amount: number;
+  gst_rate: number;
   platform_fee: number;
+  platform_fee_amount: number;
+  platform_fee_percentage: number;
   payment_processing_fee: number;
+  payment_processing_fee_amount: number;
+  payment_processing_fee_percentage: number;
   other_fees: Array<{ name: string; amount: number }>;
 }
 
