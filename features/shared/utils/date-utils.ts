@@ -1,13 +1,8 @@
-import { DateTime } from 'luxon';
-
 /**
  * Date utility functions for scheduling operations - ALL DATES IN UTC
+ * Uses only native JavaScript Date methods with UTC ISO strings
  */
 export class DateUtils {
-  // ========================
-  // UTC DATE UTILITIES
-  // ========================
-  
   /**
    * Get current UTC timestamp as ISO string
    */
@@ -49,12 +44,51 @@ export class DateUtils {
   }
 
   /**
+   * Add weeks to a UTC ISO string and return new UTC ISO string
+   */
+  static addWeeksUTC(utcIsoString: string, weeks: number): string {
+    return this.addDaysUTC(utcIsoString, weeks * 7);
+  }
+
+  /**
+   * Add months to a UTC ISO string and return new UTC ISO string
+   */
+  static addMonthsUTC(utcIsoString: string, months: number): string {
+    const date = new Date(utcIsoString);
+    date.setUTCMonth(date.getUTCMonth() + months);
+    return date.toISOString();
+  }
+
+  /**
+   * Add years to a UTC ISO string and return new UTC ISO string
+   */
+  static addYearsUTC(utcIsoString: string, years: number): string {
+    const date = new Date(utcIsoString);
+    date.setUTCFullYear(date.getUTCFullYear() + years);
+    return date.toISOString();
+  }
+
+  /**
    * Get difference in minutes between two UTC ISO strings
    */
   static diffMinutesUTC(start: string, end: string): number {
     const startDate = new Date(start);
     const endDate = new Date(end);
     return Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60));
+  }
+
+  /**
+   * Get difference in hours between two UTC ISO strings
+   */
+  static diffHoursUTC(start: string, end: string): number {
+    return Math.round(this.diffMinutesUTC(start, end) / 60);
+  }
+
+  /**
+   * Get difference in days between two UTC ISO strings
+   */
+  static diffDaysUTC(start: string, end: string): number {
+    return Math.round(this.diffHoursUTC(start, end) / 24);
   }
 
   /**
@@ -87,54 +121,105 @@ export class DateUtils {
     return `${date.toISOString().slice(0, 16).replace('T', ' ')} UTC`;
   }
 
-  // ========================
-  // EXISTING LUXON UTILITIES (for compatibility)
-  // ========================
-
   /**
-   * Create Date from datetime string in timezone and return milliseconds
+   * Extract date string (YYYY-MM-DD) from UTC ISO string
    */
-  static createDateTimeInMillis(dateTime: string, timezone: string): number {
-    return DateTime.fromISO(dateTime, { zone: timezone }).toMillis();
+  static extractDateString(utcIsoString: string): string {
+    return utcIsoString.split('T')[0];
   }
 
   /**
-   * Extract date string (YYYY-MM-DD) from a Date object
+   * Extract time string (HH:mm:ss) from UTC ISO string
    */
-  static extractDateString(date: Date): string {
-    return date.toISOString().split('T')[0];
+  static extractTimeString(utcIsoString: string): string {
+    return utcIsoString.split('T')[1].split('Z')[0];
   }
 
   /**
-   * Get milliseconds timestamp from a Date object
+   * Get milliseconds timestamp from UTC ISO string
    */
-  static getTimestamp(date: Date): number {
-    return date.getTime();
+  static getTimestamp(utcIsoString: string): number {
+    return new Date(utcIsoString).getTime();
   }
 
   /**
-   * Create DateTime from date string and time string, return milliseconds
+   * Create UTC ISO string from date and time strings
    */
-  static createSlotTimestamp(dateStr: string, timeStr: string): number {
-    return DateTime.fromISO(`${dateStr}T${timeStr}`).toMillis();
+  static createSlotTimestamp(dateStr: string, timeStr: string): string {
+    return `${dateStr}T${timeStr}Z`;
   }
 
   /**
-   * Calculate end timestamp from start timestamp and duration in minutes
+   * Calculate end UTC ISO string from start and duration in minutes
    */
-  static calculateEndTimestamp(startTimestamp: number, durationMinutes: number): number {
-    return startTimestamp + durationMinutes * 60 * 1000;
+  static calculateEndTimestamp(startUtcIso: string, durationMinutes: number): string {
+    return this.addMinutesUTC(startUtcIso, durationMinutes);
   }
 
   /**
-   * Check if two time periods overlap
+   * Check if two UTC time periods overlap
    */
   static doPeriodsOverlap(
-    start1: number,
-    end1: number,
-    start2: number,
-    end2: number
+    start1: string,
+    end1: string,
+    start2: string,
+    end2: string
   ): boolean {
-    return start1 < end2 && end1 > start2;
+    const start1Ms = this.getTimestamp(start1);
+    const end1Ms = this.getTimestamp(end1);
+    const start2Ms = this.getTimestamp(start2);
+    const end2Ms = this.getTimestamp(end2);
+    return start1Ms < end2Ms && end1Ms > start2Ms;
+  }
+
+  /**
+   * Get start of day in UTC (00:00:00.000Z)
+   */
+  static startOfDayUTC(utcIsoString: string): string {
+    const dateStr = this.extractDateString(utcIsoString);
+    return `${dateStr}T00:00:00.000Z`;
+  }
+
+  /**
+   * Get end of day in UTC (23:59:59.999Z)
+   */
+  static endOfDayUTC(utcIsoString: string): string {
+    const dateStr = this.extractDateString(utcIsoString);
+    return `${dateStr}T23:59:59.999Z`;
+  }
+
+  /**
+   * Check if two UTC dates are on the same day
+   */
+  static isSameDayUTC(date1: string, date2: string): boolean {
+    return this.extractDateString(date1) === this.extractDateString(date2);
+  }
+
+  /**
+   * Check if a UTC date is before another UTC date
+   */
+  static isBeforeUTC(date1: string, date2: string): boolean {
+    return this.getTimestamp(date1) < this.getTimestamp(date2);
+  }
+
+  /**
+   * Check if a UTC date is after another UTC date
+   */
+  static isAfterUTC(date1: string, date2: string): boolean {
+    return this.getTimestamp(date1) > this.getTimestamp(date2);
+  }
+
+  /**
+   * Get the earlier of two UTC dates
+   */
+  static minUTC(date1: string, date2: string): string {
+    return this.isBeforeUTC(date1, date2) ? date1 : date2;
+  }
+
+  /**
+   * Get the later of two UTC dates
+   */
+  static maxUTC(date1: string, date2: string): string {
+    return this.isAfterUTC(date1, date2) ? date1 : date2;
   }
 }

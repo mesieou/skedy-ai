@@ -1,7 +1,6 @@
 import { BaseRepository } from '../base-repository';
 import type { AvailabilitySlots } from '../types/availability-slots';
-import { DateTime } from 'luxon';
-import { AvailabilityManager } from '@/features/scheduling/lib/services/availability-manager';
+import { AvailabilityManager } from '@/features/scheduling/lib/availability/availability-manager';
 import { User } from '../types/user';
 import { CalendarSettings } from '../types/calendar-settings';
 import { Business } from '../types/business';
@@ -11,11 +10,12 @@ export class AvailabilitySlotsRepository extends BaseRepository<AvailabilitySlot
     super('availability_slots'); // Table name (plural)
   }
 
-  async generateInitialBusinessAvailability(businessId: string, fromDate: DateTime, providers: User[], calendarSettings: CalendarSettings[], days: number = 30): Promise<AvailabilitySlots> {
+  async generateInitialBusinessAvailability(businessId: string, fromDate: string, providers: User[], calendarSettings: CalendarSettings[], days: number = 30): Promise<AvailabilitySlots> {
     const emptySlots: AvailabilitySlots = { slots: {}, business_id: businessId } as AvailabilitySlots;
     const business: Business = { id: businessId } as Business;
     const manager = new AvailabilityManager(emptySlots, business);
     
+    // Pass UTC string directly to the manager
     const availabilitySlots = await manager.generateInitialBusinessAvailability(providers, calendarSettings, fromDate, days);
     return this.create(availabilitySlots);
   }

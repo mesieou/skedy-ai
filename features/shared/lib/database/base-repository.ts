@@ -3,6 +3,7 @@ import { createAuthenticatedServerClient } from '../supabase/server';
 import { createSecretClient } from '../supabase/admin-client';
 import type { BaseEntity, QueryOptions, QueryConditions } from './types/base';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { DateUtils } from '../../utils/date-utils';
 
 // Singleton instances to prevent multiple client creation
 let testClient: SupabaseClient | null = null;
@@ -89,7 +90,7 @@ export class BaseRepository<T extends BaseEntity> {
     const client = await this.getClient();
     let query = client
       .from(this.tableName)
-      .update({ ...data, updated_at: new Date().toISOString() });
+      .update({ ...data, updated_at: DateUtils.nowUTC() });
 
     Object.entries(conditions).forEach(([key, value]) => {
       query = query.eq(key, value);

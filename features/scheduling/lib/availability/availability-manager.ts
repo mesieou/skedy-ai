@@ -5,7 +5,6 @@ import { DateUtils } from "@/features/shared/utils/date-utils";
 import { Business } from "@/features/shared/lib/database/types/business";
 import { User } from "@/features/shared/lib/database/types/user";
 import { CalendarSettings } from "@/features/shared/lib/database/types/calendar-settings";
-import { DateTime } from "luxon";
 import { computeBusinessAvailibityForOneDay } from "../../utils/availability-helpers";
 
 // Class AvailabilityManager
@@ -20,8 +19,6 @@ export class AvailabilityManager {
   updateAvailabilityAfterBooking(booking: Booking): AvailabilitySlots {
     // Extract date and timestamps using utility functions
     const dateStr = DateUtils.extractDateString(booking.start_at);
-    const bookingStartMs = DateUtils.getTimestamp(booking.start_at);
-    const bookingEndMs = DateUtils.getTimestamp(booking.end_at);
 
     const updatedSlots = { ...this.availabilitySlots.slots };
 
@@ -36,8 +33,7 @@ export class AvailabilityManager {
           slots,
           dateStr,
           duration,
-          bookingStartMs,
-          bookingEndMs
+          booking
         );
       }
       
@@ -53,15 +49,15 @@ export class AvailabilityManager {
   async generateInitialBusinessAvailability(
     providers: User[],
     calendarSettings: CalendarSettings[],
-    fromDate: DateTime,
+    fromDate: string, // UTC ISO string
     days: number = 30
   ): Promise<AvailabilitySlots> {
     const allSlots: { [dateKey: string]: { [durationKey: string]: [string, number][] } } = {};
 
     // Generate availability for the specified number of days
     for (let dayOffset = 0; dayOffset < days; dayOffset++) {
-      const currentDate = fromDate.plus({ days: dayOffset });
-      const dateKey = currentDate.toISODate()!; // "2025-01-15"
+      const currentDate = DateUtils.addDaysUTC(fromDate, dayOffset);
+      const dateKey = DateUtils.extractDateString(currentDate); // "2025-01-15"
       
       // Initialize this date's slots
       allSlots[dateKey] = {};
@@ -77,7 +73,7 @@ export class AvailabilityManager {
         
         // Convert TimeSlot[] to [string, number][] format (just time, not full datetime)
         allSlots[dateKey][duration.key] = timeSlots.map(slot => [
-          slot.start.toFormat('HH:mm'), // "07:00", "08:00", etc.
+          DateUtils.extractTimeString(slot.start).substring(0, 5), // "07:00", "08:00", etc.
           slot.count
         ]);
       }
@@ -95,8 +91,7 @@ export class AvailabilityManager {
     slots: [string, number][],
     dateStr: string,
     duration: { key: string; minutes: number },
-    bookingStartMs: number,
-    bookingEndMs: number
+    booking: Booking
   ): [string, number][] {
     const newSlots: [string, number][] = [];
 
@@ -111,8 +106,8 @@ export class AvailabilityManager {
         DateUtils.doPeriodsOverlap(
           slotStartMs,
           slotEndMs,
-          bookingStartMs,
-          bookingEndMs
+          booking.start_at,
+          booking.end_at
         )
       ) {
         const newProviderCount = providerCount - 1;

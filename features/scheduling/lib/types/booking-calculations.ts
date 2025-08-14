@@ -136,15 +136,6 @@ export interface BusinessFeeBreakdown {
 }
 
 
-
-// Google Distance API response
-export interface DistanceApiResponse {
-  distance_km: number;
-  duration_mins: number;
-  status: 'OK' | 'NOT_FOUND' | 'ZERO_RESULTS' | 'OVER_QUERY_LIMIT';
-  duration_in_traffic_mins?: number;
-}
-
 // Pricing calculation context
 export interface PricingContext {
   datetime: Date;

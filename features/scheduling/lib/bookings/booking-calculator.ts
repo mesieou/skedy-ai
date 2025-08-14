@@ -9,14 +9,21 @@ import type {
   TravelBreakdown,
   RouteSegment,
   BookingAddress,
-  DistanceApiResponse,
   BusinessFeeBreakdown
 } from '../types/booking-calculations';
 import type { Business } from '../../../shared/lib/database/types/business';
 import { DepositType } from '../../../shared/lib/database/types/business';
 import type { PricingComponent, PricingTier } from '../../../shared/lib/database/types/service';
+import { GoogleDistanceApiService } from '../services/google-distance-api';
+import type { DistanceApiRequest } from '../types/google-distance-api';
+import { DistanceUnits } from '../types/google-distance-api';
 
 export class BookingCalculator {
+  private googleDistanceApi: GoogleDistanceApiService;
+
+  constructor() {
+    this.googleDistanceApi = new GoogleDistanceApiService();
+  }
   
   /**
    * Main entry point for booking calculations
@@ -100,14 +107,23 @@ export class BookingCalculator {
     // Step 1: Determine which route segments to charge for
     const chargeableSegments = this.determineChargeableSegments(addresses, travelModel);
     
-    // Step 2: Get distances and durations from Google Distance API
+    // Step 2: Get distances and durations from Google Distance API (batch processing)
+    const distanceRequests: DistanceApiRequest[] = chargeableSegments.map(segment => ({
+      origin: segment.from_address,
+      destination: segment.to_address,
+      units: DistanceUnits.METRIC
+    }));
+    
+    // Single API call for all segments using Distance Matrix
+    const distanceResults = await this.googleDistanceApi.getBatchDistances(distanceRequests);
+    
     const route_segments: RouteSegment[] = [];
     let total_distance_km = 0;
     let total_travel_time_mins = 0;
     const total_travel_cost = 0; // Calculated later per service component
     
-    for (const segment of chargeableSegments) {
-      const distance_data = await this.getDistanceFromGoogleAPI();
+    chargeableSegments.forEach((segment, index) => {
+      const distance_data = distanceResults[index];
       
       const route_segment: RouteSegment = {
         from_address: segment.from_address,
@@ -126,7 +142,7 @@ export class BookingCalculator {
         total_distance_km += distance_data.distance_km;
         total_travel_time_mins += distance_data.duration_mins;
       }
-    }
+    });
     
     return {
       total_distance_km,
@@ -274,15 +290,7 @@ export class BookingCalculator {
     return 0;
   }
 
-  private async getDistanceFromGoogleAPI(): Promise<DistanceApiResponse> {
-    // TODO: Implement Google Distance Matrix API call
-    const distance = Math.random() * 30;
-    return {
-      distance_km: distance,
-      duration_mins: Math.round(distance * 2.2),
-      status: 'OK'
-    };
-  }
+
 
   private determineChargeableSegments(
     addresses: BookingAddress[], 

@@ -1,5 +1,4 @@
 
-import { DateTime } from "luxon";
 import { Booking } from "@/features/shared/lib/database/types/bookings";
 
 // Default duration configuration for scheduling
@@ -17,8 +16,8 @@ export const DURATION_INTERVALS = [
 ];
 
 export interface TimeSlot {
-  start: DateTime;
-  end: DateTime;
+  start: string; // UTC ISO string
+  end: string;   // UTC ISO string
   count: number;
 }
 

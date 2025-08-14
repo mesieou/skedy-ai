@@ -9,7 +9,7 @@ import { adminProviderUserData, providerUserData } from '../../../lib/database/s
 import { adminAuthUserData, providerAuthUserData } from '../../../lib/database/seeds/data/auth-user-data';
 import { weekdayCalendarSettingsData, weekendCalendarSettingsData } from '../../../lib/database/seeds/data/calendar-settings-data';
 import type { AvailabilitySlots } from '../../../lib/database/types/availability-slots';
-import { DateTime } from 'luxon';
+import { DateUtils } from '../../../utils/date-utils';
 import { User } from '@/features/shared/lib/database/types/user';
 import { CalendarSettings } from '@/features/shared/lib/database/types/calendar-settings';
 
@@ -28,7 +28,7 @@ describe('AvailabilitySlotsRepository', () => {
   let testAvailabilitySlots: AvailabilitySlots;
   let providers: User[];
   let calendarSettings: CalendarSettings[];
-  let tomorrowDate: DateTime;
+  let tomorrowDate: string; // UTC ISO string
 
   beforeAll(async () => {
     availabilitySlotsRepository = new AvailabilitySlotsRepository();
@@ -72,7 +72,7 @@ describe('AvailabilitySlotsRepository', () => {
     });
     
     // Setup test data
-    tomorrowDate = DateTime.utc().plus({ days: 1 });
+    tomorrowDate = DateUtils.addDaysUTC(DateUtils.nowUTC(), 1);
     providers = [weekdayUser, weekendUser];
     calendarSettings = [weekdayCalendarSettings, weekendCalendarSettings];
 
@@ -255,7 +255,7 @@ describe('AvailabilitySlotsRepository', () => {
     
     // Check first day
     const firstDate = new Date(dateKeys[0]);
-    const expectedFirstDate = tomorrowDate.toJSDate();
+    const expectedFirstDate = new Date(DateUtils.extractDateString(tomorrowDate));
     expect(firstDate.toDateString()).toBe(expectedFirstDate.toDateString());
     
     // Check last day spans 30 calendar days (even if some days have no availability)
@@ -276,7 +276,7 @@ describe('AvailabilitySlotsRepository', () => {
     const dateKeys = Object.keys(testAvailabilitySlots.slots).sort();
     const firstDateKey = dateKeys[0];
     const firstDate = new Date(firstDateKey);
-    const expectedTomorrow = tomorrowDate.toJSDate();
+    const expectedTomorrow = new Date(DateUtils.extractDateString(tomorrowDate));
     
     expect(firstDate.toDateString()).toBe(expectedTomorrow.toDateString());
   });

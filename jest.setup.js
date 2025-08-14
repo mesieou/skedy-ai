@@ -25,5 +25,8 @@ global.ResizeObserver = jest.fn().mockImplementation(() => ({
   disconnect: jest.fn(),
 }));
 
+// Note: fetch is not available in Jest environment
+// Real API tests will fail gracefully and fall back to mock data
+
 // Environment variables now loaded from .env.test file
 
