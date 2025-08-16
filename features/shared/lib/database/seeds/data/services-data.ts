@@ -95,8 +95,8 @@ export const removalistExample2ServiceData: CreateServiceData = {
         pricing_combination: PricingCombination.LABOUR_PER_HOUR,
         tiers: [
           {
-            min_quantity: 1,
-            max_quantity: 10,
+            min_quantity: 2,
+            max_quantity: 2,
             price: 145.00,
             duration_estimate_mins: 180
           }

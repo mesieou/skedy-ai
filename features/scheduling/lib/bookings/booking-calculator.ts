@@ -334,9 +334,15 @@ export class BookingCalculator {
 
     switch (component.pricing_combination) {
       case PricingCombination.LABOR_PER_HOUR_PER_PERSON:
-        // Calculate based on estimated duration and people
+        // Calculate based on estimated duration - tier price already includes per-person rate
         duration_mins = this.getEstimatedDuration(tier.duration_estimate_mins);
-        cost = (duration_mins / 60) * tier.price * quantity;
+        cost = (duration_mins / 60) * tier.price;
+        break;
+
+      case PricingCombination.LABOUR_PER_HOUR:
+        // Calculate based on estimated duration - simple hourly rate
+        duration_mins = this.getEstimatedDuration(tier.duration_estimate_mins);
+        cost = (duration_mins / 60) * tier.price;
         break;
 
       case PricingCombination.SERVICE_FIXED_PER_SERVICE:
