@@ -4,175 +4,101 @@ import { LocationType, PricingCombination, TravelChargingModel } from '../../typ
 // Re-export addresses for convenience
 export * from './addresses-data';
 
-// Removalist Services - One service - two components, multi tiered
-// Not fixed price
-export const removalServiceData: CreateServiceData = {
+// ===================================================================
+// EXAMPLE 1: Removalist - BETWEEN_CUSTOMER_LOCATIONS
+// ===================================================================
+// Location type: pickup and dropoff
+// Travel charging model: BETWEEN_CUSTOMER_LOCATIONS (note: updated from comment)
+// Two components:
+//   - pricing combination: labor_per_hour_per_person
+//     tiers: 1 person 95, 2 person 145, 3 person 185
+//   - pricing combination: travel_per_minute_per_person
+//     tiers: 1 person 95, 2 person 145, 3 person 185
+export const removalistExample1ServiceData: CreateServiceData = {
   business_id: "placeholder-business-id", // Will be replaced with actual business_id
-  name: "Local Removals",
-  description: "Professional local moving services within Melbourne metro area. Includes furniture wrapping, loading, transportation, and unloading.",
+  name: "Local Removals - Between Customers",
+  description: "Professional local moving services. Charges only for travel between customer locations.",
   location_type: LocationType.PICKUP_AND_DROPOFF,
   travel_charging_model: TravelChargingModel.BETWEEN_CUSTOMER_LOCATIONS,
   pricing_config: {
     components: [
       {
-        name: "Hourly Rate",
+        name: "Labor Cost",
         pricing_combination: PricingCombination.LABOR_PER_HOUR_PER_PERSON,
         tiers: [
           {
             min_quantity: 1,
             max_quantity: 1,
             price: 95.00,
-            duration_estimate_mins: {
-              "one_item": 40,
-              "multiple_items": 60,
-              "house_move_one_room": 120,
-              "house_move_two_rooms": 160,
-              "house_move_three_rooms": 240
-            }
-          },
-          {
-            min_quantity: 2,
-            max_quantity: 2,
-            price: 145.00,
-            duration_estimate_mins: {
-              "one_item": 30,
-              "multiple_items": 45,
-              "house_move_one_room": 90,
-              "house_move_two_rooms": 120,
-              "house_move_three_rooms": 180
-            }
-          },
-          {
-            min_quantity: 3,
-            max_quantity: 3,
-            price: 185.00,
-            duration_estimate_mins: {
-              "house_move_one_room": 60,
-              "house_move_two_rooms": 80,
-              "house_move_three_rooms": 120
-            }
-          }
-        ]
-      },
-      {
-        name: "Distance Fee",
-        pricing_combination: PricingCombination.TRAVEL_PER_MINUTE_PER_PERSON,
-        tiers: [
-          {
-            min_quantity: 1,
-            max_quantity: 1,
-            price: 95.00,
-            duration_estimate_mins: {
-              "one_item": 40,
-              "multiple_items": 60,
-              "house_move_one_room": 120,
-              "house_move_two_rooms": 160,
-              "house_move_three_rooms": 240
-            }
-          },
-          {
-            min_quantity: 2,
-            max_quantity: 2,
-            price: 145.00,
-            duration_estimate_mins: {
-              "one_item": 30,
-              "multiple_items": 45,
-              "house_move_one_room": 90,
-              "house_move_two_rooms": 120,
-              "house_move_three_rooms": 180
-            }
-          },
-          {
-            min_quantity: 3,
-            max_quantity: 3,
-            price: 185.00,
-            duration_estimate_mins: {
-              "house_move_one_room": 60,
-              "house_move_two_rooms": 80,
-              "house_move_three_rooms": 120
-            }
-          }
-        ]
-      }
-    ]
-  }
-};
-
-// Manicure Service - One service - one component, single tier
-// Fixed price
-// multiple services
-export const manicureServiceData: CreateServiceData = {
-  business_id: "placeholder-business-id",
-  name: "Manicure", 
-  description: "Manicure service for hands and feet.",
-  location_type: LocationType.CUSTOMER,
-  // Uses business default_travel_charging_model
-  pricing_config: {
-    components: [
-      {
-        name: "Manicure Fee",
-        pricing_combination: PricingCombination.SERVICE_FIXED_PER_SERVICE,
-        tiers: [
-          {
-            min_quantity: 1,
-            max_quantity: 1,
-            price: 60.00,
-            duration_estimate_mins: 45
-          }
-        ]
-      }
-    ]
-  }
-};
-
-export const pedicureServiceData: CreateServiceData = {
-  business_id: "placeholder-business-id",
-  name: "Pedicure", 
-  description: "Pedicure service for feet.",
-  location_type: LocationType.CUSTOMER,
-  travel_charging_model: TravelChargingModel.FROM_BASE_TO_CUSTOMERS,
-  pricing_config: {
-    components: [
-      {
-        name: "Pedicure Fee",
-        pricing_combination: PricingCombination.SERVICE_FIXED_PER_SERVICE,
-        tiers: [
-          {
-            min_quantity: 1,
-            max_quantity: 1,
-            price: 90.00,
-            duration_estimate_mins: 60
-          }
-        ]
-      }
-    ]
-  }
-};
-
-// Cleaning Services
-export const housecleaningServiceData: CreateServiceData = {
-  business_id: "placeholder-business-id",
-  name: "House Cleaning",
-  description: "Complete house cleaning service including all rooms, bathrooms, and kitchen.",
-  location_type: LocationType.CUSTOMER,
-  travel_charging_model: TravelChargingModel.FROM_BASE_TO_CUSTOMERS,
-  pricing_config: {
-    components: [
-      {
-        name: "Hourly Cleaning Rate",
-        pricing_combination: PricingCombination.LABOR_PER_HOUR_PER_PERSON,
-        tiers: [
-          {
-            min_quantity: 1,
-            max_quantity: 1,
-            price: 45.00,
             duration_estimate_mins: 120
           },
           {
             min_quantity: 2,
             max_quantity: 2,
-            price: 80.00,
+            price: 145.00,
             duration_estimate_mins: 90
+          },
+          {
+            min_quantity: 3,
+            max_quantity: 3,
+            price: 185.00,
+            duration_estimate_mins: 60
+          }
+        ]
+      },
+      {
+        name: "Travel Cost",
+        pricing_combination: PricingCombination.TRAVEL_PER_MINUTE_PER_PERSON,
+        tiers: [
+          {
+            min_quantity: 1,
+            max_quantity: 1,
+            price: 1.00,
+            duration_estimate_mins: null
+          },
+          {
+            min_quantity: 2,
+            max_quantity: 2,
+            price: 1.50,
+            duration_estimate_mins: null
+          },
+          {
+            min_quantity: 3,
+            max_quantity: 3,
+            price: 2.00,
+            duration_estimate_mins: null
+          }
+        ]
+      }
+    ]
+  }
+};
+
+// ===================================================================
+// EXAMPLE 2: Removalist - FROM_BASE_AND_BETWEEN_CUSTOMERS
+// ===================================================================
+// Location type: pickup and dropoff
+// Travel charging model: FROM_BASE_AND_BETWEEN_CUSTOMERS
+// Two components:
+//   - pricing combination: labor_per_hour (only one tier: 2 people 145)
+//   - pricing combination: travel_per_km (only one tier: 2.50 per km)
+export const removalistExample2ServiceData: CreateServiceData = {
+  business_id: "placeholder-business-id",
+  name: "Interstate Removals - Base + Between",
+  description: "Interstate moving services. Charges from base to customers plus between customers.",
+  location_type: LocationType.PICKUP_AND_DROPOFF,
+  travel_charging_model: TravelChargingModel.FROM_BASE_AND_BETWEEN_CUSTOMERS,
+  pricing_config: {
+    components: [
+      {
+        name: "Labor Cost",
+        pricing_combination: PricingCombination.LABOUR_PER_HOUR,
+        tiers: [
+          {
+            min_quantity: 1,
+            max_quantity: 10,
+            price: 145.00,
+            duration_estimate_mins: 180
           }
         ]
       },
@@ -182,7 +108,7 @@ export const housecleaningServiceData: CreateServiceData = {
         tiers: [
           {
             min_quantity: 1,
-            max_quantity: 10,
+            max_quantity: 1000,
             price: 2.50,
             duration_estimate_mins: null
           }
@@ -192,35 +118,43 @@ export const housecleaningServiceData: CreateServiceData = {
   }
 };
 
-export const commercialCleaningServiceData: CreateServiceData = {
+// ===================================================================
+// EXAMPLE 3: Removalist - BETWEEN_CUSTOMERS_AND_BACK_TO_BASE
+// ===================================================================
+// Location type: pickup and dropoff
+// Travel charging model: BETWEEN_CUSTOMERS_AND_BACK_TO_BASE
+// One component:
+//   - pricing combination: labor_per_hour_per_person
+//     tiers: 1 person 120, 2 person 140, 3 person 200
+export const removalistExample3ServiceData: CreateServiceData = {
   business_id: "placeholder-business-id",
-  name: "Commercial Cleaning",
-  description: "Office and commercial space cleaning service.",
-  location_type: LocationType.CUSTOMER,
-  travel_charging_model: TravelChargingModel.BETWEEN_CUSTOMER_LOCATIONS,
+  name: "Premium Removals - Between + Return",
+  description: "Premium moving services. Charges between customers and return to base.",
+  location_type: LocationType.PICKUP_AND_DROPOFF,
+  travel_charging_model: TravelChargingModel.BETWEEN_CUSTOMERS_AND_BACK_TO_BASE,
   pricing_config: {
     components: [
       {
-        name: "Square Meter Rate",
-        pricing_combination: PricingCombination.SERVICE_PER_SQM,
+        name: "Labor Cost",
+        pricing_combination: PricingCombination.LABOR_PER_HOUR_PER_PERSON,
         tiers: [
           {
             min_quantity: 1,
-            max_quantity: 100,
-            price: 3.50,
-            duration_estimate_mins: 180
+            max_quantity: 1,
+            price: 120.00,
+            duration_estimate_mins: 150
           },
           {
-            min_quantity: 101,
-            max_quantity: 500,
-            price: 2.80,
-            duration_estimate_mins: 360
+            min_quantity: 2,
+            max_quantity: 2,
+            price: 140.00,
+            duration_estimate_mins: 100
           },
           {
-            min_quantity: 501,
-            max_quantity: 1000,
-            price: 2.20,
-            duration_estimate_mins: 480
+            min_quantity: 3,
+            max_quantity: 3,
+            price: 200.00,
+            duration_estimate_mins: 80
           }
         ]
       }
@@ -228,85 +162,153 @@ export const commercialCleaningServiceData: CreateServiceData = {
   }
 };
 
-// Handyman Services
-export const plumbingServiceData: CreateServiceData = {
+// ===================================================================
+// EXAMPLE 4: Removalist - FULL_ROUTE
+// ===================================================================
+// Location type: pickup and dropoff
+// Travel charging model: FULL_ROUTE
+// Two components:
+//   - pricing combination: labor_per_hour_per_person
+//   - pricing combination: labor_per_minute_per_person
+export const removalistExample4ServiceData: CreateServiceData = {
   business_id: "placeholder-business-id",
-  name: "Plumbing Repairs",
-  description: "General plumbing repairs and installations.",
+  name: "Express Removals - Full Route",
+  description: "Express moving services. Charges for entire route including return.",
+  location_type: LocationType.PICKUP_AND_DROPOFF,
+  travel_charging_model: TravelChargingModel.FULL_ROUTE,
+  pricing_config: {
+    components: [
+      {
+        name: "Hourly Labor",
+        pricing_combination: PricingCombination.LABOR_PER_HOUR_PER_PERSON,
+        tiers: [
+          {
+            min_quantity: 1,
+            max_quantity: 1,
+            price: 110.00,
+            duration_estimate_mins: 120
+          },
+          {
+            min_quantity: 2,
+            max_quantity: 2,
+            price: 160.00,
+            duration_estimate_mins: 90
+          },
+          {
+            min_quantity: 3,
+            max_quantity: 3,
+            price: 210.00,
+            duration_estimate_mins: 60
+          }
+        ]
+      },
+      {
+        name: "Per-Minute Labor",
+        pricing_combination: PricingCombination.LABOR_PER_MINUTE_PER_PERSON,
+        tiers: [
+          {
+            min_quantity: 1,
+            max_quantity: 1,
+            price: 2.00,
+            duration_estimate_mins: null
+          },
+          {
+            min_quantity: 2,
+            max_quantity: 2,
+            price: 3.00,
+            duration_estimate_mins: null
+          },
+          {
+            min_quantity: 3,
+            max_quantity: 3,
+            price: 4.00,
+            duration_estimate_mins: null
+          }
+        ]
+      }
+    ]
+  }
+};
+
+// ===================================================================
+// EXAMPLE 5: Mobile Manicurist - Multiple services, one component each
+// ===================================================================
+// Service 1: location type: customer, travel charging model: FROM_BASE_TO_CUSTOMERS
+// One component: pricing combination: service_fixed_per_service
+// Service 2: location type: customer, travel charging model: FROM_BASE_TO_CUSTOMERS
+// One component: pricing combination: service_fixed_per_service
+export const manicuristExample5Service1Data: CreateServiceData = {
+  business_id: "placeholder-business-id",
+  name: "Basic Manicure",
+  description: "Basic manicure service at customer location.",
   location_type: LocationType.CUSTOMER,
   travel_charging_model: TravelChargingModel.FROM_BASE_TO_CUSTOMERS,
   pricing_config: {
     components: [
       {
-        name: "Call-out Fee",
+        name: "Manicure Service",
+        pricing_combination: PricingCombination.SERVICE_FIXED_PER_SERVICE,
+        tiers: [
+          {
+            min_quantity: 1,
+            max_quantity: 1,
+            price: 45.00,
+            duration_estimate_mins: 45
+          }
+        ]
+      }
+    ]
+  }
+};
+
+export const manicuristExample5Service2Data: CreateServiceData = {
+  business_id: "placeholder-business-id",
+  name: "Gel Manicure",
+  description: "Gel manicure service at customer location.",
+  location_type: LocationType.CUSTOMER,
+  travel_charging_model: TravelChargingModel.FROM_BASE_TO_CUSTOMERS,
+  pricing_config: {
+    components: [
+      {
+        name: "Gel Manicure Service",
+        pricing_combination: PricingCombination.SERVICE_FIXED_PER_SERVICE,
+        tiers: [
+          {
+            min_quantity: 1,
+            max_quantity: 1,
+            price: 65.00,
+            duration_estimate_mins: 60
+          }
+        ]
+      }
+    ]
+  }
+};
+
+// ===================================================================
+// EXAMPLE 6: Mobile Manicurist - One service, multiple components
+// ===================================================================
+// Service 1: location type: customer, travel charging model: FROM_BASE_TO_CUSTOMERS
+// Two components:
+//   - pricing combination: service_fixed_per_service
+//   - pricing combination: travel_per_minute
+export const manicuristExample6ServiceData: CreateServiceData = {
+  business_id: "placeholder-business-id",
+  name: "Premium Manicure with Travel",
+  description: "Premium manicure service with separate travel charging.",
+  location_type: LocationType.CUSTOMER,
+  travel_charging_model: TravelChargingModel.FROM_BASE_TO_CUSTOMERS,
+  pricing_config: {
+    components: [
+      {
+        name: "Premium Manicure",
         pricing_combination: PricingCombination.SERVICE_FIXED_PER_SERVICE,
         tiers: [
           {
             min_quantity: 1,
             max_quantity: 1,
             price: 80.00,
-            duration_estimate_mins: 60
-          }
-        ]
-      },
-      {
-        name: "Hourly Labor",
-        pricing_combination: PricingCombination.LABOUR_PER_HOUR,
-        tiers: [
-          {
-            min_quantity: 1,
-            max_quantity: 8,
-            price: 95.00,
-            duration_estimate_mins: 60
-          }
-        ]
-      }
-    ]
-  }
-};
-
-export const electricalServiceData: CreateServiceData = {
-  business_id: "placeholder-business-id",
-  name: "Electrical Work",
-  description: "Electrical installations and repairs.",
-  location_type: LocationType.CUSTOMER,
-  travel_charging_model: TravelChargingModel.FULL_ROUTE, // Override: Emergency service needs full route charging
-  pricing_config: {
-    components: [
-      {
-        name: "Fixed Service Fee",
-        pricing_combination: PricingCombination.SERVICE_FIXED_PER_SERVICE,
-        tiers: [
-          {
-            min_quantity: 1,
-            max_quantity: 1,
-            price: 120.00,
-            duration_estimate_mins: 90
-          }
-        ]
-      }
-    ]
-  }
-};
-
-// Beauty Services
-export const massageServiceData: CreateServiceData = {
-  business_id: "placeholder-business-id",
-  name: "Relaxation Massage",
-  description: "60-minute relaxation massage service.",
-  location_type: LocationType.CUSTOMER,
-  travel_charging_model: TravelChargingModel.FROM_BASE_TO_CUSTOMERS,
-  pricing_config: {
-    components: [
-      {
-        name: "Massage Fee",
-        pricing_combination: PricingCombination.SERVICE_FIXED_PER_SERVICE,
-        tiers: [
-          {
-            min_quantity: 1,
-            max_quantity: 1,
-            price: 120.00,
-            duration_estimate_mins: 60
+            duration_estimate_mins: 75
           }
         ]
       },
@@ -317,7 +319,7 @@ export const massageServiceData: CreateServiceData = {
           {
             min_quantity: 1,
             max_quantity: 60,
-            price: 1.50,
+            price: 1.20,
             duration_estimate_mins: null
           }
         ]
@@ -326,22 +328,202 @@ export const massageServiceData: CreateServiceData = {
   }
 };
 
-export const hairServiceData: CreateServiceData = {
-  business_id: "placeholder-business-id", 
-  name: "Hair Styling",
-  description: "Professional hair cut and styling service.",
+// ===================================================================
+// EXAMPLE 7: Mobile Manicurist - Multiple services, multiple components
+// ===================================================================
+// Service 1: location type: customer, travel charging model: FROM_BASE_TO_CUSTOMERS
+// Two components:
+//   - pricing combination: service_fixed_per_service (manicure)
+//   - pricing combination: service_fixed_per_service (callout)
+// Service 2: location type: customer, travel charging model: FROM_BASE_TO_CUSTOMERS
+// Two components:
+//   - pricing combination: service_fixed_per_service (pedicure)
+//   - pricing combination: service_fixed_per_service (callout)
+export const manicuristExample7Service1Data: CreateServiceData = {
+  business_id: "placeholder-business-id",
+  name: "Manicure + Callout",
+  description: "Manicure service with separate callout fee.",
   location_type: LocationType.CUSTOMER,
-  travel_charging_model: TravelChargingModel.CUSTOMERS_AND_BACK_TO_BASE,
+  travel_charging_model: TravelChargingModel.FROM_BASE_TO_CUSTOMERS,
   pricing_config: {
     components: [
       {
-        name: "Hair Service",
+        name: "Manicure",
         pricing_combination: PricingCombination.SERVICE_FIXED_PER_SERVICE,
         tiers: [
           {
             min_quantity: 1,
             max_quantity: 1,
-            price: 85.00,
+            price: 50.00,
+            duration_estimate_mins: 45
+          }
+        ]
+      },
+      {
+        name: "Callout Fee",
+        pricing_combination: PricingCombination.SERVICE_FIXED_PER_SERVICE,
+        tiers: [
+          {
+            min_quantity: 1,
+            max_quantity: 1,
+            price: 25.00,
+            duration_estimate_mins: 15
+          }
+        ]
+      }
+    ]
+  }
+};
+
+export const manicuristExample7Service2Data: CreateServiceData = {
+  business_id: "placeholder-business-id",
+  name: "Pedicure + Callout",
+  description: "Pedicure service with separate callout fee.",
+  location_type: LocationType.CUSTOMER,
+  travel_charging_model: TravelChargingModel.FROM_BASE_TO_CUSTOMERS,
+  pricing_config: {
+    components: [
+      {
+        name: "Pedicure",
+        pricing_combination: PricingCombination.SERVICE_FIXED_PER_SERVICE,
+        tiers: [
+          {
+            min_quantity: 1,
+            max_quantity: 1,
+            price: 60.00,
+            duration_estimate_mins: 60
+          }
+        ]
+      },
+      {
+        name: "Callout Fee",
+        pricing_combination: PricingCombination.SERVICE_FIXED_PER_SERVICE,
+        tiers: [
+          {
+            min_quantity: 1,
+            max_quantity: 1,
+            price: 25.00,
+            duration_estimate_mins: 15
+          }
+        ]
+      }
+    ]
+  }
+};
+
+// ===================================================================
+// EXAMPLE 8: Mobile and Non-Mobile Manicurist - Multiple services, multiple components
+// ===================================================================
+// Service 1: location type: business
+// Pricing combination: service_fixed_per_service
+// Service 2: location type: customer, travel charging model: FROM_BASE_TO_CUSTOMERS
+// Two components:
+//   - pricing combination: service_fixed_per_service
+//   - pricing combination: travel_per_hour
+export const manicuristExample8Service1Data: CreateServiceData = {
+  business_id: "placeholder-business-id",
+  name: "In-Salon Manicure",
+  description: "Manicure service at our salon location.",
+  location_type: LocationType.BUSINESS,
+  pricing_config: {
+    components: [
+      {
+        name: "Salon Manicure",
+        pricing_combination: PricingCombination.SERVICE_FIXED_PER_SERVICE,
+        tiers: [
+          {
+            min_quantity: 1,
+            max_quantity: 1,
+            price: 40.00,
+            duration_estimate_mins: 45
+          }
+        ]
+      }
+    ]
+  }
+};
+
+export const manicuristExample8Service2Data: CreateServiceData = {
+  business_id: "placeholder-business-id",
+  name: "Mobile Manicure with Hourly Travel",
+  description: "Mobile manicure service with hourly travel fee.",
+  location_type: LocationType.CUSTOMER,
+  travel_charging_model: TravelChargingModel.FROM_BASE_TO_CUSTOMERS,
+  pricing_config: {
+    components: [
+      {
+        name: "Mobile Manicure",
+        pricing_combination: PricingCombination.SERVICE_FIXED_PER_SERVICE,
+        tiers: [
+          {
+            min_quantity: 1,
+            max_quantity: 1,
+            price: 55.00,
+            duration_estimate_mins: 45
+          }
+        ]
+      },
+      {
+        name: "Travel Fee",
+        pricing_combination: PricingCombination.TRAVEL_PER_MINUTE,
+        tiers: [
+          {
+            min_quantity: 1,
+            max_quantity: 120,
+            price: 0.80,
+            duration_estimate_mins: null
+          }
+        ]
+      }
+    ]
+  }
+};
+
+// ===================================================================
+// EXAMPLE 9: Massage (Non-Mobile) - Multiple services at business location
+// ===================================================================
+// Service 1: location type: business
+// Pricing combination: service_fixed_per_service
+// Service 2: location type: business
+// Pricing combination: service_fixed_per_service
+export const massageExample9Service1Data: CreateServiceData = {
+  business_id: "placeholder-business-id",
+  name: "60-Minute Relaxation Massage",
+  description: "Full body relaxation massage at our spa.",
+  location_type: LocationType.BUSINESS,
+  pricing_config: {
+    components: [
+      {
+        name: "Massage Service",
+        pricing_combination: PricingCombination.SERVICE_FIXED_PER_SERVICE,
+        tiers: [
+          {
+            min_quantity: 1,
+            max_quantity: 1,
+            price: 120.00,
+            duration_estimate_mins: 60
+          }
+        ]
+      }
+    ]
+  }
+};
+
+export const massageExample9Service2Data: CreateServiceData = {
+  business_id: "placeholder-business-id",
+  name: "90-Minute Deep Tissue Massage",
+  description: "Extended deep tissue massage at our spa.",
+  location_type: LocationType.BUSINESS,
+  pricing_config: {
+    components: [
+      {
+        name: "Deep Tissue Massage",
+        pricing_combination: PricingCombination.SERVICE_FIXED_PER_SERVICE,
+        tiers: [
+          {
+            min_quantity: 1,
+            max_quantity: 1,
+            price: 160.00,
             duration_estimate_mins: 90
           }
         ]

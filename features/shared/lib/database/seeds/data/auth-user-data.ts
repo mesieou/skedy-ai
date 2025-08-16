@@ -20,10 +20,10 @@ export const customerAuthUserData: CreateAuthUserData = {
   password: "TestPassword123!",
   email_confirm: true
 };
-
 // Export all auth users as an array for easy iteration
 export const allAuthUsersData = [
   adminAuthUserData,
   providerAuthUserData,
   customerAuthUserData,
 ];
+

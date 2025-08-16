@@ -30,7 +30,6 @@ export const customerUserData: CreateUserData = {
   phone_number: "+61423456789",
   email: "mike.wilson@gmail.com",
 };
-
 // Export all users as an array for easy iteration
 export const allUsersData = [
   adminProviderUserData,

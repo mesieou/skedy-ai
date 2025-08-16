@@ -1,207 +1,283 @@
-import type { BookingCalculationInput } from '@/features/scheduling/lib/types/booking-calculations';
 import { AddressRole } from '@/features/scheduling/lib/types/booking-calculations';
-import type { Business } from '../../types/business';
-import type { Service } from '../../types/service';
-import type { CreateAddressData } from '../../types/addresses';
-import { AddressType } from '../../types/addresses';
+
+
+// ===================================================================
+// BOOKING TEST SCENARIOS FOR ALL 9 EXAMPLES
+// ===================================================================
 
 // Clean, structured booking scenarios - each scenario is complete and self-contained
 export interface BookingScenario {
+  name: string;
+  description: string;
+  businessType: 'removalist' | 'manicurist' | 'spa';
   services: Array<{
-    name: string;
+    serviceKey: string;
     quantity: number;
   }>;
   addresses: Array<{
     role: AddressRole;
     addressKey: string;
+    sequence_order: number;
   }>;
 }
 
-// All booking scenarios as clean, structured data
-export const bookingScenarios = {
-  // Beauty services
-  manicureAtHome: {
-    services: [{ name: 'manicure', quantity: 1 }],
-    addresses: [{ role: AddressRole.SERVICE, addressKey: 'luxuryApartment' }]
-  },
-  
-  pedicureAtHome: {
-    services: [{ name: 'pedicure', quantity: 1 }],
-    addresses: [{ role: AddressRole.SERVICE, addressKey: 'familyHome' }]
-  },
-  
-  massageWithTravel: {
-    services: [{ name: 'massage', quantity: 1 }],
+// ===================================================================
+// EXAMPLE 1-4: REMOVALIST SCENARIOS
+// ===================================================================
+
+export const removalistScenarios: BookingScenario[] = [
+  // Example 1: BETWEEN_CUSTOMER_LOCATIONS
+  {
+    name: "Example 1: Between Customers Only",
+    description: "2-person team, charges only between pickup and dropoff",
+    businessType: 'removalist',
+    services: [{ serviceKey: 'removalistExample1', quantity: 2 }],
     addresses: [
-      { role: AddressRole.BUSINESS_BASE, addressKey: 'businessBase' },
-      { role: AddressRole.SERVICE, addressKey: 'distantSuburb' }
+      { role: AddressRole.BUSINESS_BASE, addressKey: 'removalistBase', sequence_order: 0 },
+      { role: AddressRole.PICKUP, addressKey: 'melbournePickup', sequence_order: 1 },
+      { role: AddressRole.DROPOFF, addressKey: 'richmondDropoff', sequence_order: 2 },
+      { role: AddressRole.BUSINESS_BASE, addressKey: 'removalistBase', sequence_order: 3 }
     ]
   },
   
-  beautyPackage: {
+  // Example 2: FROM_BASE_AND_BETWEEN_CUSTOMERS
+  {
+    name: "Example 2: Base + Between Customers",
+    description: "Interstate move, charges from base plus between customers",
+    businessType: 'removalist',
+    services: [{ serviceKey: 'removalistExample2', quantity: 2 }],
+    addresses: [
+      { role: AddressRole.BUSINESS_BASE, addressKey: 'removalistBase', sequence_order: 0 },
+      { role: AddressRole.PICKUP, addressKey: 'melbournePickup', sequence_order: 1 },
+      { role: AddressRole.PICKUP, addressKey: 'hawthornPickup', sequence_order: 2 },
+      { role: AddressRole.DROPOFF, addressKey: 'richmondDropoff', sequence_order: 3 },
+      { role: AddressRole.BUSINESS_BASE, addressKey: 'removalistBase', sequence_order: 4 }
+    ]
+  },
+  
+  // Example 3: BETWEEN_CUSTOMERS_AND_BACK_TO_BASE
+  {
+    name: "Example 3: Between Customers + Return",
+    description: "Premium service, charges between customers and return to base",
+    businessType: 'removalist',
+    services: [{ serviceKey: 'removalistExample3', quantity: 3 }],
+    addresses: [
+      { role: AddressRole.BUSINESS_BASE, addressKey: 'removalistBase', sequence_order: 0 },
+      { role: AddressRole.PICKUP, addressKey: 'brightonPickup', sequence_order: 1 },
+      { role: AddressRole.PICKUP, addressKey: 'hawthornPickup', sequence_order: 2 },
+      { role: AddressRole.DROPOFF, addressKey: 'toorakDropoff', sequence_order: 3 },
+      { role: AddressRole.BUSINESS_BASE, addressKey: 'removalistBase', sequence_order: 4 }
+    ]
+  },
+  
+  // Example 4: FULL_ROUTE
+  {
+    name: "Example 4: Full Route Charging",
+    description: "Express service, charges entire route including return",
+    businessType: 'removalist',
+    services: [{ serviceKey: 'removalistExample4', quantity: 2 }],
+    addresses: [
+      { role: AddressRole.BUSINESS_BASE, addressKey: 'removalistBase', sequence_order: 0 },
+      { role: AddressRole.PICKUP, addressKey: 'melbournePickup', sequence_order: 1 },
+      { role: AddressRole.DROPOFF, addressKey: 'camberweelDropoff', sequence_order: 2 },
+      { role: AddressRole.BUSINESS_BASE, addressKey: 'removalistBase', sequence_order: 3 }
+    ]
+  }
+];
+
+// ===================================================================
+// EXAMPLE 5-8: MANICURIST SCENARIOS
+// ===================================================================
+
+export const manicuristScenarios: BookingScenario[] = [
+  // Example 5: Multiple services, one component each
+  {
+    name: "Example 5: Multiple Simple Services",
+    description: "Basic + Gel manicure, separate fixed pricing",
+    businessType: 'manicurist',
     services: [
-      { name: 'manicure', quantity: 1 },
-      { name: 'pedicure', quantity: 1 }
+      { serviceKey: 'manicuristExample5Service1', quantity: 1 },
+      { serviceKey: 'manicuristExample5Service2', quantity: 1 }
     ],
-    addresses: [{ role: AddressRole.SERVICE, addressKey: 'spaLocation' }]
-  },
-
-  // Transport services
-  singlePersonMove: {
-    services: [{ name: 'removal', quantity: 1 }],
     addresses: [
-      { role: AddressRole.PICKUP, addressKey: 'apartmentPickup' },
-      { role: AddressRole.DROPOFF, addressKey: 'yallaDropoff' }
+      { role: AddressRole.BUSINESS_BASE, addressKey: 'manicuristBase', sequence_order: 0 },
+      { role: AddressRole.SERVICE, addressKey: 'northMelbourneHome', sequence_order: 1 },
+      { role: AddressRole.BUSINESS_BASE, addressKey: 'manicuristBase', sequence_order: 2 }
     ]
   },
   
-  teamMove: {
-    services: [{ name: 'removal', quantity: 2 }],
+  // Example 6: One service, multiple components
+  {
+    name: "Example 6: Service with Separate Travel",
+    description: "Premium service with separate travel component",
+    businessType: 'manicurist',
+    services: [{ serviceKey: 'manicuristExample6', quantity: 1 }],
     addresses: [
-      { role: AddressRole.PICKUP, addressKey: 'housePickup' },
-      { role: AddressRole.DROPOFF, addressKey: 'hawthornDropoff' }
+      { role: AddressRole.BUSINESS_BASE, addressKey: 'manicuristBase', sequence_order: 0 },
+      { role: AddressRole.SERVICE, addressKey: 'southYarraApartment', sequence_order: 1 },
+      { role: AddressRole.BUSINESS_BASE, addressKey: 'manicuristBase', sequence_order: 2 }
     ]
   },
   
-  largeMove: {
-    services: [{ name: 'removal', quantity: 3 }],
+  // Example 7: Multiple services, multiple components
+  {
+    name: "Example 7: Services with Callout Fees",
+    description: "Manicure + Pedicure, each with callout fees",
+    businessType: 'manicurist',
+    services: [
+      { serviceKey: 'manicuristExample7Service1', quantity: 1 },
+      { serviceKey: 'manicuristExample7Service2', quantity: 1 }
+    ],
     addresses: [
-      { role: AddressRole.PICKUP, addressKey: 'commercialPickup' },
-      { role: AddressRole.DROPOFF, addressKey: 'hawthornDropoff' }
+      { role: AddressRole.BUSINESS_BASE, addressKey: 'manicuristBase', sequence_order: 0 },
+      { role: AddressRole.SERVICE, addressKey: 'fitzroyOffice', sequence_order: 1 },
+      { role: AddressRole.BUSINESS_BASE, addressKey: 'manicuristBase', sequence_order: 2 }
     ]
   },
-
-  smallItemMove: {
-    services: [{ name: 'removal', quantity: 2 }],
+  
+  // Example 8: Mixed mobile/non-mobile services
+  {
+    name: "Example 8: Mixed Service Types",
+    description: "In-salon + mobile service with travel",
+    businessType: 'manicurist',
+    services: [
+      { serviceKey: 'manicuristExample8Service1', quantity: 1 }, // In-salon
+      { serviceKey: 'manicuristExample8Service2', quantity: 1 }  // Mobile
+    ],
     addresses: [
-      { role: AddressRole.PICKUP, addressKey: 'apartmentPickup' },
-      { role: AddressRole.DROPOFF, addressKey: 'yallaDropoff' }
+      { role: AddressRole.BUSINESS_BASE, addressKey: 'manicuristBase', sequence_order: 0 },
+      { role: AddressRole.SERVICE, addressKey: 'carltonHome', sequence_order: 1 },
+      { role: AddressRole.BUSINESS_BASE, addressKey: 'manicuristBase', sequence_order: 2 }
     ]
-  },
-
-  longDistanceMove: {
-    services: [{ name: 'removal', quantity: 2 }],
-    addresses: [
-      { role: AddressRole.PICKUP, addressKey: 'commercialPickup' },
-      { role: AddressRole.DROPOFF, addressKey: 'hawthornDropoff' }
-    ]
-  },
-
-  // Cleaning services
-  houseCleaning: {
-    services: [{ name: 'housecleaning', quantity: 1 }],
-    addresses: [{ role: AddressRole.SERVICE, addressKey: 'smallOffice' }]
-  },
-  
-  teamCleaning: {
-    services: [{ name: 'housecleaning', quantity: 2 }],
-    addresses: [{ role: AddressRole.SERVICE, addressKey: 'mediumOffice' }]
-  },
-  
-  commercialCleaning: {
-    services: [{ name: 'commercialcleaning', quantity: 1 }],
-    addresses: [{ role: AddressRole.SERVICE, addressKey: 'largeOffice' }]
-  },
-
-  // Handyman services
-  plumbingJob: {
-    services: [{ name: 'plumbing', quantity: 1 }],
-    addresses: [{ role: AddressRole.SERVICE, addressKey: 'leakyPipe' }]
-  },
-  
-  electricalJob: {
-    services: [{ name: 'electrical', quantity: 1 }],
-    addresses: [{ role: AddressRole.SERVICE, addressKey: 'powerOutage' }]
-  },
-  
-  emergencyRepair: {
-    services: [{ name: 'plumbing', quantity: 1 }],
-    addresses: [{ role: AddressRole.SERVICE, addressKey: 'emergencyRepair' }]
   }
-} as const;
+];
 
-// Clean service finder - matches service by name
-function findServiceByName(services: Service[], name: string): Service {
-  const service = services.find(s => 
-    s.name.toLowerCase().includes(name.toLowerCase()) ||
-    s.name.toLowerCase().replace(/\s+/g, '').includes(name.toLowerCase())
-  );
-  
-  if (!service) {
-    throw new Error(`Service not found for name: ${name}. Available: ${services.map(s => s.name).join(', ')}`);
+// ===================================================================
+// EXAMPLE 9: SPA/MASSAGE SCENARIOS
+// ===================================================================
+
+export const spaScenarios: BookingScenario[] = [
+  // Example 9: Non-mobile services at business location
+  {
+    name: "Example 9: In-Spa Services",
+    description: "Multiple massage services at spa location",
+    businessType: 'spa',
+    services: [
+      { serviceKey: 'massageExample9Service1', quantity: 1 },
+      { serviceKey: 'massageExample9Service2', quantity: 1 }
+    ],
+    addresses: [
+      { role: AddressRole.BUSINESS_BASE, addressKey: 'spaBase', sequence_order: 0 }
+    ]
   }
+];
+
+// ===================================================================
+// COMPLEX MULTI-SCENARIO BOOKINGS
+// ===================================================================
+
+export const complexScenarios: BookingScenario[] = [
+  // Multi-customer manicurist route
+  {
+    name: "Multi-Customer Route",
+    description: "Manicurist visiting multiple customers in one trip",
+    businessType: 'manicurist',
+    services: [
+      { serviceKey: 'manicuristExample5Service1', quantity: 1 },
+      { serviceKey: 'manicuristExample5Service1', quantity: 1 },
+      { serviceKey: 'manicuristExample5Service2', quantity: 1 }
+    ],
+    addresses: [
+      { role: AddressRole.BUSINESS_BASE, addressKey: 'manicuristBase', sequence_order: 0 },
+      { role: AddressRole.SERVICE, addressKey: 'northMelbourneHome', sequence_order: 1 },
+      { role: AddressRole.SERVICE, addressKey: 'southYarraApartment', sequence_order: 2 },
+      { role: AddressRole.SERVICE, addressKey: 'carltonHome', sequence_order: 3 },
+      { role: AddressRole.BUSINESS_BASE, addressKey: 'manicuristBase', sequence_order: 4 }
+    ]
+  },
   
-  return service;
+  // Multi-stop removalist move
+  {
+    name: "Multi-Stop Move",
+    description: "Removalist with multiple pickup and dropoff locations",
+    businessType: 'removalist',
+    services: [{ serviceKey: 'removalistExample1', quantity: 3 }],
+    addresses: [
+      { role: AddressRole.BUSINESS_BASE, addressKey: 'removalistBase', sequence_order: 0 },
+      { role: AddressRole.PICKUP, addressKey: 'melbournePickup', sequence_order: 1 },
+      { role: AddressRole.PICKUP, addressKey: 'hawthornPickup', sequence_order: 2 },
+      { role: AddressRole.DROPOFF, addressKey: 'richmondDropoff', sequence_order: 3 },
+      { role: AddressRole.DROPOFF, addressKey: 'toorakDropoff', sequence_order: 4 },
+      { role: AddressRole.BUSINESS_BASE, addressKey: 'removalistBase', sequence_order: 5 }
+    ]
+  }
+];
+
+// ===================================================================
+// ALL SCENARIOS COMBINED
+// ===================================================================
+
+export const allBookingScenarios = [
+  ...removalistScenarios,
+  ...manicuristScenarios,
+  ...spaScenarios,
+  ...complexScenarios
+];
+
+// ===================================================================
+// SCENARIO MAPPING FOR EASY ACCESS
+// ===================================================================
+
+export const scenariosByExample = {
+  1: removalistScenarios[0],
+  2: removalistScenarios[1],
+  3: removalistScenarios[2],
+  4: removalistScenarios[3],
+  5: manicuristScenarios[0],
+  6: manicuristScenarios[1],
+  7: manicuristScenarios[2],
+  8: manicuristScenarios[3],
+  9: spaScenarios[0]
+};
+
+export const scenariosByName = {
+  'between_customers_only': removalistScenarios[0],
+  'base_and_between_customers': removalistScenarios[1],
+  'between_customers_and_return': removalistScenarios[2],
+  'full_route': removalistScenarios[3],
+  'multiple_simple_services': manicuristScenarios[0],
+  'service_with_travel': manicuristScenarios[1],
+  'services_with_callout': manicuristScenarios[2],
+  'mixed_service_types': manicuristScenarios[3],
+  'in_spa_services': spaScenarios[0],
+  'multi_customer_route': complexScenarios[0],
+  'multi_stop_move': complexScenarios[1]
+};
+
+// ===================================================================
+// HELPER FUNCTIONS FOR TESTING
+// ===================================================================
+
+export function getScenariosByBusinessType(businessType: 'removalist' | 'manicurist' | 'spa'): BookingScenario[] {
+  return allBookingScenarios.filter(scenario => scenario.businessType === businessType);
 }
 
-// Clean address resolver - gets address data by key
-function resolveAddress(
-  addressKey: string, 
-  addressRegistry: Record<string, CreateAddressData>,
-  business?: Business
-): CreateAddressData {
-  // Handle dynamic business address
-  if (addressKey === 'businessBase' && business) {
-    return {
-      service_id: 'placeholder',
-      type: AddressType.BUSINESS,
-      address_line_1: business.address,
-      address_line_2: null,
-      city: 'Prahran',
-      postcode: '3181',
-      state: 'VIC',
-      country: 'Australia'
-    };
-  }
-  
-  const address = addressRegistry[addressKey];
-  if (!address) {
-    throw new Error(`Address not found for key: ${addressKey}. Available: ${Object.keys(addressRegistry).join(', ')}`);
-  }
-  
-  return address;
+export function getScenariosByExample(exampleNumber: number): BookingScenario | undefined {
+  return scenariosByExample[exampleNumber as keyof typeof scenariosByExample];
 }
 
-// Clean, simple booking creation - no weird arrays or mappings
-export function createBooking(
-  scenarioName: keyof typeof bookingScenarios,
-  business: Business,
-  availableServices: Service[],
-  addressRegistry: Record<string, CreateAddressData>
-): BookingCalculationInput {
-  const scenario = bookingScenarios[scenarioName];
-  
-  if (!scenario) {
-    throw new Error(`Scenario not found: ${scenarioName}. Available: ${Object.keys(bookingScenarios).join(', ')}`);
-  }
+export function getRemovalistScenarios(): BookingScenario[] {
+  return removalistScenarios;
+}
 
-  // Build services array
-  const services = scenario.services.map(serviceSpec => ({
-    service: findServiceByName(availableServices, serviceSpec.name),
-    quantity: serviceSpec.quantity,
-    serviceAddresses: []
-  }));
+export function getManicuristScenarios(): BookingScenario[] {
+  return manicuristScenarios;
+}
 
-  // Build addresses array
-  const addresses = scenario.addresses.map((addressSpec, index) => {
-    const address = resolveAddress(addressSpec.addressKey, addressRegistry, business);
-    const primaryService = services[0].service;
-    
-    return {
-      id: `address-${index}`,
-      service_id: primaryService.id,
-      sequence_order: index + 1,
-      role: addressSpec.role,
-      address: {
-        ...address,
-        id: `addr-${primaryService.id}-${index}`
-      }
-    };
-  });
+export function getSpaScenarios(): BookingScenario[] {
+  return spaScenarios;
+}
 
-  return {
-    business,
-    services,
-    addresses
-  };
+export function getComplexScenarios(): BookingScenario[] {
+  return complexScenarios;
 }

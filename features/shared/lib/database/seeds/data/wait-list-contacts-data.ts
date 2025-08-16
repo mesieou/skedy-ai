@@ -7,7 +7,6 @@ export const defaultWaitListContactData: CreateWaitListContactData = {
   phone_number: "+61423456789",
   address: "567 Brunswick Street, Fitzroy VIC 3065"
 };
-
 export const businessWaitListContactData: CreateWaitListContactData = {
   name: "David Chen",
   email: "david@techstartup.com.au", 
@@ -21,3 +20,4 @@ export const residentialWaitListContactData: CreateWaitListContactData = {
   phone_number: "+61445678901",
   address: null
 };
+
