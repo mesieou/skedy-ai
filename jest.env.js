@@ -9,5 +9,6 @@ dotenv.config({
 
 // Load .env.test for test-specific overrides (if it exists)
 dotenv.config({
-  path: path.resolve(process.cwd(), '.env.test')
+  path: path.resolve(process.cwd(), '.env.test'),
+  override: true  // Override variables from .env.local
 });
