@@ -57,8 +57,12 @@ export interface Business extends BaseEntity {
   whatsapp_phone_number_id?: string | null;
   stripe_connect_account_id?: string | null;
   stripe_account_status?: string | null;
+  offers_mobile_services: boolean;     // "Do you travel to customers?"
+  offers_location_services: boolean;   // "Do customers come to you?"
   minimum_charge: number;
 }
 
 export type CreateBusinessData = Omit<Business, 'id' | 'created_at' | 'updated_at'>;
 export type UpdateBusinessData = Partial<Omit<Business, 'id' | 'created_at'>>;
+
+

@@ -10,23 +10,6 @@ export enum AddressRole {
   BUSINESS_BASE = 'business_base'
 }
 
-// Travel charging models
-export enum TravelChargingModel {
-  CUSTOMER_TO_CUSTOMER = 'customer_to_customer',     // Only between customer addresses
-  BASE_TO_CUSTOMER = 'base_to_customer',             // Include base to first customer
-  FULL_ROUTE = 'full_route',                         // Entire journey including base
-  CUSTOM = 'custom'                                  // Business-specific rules
-}
-
-// Business travel configuration
-export interface BusinessTravelSettings {
-  travel_charging_model: TravelChargingModel;
-  include_return_to_base: boolean;
-  base_address_id: string;
-  free_travel_radius_km: number;
-  setup_time_mins: number;
-}
-
 // Booking address with context
 export interface BookingAddress {
   id: string;
@@ -44,14 +27,7 @@ export interface ServiceWithQuantity {
   serviceAddresses: BookingAddress[];
 }
 
-// Calculation options
-export interface CalculationOptions {
-  travel_charging_model: TravelChargingModel;
-  include_return_to_base: boolean;
-  charge_setup_time: boolean;
-  apply_surge_pricing?: boolean;
-  surge_multiplier?: number;
-}
+
 
 // Input for booking calculations
 export interface BookingCalculationInput {
@@ -87,11 +63,9 @@ export interface ServiceBreakdown {
   service_id: string;
   service_name: string;
   quantity: number;
-  base_cost: number;
-  travel_cost: number;
+  service_cost: number;      // Only service-related costs (no travel)
   setup_cost: number;
-  surge_cost: number;
-  total_cost: number;
+  total_cost: number;        // service_cost + setup_cost (no travel)
   estimated_duration_mins: number;
   component_breakdowns: ComponentBreakdown[];
 }
@@ -118,7 +92,6 @@ export interface BookingCalculationResult {
   total_estimate_amount: number;
   total_estimate_time_in_minutes: number;
   minimum_charge_applied: boolean;
-  surge_pricing_applied: boolean;
   deposit_amount: number;
   remaining_balance: number;
   deposit_paid: boolean;

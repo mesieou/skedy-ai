@@ -16,6 +16,10 @@ export enum TravelChargingModel {
   CUSTOMERS_AND_BACK_TO_BASE = 'customers_and_back_to_base',
   // Charge entire route (base → customers → base)
   FULL_ROUTE = 'full_route',
+  // Charge between customers + return to base (skip initial base to customer)
+  BETWEEN_CUSTOMERS_AND_BACK_TO_BASE = 'between_customers_and_back_to_base',
+  // Charge from base + between customers (skip return to base)
+  FROM_BASE_AND_BETWEEN_CUSTOMERS = 'from_base_and_between_customers',
 }
 
 // Pricing combinations enum
@@ -63,14 +67,40 @@ export interface PricingConfig {
   components: PricingComponent[];
 }
 
-export interface Service extends BaseEntity {
+// Base service interface
+interface BaseService extends BaseEntity {
   business_id: string;
   name: string;
   description: string;
-  location_type: LocationType;
-  travel_charging_model: TravelChargingModel | null; // Required if location_type involves travel
   pricing_config: PricingConfig | null;
 }
 
-export type CreateServiceData = Omit<Service, 'id' | 'created_at' | 'updated_at'>;
+// Business service (no travel required)
+export interface BusinessService extends BaseService {
+  location_type: LocationType.BUSINESS;
+  // No travel_charging_model field - business services don't travel
+}
+
+// Mobile service (requires travel)
+export interface MobileService extends BaseService {
+  location_type: LocationType.CUSTOMER | LocationType.PICKUP_AND_DROPOFF;
+  travel_charging_model?: TravelChargingModel; // Optional override - uses business default if not specified
+}
+
+// Discriminated union type
+export type Service = BusinessService | MobileService;
+
+// Type guard functions
+export function isMobileService(service: Service): service is MobileService {
+  return service.location_type !== LocationType.BUSINESS;
+}
+
+export function isBusinessService(service: Service): service is BusinessService {
+  return service.location_type === LocationType.BUSINESS;
+}
+
+export type CreateServiceData = 
+  | Omit<BusinessService, 'id' | 'created_at' | 'updated_at'>
+  | Omit<MobileService, 'id' | 'created_at' | 'updated_at'>;
+
 export type UpdateServiceData = Partial<Omit<Service, 'id' | 'created_at'>>

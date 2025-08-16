@@ -106,7 +106,7 @@ export const manicureServiceData: CreateServiceData = {
   name: "Manicure", 
   description: "Manicure service for hands and feet.",
   location_type: LocationType.CUSTOMER,
-  travel_charging_model: TravelChargingModel.FROM_BASE_TO_CUSTOMERS,
+  // Uses business default_travel_charging_model
   pricing_config: {
     components: [
       {
@@ -270,7 +270,7 @@ export const electricalServiceData: CreateServiceData = {
   name: "Electrical Work",
   description: "Electrical installations and repairs.",
   location_type: LocationType.CUSTOMER,
-  travel_charging_model: TravelChargingModel.FULL_ROUTE,
+  travel_charging_model: TravelChargingModel.FULL_ROUTE, // Override: Emergency service needs full route charging
   pricing_config: {
     components: [
       {

@@ -28,6 +28,8 @@ export const removalistBusinessData: CreateBusinessData = {
   whatsapp_phone_number_id: "684078768113901",
   stripe_connect_account_id: "acct_1Rna89P41K8lchaj",
   stripe_account_status: "active",
+  offers_mobile_services: true,   // "Yes, we travel to customers for pickup/dropoff"
+  offers_location_services: false, // "No, customers don't come to our warehouse"
   minimum_charge: 200
 };
 
@@ -57,6 +59,8 @@ export const cleaningBusinessData: CreateBusinessData = {
   whatsapp_phone_number_id: "684078768113902",
   stripe_connect_account_id: "acct_1Rna89P41K8lchak",
   stripe_account_status: "active",
+  offers_mobile_services: true,   // "Yes, we travel to customer homes/offices"
+  offers_location_services: false, // "No, customers don't come to our office"
   minimum_charge: 120.0
 };
 
@@ -86,6 +90,8 @@ export const handymanBusinessData: CreateBusinessData = {
   whatsapp_phone_number_id: "684078768113903",
   stripe_connect_account_id: "acct_1Rna89P41K8lchal",
   stripe_account_status: "active",
+  offers_mobile_services: true,   // "Yes, we travel to customer properties"
+  offers_location_services: true,  // "Yes, customers can also come to our workshop"
   minimum_charge: 150.0
 };
 
@@ -115,5 +121,7 @@ export const beautyBusinessData: CreateBusinessData = {
   whatsapp_phone_number_id: "684078768113904",
   stripe_connect_account_id: "acct_1Rna89P41K8lcham",
   stripe_account_status: "active",
+  offers_mobile_services: true,   // "Yes, we travel to customer homes"
+  offers_location_services: true,  // "Yes, customers can also come to our salon"
   minimum_charge: 80.0
 };
