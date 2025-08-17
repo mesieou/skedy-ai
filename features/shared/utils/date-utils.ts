@@ -282,7 +282,12 @@ export class DateUtils {
    */
   static getNextAvailabilityDate(existingSlots: { [dateKey: string]: { [durationKey: string]: [string, number][] } }): string {
     const existingDates = Object.keys(existingSlots);
-        
+    
+    if (existingDates.length === 0) {
+      // No existing slots, start from today
+      return this.extractDateString(this.nowUTC());
+    }
+    
     // Sort dates and get the latest one
     const sortedDates = existingDates.sort();
     const latestDate = sortedDates[sortedDates.length - 1];

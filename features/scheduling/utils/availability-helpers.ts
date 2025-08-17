@@ -221,8 +221,8 @@ export async function rolloverBusinessesAvailability(businesses: Business[]): Pr
 
 /**
  * Rollover availability for a single business
- * - Add availability for the next day (30 days from today in business timezone)
- * - Remove yesterday's availability slots
+ * - Ensure at least 30 days of future availability
+ * - Remove all dates before today (cleanup old dates)
  */
 export async function rolloverSingleBusinessAvailability(business: Business): Promise<void> {
   console.log(`[rolloverSingleBusinessAvailability] Starting rollover for business: ${business.name} (${business.id})`);
@@ -257,30 +257,54 @@ export async function rolloverSingleBusinessAvailability(business: Business): Pr
       return;
     }
     
-    // 4. Calculate the next date that needs availability based on existing slots
-    const nextDateToGenerate = DateUtils.getNextAvailabilityDate(currentAvailabilitySlots.slots);
-    console.log(`[rolloverSingleBusinessAvailability] Generating availability for date: ${nextDateToGenerate}`);
-    
-    // 5. Generate availability for the next day
-    const newSlots = await generateAvailabilitySlotsForDate(
-      providers,
-      calendarSettings,
-      `${nextDateToGenerate}T00:00:00.000Z`
-    );
-    
-    // 6. Calculate yesterday's date to remove
+    // 4. Get current date and calculate what dates we need
     const currentUtcTime = DateUtils.nowUTC();
-    const yesterdayUtc = DateUtils.getYesterdayUTC(currentUtcTime);
-    const yesterdayDateStr = DateUtils.extractDateString(yesterdayUtc);
+    const todayDateStr = DateUtils.extractDateString(currentUtcTime);
     
-    // 7. Update availability slots: add new day, remove yesterday
+    const existingDates = Object.keys(currentAvailabilitySlots.slots);
+    const futureDates = existingDates.filter(date => date >= todayDateStr).sort();
+    
+    console.log(`[rolloverSingleBusinessAvailability] Current future dates: ${futureDates.length} (${futureDates.join(', ')})`);
+    
+    // 5. Generate dates to ensure we have at least 30 days from today
+    const targetDate = DateUtils.addDaysUTC(`${todayDateStr}T00:00:00.000Z`, 29); // 30 days total (today + 29)
+    const targetDateStr = DateUtils.extractDateString(targetDate);
+    
     const updatedSlots = { ...currentAvailabilitySlots.slots };
+    let datesAdded = 0;
+    let datesRemoved = 0;
     
-    // Add new day
-    updatedSlots[nextDateToGenerate] = newSlots;
+    // 6. Remove all dates before today
+    existingDates.forEach(date => {
+      if (date < todayDateStr) {
+        delete updatedSlots[date];
+        datesRemoved++;
+      }
+    });
     
-    // Remove yesterday
-    delete updatedSlots[yesterdayDateStr];
+    // 7. Add missing future dates to reach at least 30 days
+    const startDate = futureDates.length > 0 
+      ? DateUtils.addDaysUTC(`${futureDates[futureDates.length - 1]}T00:00:00.000Z`, 1)
+      : `${todayDateStr}T00:00:00.000Z`;
+    
+    let currentDate = startDate;
+    while (DateUtils.extractDateString(currentDate) <= targetDateStr) {
+      const dateKey = DateUtils.extractDateString(currentDate);
+      
+      if (!updatedSlots[dateKey]) {
+        // Generate availability for this day
+        const daySlots = await generateAvailabilitySlotsForDate(
+          providers,
+          calendarSettings,
+          currentDate
+        );
+        
+        updatedSlots[dateKey] = daySlots;
+        datesAdded++;
+      }
+      
+      currentDate = DateUtils.addDaysUTC(currentDate, 1);
+    }
     
     // 8. Update the availability slots in the database
     await availabilitySlotsRepository.updateOne(
@@ -288,7 +312,8 @@ export async function rolloverSingleBusinessAvailability(business: Business): Pr
       { slots: updatedSlots }
     );
     
-    console.log(`[rolloverSingleBusinessAvailability] Successfully rolled over availability for business ${business.id}. Added: ${nextDateToGenerate}, Removed: ${yesterdayDateStr}`);
+    const finalDates = Object.keys(updatedSlots).filter(date => date >= todayDateStr).sort();
+    console.log(`[rolloverSingleBusinessAvailability] Successfully rolled over availability for business ${business.id}. Added: ${datesAdded} dates, Removed: ${datesRemoved} old dates. Total future dates: ${finalDates.length}`);
     
   } catch (error) {
     console.error(`[rolloverSingleBusinessAvailability] Error rolling over availability for business ${business.id}:`, error);
