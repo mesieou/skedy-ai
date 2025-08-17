@@ -1,4 +1,4 @@
-import { createServerClient as createClient } from "@/features/shared";
+import { createAuthenticatedServerClient as createClient } from "@/features/shared/lib/supabase/server";
 import { type EmailOtpType } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { type NextRequest } from "next/server";

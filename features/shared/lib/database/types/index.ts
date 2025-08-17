@@ -13,8 +13,6 @@ export * from './bookings';
 export * from './notifications';
 export * from './service';
 export * from './booking-services';
-export * from './price-components';
-export * from './price-component-tiers';
 export * from './addresses';
 export * from './wait-list-contacts';
 export * from './availability-slots';

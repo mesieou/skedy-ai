@@ -1,4 +1,4 @@
-import { MainLayout } from "@/features/shared";
+import { MainLayout } from "@/features/shared/components/layout/main-layout";
 
 export default function ProtectedLayout({
   children,

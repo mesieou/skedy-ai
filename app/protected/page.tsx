@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createServerClient as createClient } from "@/features/shared";
+import { createAuthenticatedServerClient as createClient } from "@/features/shared/lib/supabase/server";
 import { DashboardWelcome } from "@/features/dashboard";
 
 export default async function ProtectedPage() {
