@@ -3,8 +3,8 @@ import { AvailabilityManager } from '@/features/scheduling/lib/availability/avai
 
 /**
  * API Route for availability rollover cron job
- * This endpoint is called by Vercel Cron daily at midnight UTC to check for businesses
- * that need availability rollover (midnight in their timezone)
+ * This endpoint is called by Vercel Cron daily at 2:00 PM UTC (12:00 AM AEST) to check for businesses
+ * that need availability rollover, particularly targeting Australian businesses at midnight
  */
 export async function GET(request: NextRequest) {
   console.log('[API] /api/cron/availability-rollover - Starting cron job execution');
