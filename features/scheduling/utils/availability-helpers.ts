@@ -1,7 +1,13 @@
-import { TimeSlot, BookingWithProvider } from "../lib/types/availability-manager";
+import { TimeSlot, BookingWithProvider, DURATION_INTERVALS } from "../lib/types/availability-manager";
 import { User } from "@/features/shared/lib/database/types/user";
 import { CalendarSettings } from "@/features/shared/lib/database/types/calendar-settings";
+import { Business } from "@/features/shared/lib/database/types/business";
+
 import { DateUtils } from "@/features/shared/utils/date-utils";
+import { BusinessRepository } from "@/features/shared/lib/database/repositories/business-repository";
+import { UserRepository } from "@/features/shared/lib/database/repositories/user-repository";
+import { CalendarSettingsRepository } from "@/features/shared/lib/database/repositories/calendar-settings-repository";
+import { AvailabilitySlotsRepository } from "@/features/shared/lib/database/repositories/availability-slots-repository";
 
 export async function computeBusinessAvailibityForOneDay(
   providers: User[],
@@ -154,4 +160,138 @@ export function aggregateSlotsAcrossProviders(
   return Array.from(slotMap.values()).sort((a, b) =>
     DateUtils.getTimestamp(a.start) - DateUtils.getTimestamp(b.start)
   );
+}
+
+/**
+ * Generate availability slots for all duration intervals for a single date
+ */
+export async function generateAvailabilitySlotsForDate(
+  providers: User[],
+  calendarSettings: CalendarSettings[],
+  date: string // UTC ISO string
+): Promise<{ [durationKey: string]: [string, number][] }> {
+  const slots: { [durationKey: string]: [string, number][] } = {};
+  
+  for (const duration of DURATION_INTERVALS) {
+    const timeSlots = await computeBusinessAvailibityForOneDay(
+      providers,
+      calendarSettings,
+      date,
+      duration.minutes
+    );
+    
+    // Convert TimeSlot[] to [string, number][] format
+    slots[duration.key] = timeSlots.map(slot => [
+      DateUtils.extractTimeString(slot.start).substring(0, 5), // "07:00", "08:00", etc.
+      slot.count
+    ]);
+  }
+  
+  return slots;
+}
+
+// =====================================
+// AVAILABILITY ROLLOVER FUNCTIONS
+// =====================================
+
+/**
+ * Find all businesses that need availability rollover (midnight in their timezone)
+ */
+export async function findBusinessesNeedingRollover(currentUtcTime?: string): Promise<Business[]> {
+  const businessRepository = new BusinessRepository();
+  const businessesNeedingRollover = await businessRepository.findBusinessesAtMidnight(currentUtcTime);
+  
+  console.log(`[findBusinessesNeedingRollover] Found ${businessesNeedingRollover.length} businesses needing rollover at ${currentUtcTime || DateUtils.nowUTC()}`);
+  return businessesNeedingRollover;
+}
+
+/**
+ * Rollover availability for multiple businesses
+ */
+export async function rolloverBusinessesAvailability(businesses: Business[]): Promise<void> {
+  console.log(`[rolloverBusinessesAvailability] Starting rollover for ${businesses.length} businesses`);
+  
+  const rolloverPromises = businesses.map(business => 
+    rolloverSingleBusinessAvailability(business)
+  );
+  
+  await Promise.all(rolloverPromises);
+  console.log(`[rolloverBusinessesAvailability] Completed rollover for ${businesses.length} businesses`);
+}
+
+/**
+ * Rollover availability for a single business
+ * - Add availability for the next day (30 days from today in business timezone)
+ * - Remove yesterday's availability slots
+ */
+export async function rolloverSingleBusinessAvailability(business: Business): Promise<void> {
+  console.log(`[rolloverSingleBusinessAvailability] Starting rollover for business: ${business.name} (${business.id})`);
+  
+  try {
+    // 1. Get all providers (users with PROVIDER or ADMIN_PROVIDER role) for this business
+    const userRepository = new UserRepository();
+    const providers = await userRepository.findProvidersByBusinessId(business.id);
+    
+    if (providers.length === 0) {
+      console.log(`[rolloverSingleBusinessAvailability] No providers found for business ${business.id}`);
+      return;
+    }
+    
+    // 2. Get calendar settings for these providers
+    const calendarSettingsRepository = new CalendarSettingsRepository();
+    const calendarSettings = await calendarSettingsRepository.findByUserIds(
+      providers.map(provider => provider.id)
+    );
+    
+    if (calendarSettings.length === 0) {
+      console.log(`[rolloverSingleBusinessAvailability] No calendar settings found for business ${business.id}`);
+      return;
+    }
+    
+    // 3. Get current availability slots for this business
+    const availabilitySlotsRepository = new AvailabilitySlotsRepository();
+    const currentAvailabilitySlots = await availabilitySlotsRepository.findOne({ business_id: business.id });
+    
+    if (!currentAvailabilitySlots) {
+      console.log(`[rolloverSingleBusinessAvailability] No availability slots found for business ${business.id}`);
+      return;
+    }
+    
+    // 4. Calculate the next date that needs availability based on existing slots
+    const nextDateToGenerate = DateUtils.getNextAvailabilityDate(currentAvailabilitySlots.slots);
+    console.log(`[rolloverSingleBusinessAvailability] Generating availability for date: ${nextDateToGenerate}`);
+    
+    // 5. Generate availability for the next day
+    const newSlots = await generateAvailabilitySlotsForDate(
+      providers,
+      calendarSettings,
+      `${nextDateToGenerate}T00:00:00.000Z`
+    );
+    
+    // 6. Calculate yesterday's date to remove
+    const currentUtcTime = DateUtils.nowUTC();
+    const yesterdayUtc = DateUtils.getYesterdayUTC(currentUtcTime);
+    const yesterdayDateStr = DateUtils.extractDateString(yesterdayUtc);
+    
+    // 7. Update availability slots: add new day, remove yesterday
+    const updatedSlots = { ...currentAvailabilitySlots.slots };
+    
+    // Add new day
+    updatedSlots[nextDateToGenerate] = newSlots;
+    
+    // Remove yesterday
+    delete updatedSlots[yesterdayDateStr];
+    
+    // 8. Update the availability slots in the database
+    await availabilitySlotsRepository.updateOne(
+      { id: currentAvailabilitySlots.id },
+      { slots: updatedSlots }
+    );
+    
+    console.log(`[rolloverSingleBusinessAvailability] Successfully rolled over availability for business ${business.id}. Added: ${nextDateToGenerate}, Removed: ${yesterdayDateStr}`);
+    
+  } catch (error) {
+    console.error(`[rolloverSingleBusinessAvailability] Error rolling over availability for business ${business.id}:`, error);
+    throw error;
+  }
 }

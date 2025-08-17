@@ -5,7 +5,11 @@ import { DateUtils } from "@/features/shared/utils/date-utils";
 import { Business } from "@/features/shared/lib/database/types/business";
 import { User } from "@/features/shared/lib/database/types/user";
 import { CalendarSettings } from "@/features/shared/lib/database/types/calendar-settings";
-import { computeBusinessAvailibityForOneDay } from "../../utils/availability-helpers";
+import { 
+  generateAvailabilitySlotsForDate,
+  findBusinessesNeedingRollover,
+  rolloverBusinessesAvailability
+} from "../../utils/availability-helpers";
 
 // Class AvailabilityManager
 export class AvailabilityManager {
@@ -59,24 +63,12 @@ export class AvailabilityManager {
       const currentDate = DateUtils.addDaysUTC(fromDate, dayOffset);
       const dateKey = DateUtils.extractDateString(currentDate); // "2025-01-15"
       
-      // Initialize this date's slots
-      allSlots[dateKey] = {};
-      
       // Generate availability for all duration intervals for this day
-      for (const duration of DURATION_INTERVALS) {
-        const timeSlots = await computeBusinessAvailibityForOneDay(
-          providers,
-          calendarSettings,
-          currentDate,
-          duration.minutes
-        );
-        
-        // Convert TimeSlot[] to [string, number][] format (just time, not full datetime)
-        allSlots[dateKey][duration.key] = timeSlots.map(slot => [
-          DateUtils.extractTimeString(slot.start).substring(0, 5), // "07:00", "08:00", etc.
-          slot.count
-        ]);
-      }
+      allSlots[dateKey] = await generateAvailabilitySlotsForDate(
+        providers,
+        calendarSettings,
+        currentDate
+      );
     }
 
     return {
@@ -85,6 +77,33 @@ export class AvailabilityManager {
     };
   }
 
+  /**
+   * Orchestrate availability rollover for all businesses that need it
+   * This method should be triggered by a cron job every hour to check for businesses
+   * where it's midnight in their timezone
+   */
+  static async orchestrateAvailabilityRollover(currentUtcTime?: string): Promise<void> {
+    console.log(`[AvailabilityManager.orchestrateAvailabilityRollover] Starting availability rollover process`);
+    
+    try {
+      // 1. Find all businesses that need rollover (midnight in their timezone)
+      const businessesNeedingRollover = await findBusinessesNeedingRollover(currentUtcTime);
+      
+      if (businessesNeedingRollover.length === 0) {
+        console.log(`[AvailabilityManager.orchestrateAvailabilityRollover] No businesses need rollover at this time`);
+        return;
+      }
+      
+      // 2. Rollover availability for all businesses that need it
+      await rolloverBusinessesAvailability(businessesNeedingRollover);
+      
+      console.log(`[AvailabilityManager.orchestrateAvailabilityRollover] Successfully completed rollover for ${businessesNeedingRollover.length} businesses`);
+      
+    } catch (error) {
+      console.error(`[AvailabilityManager.orchestrateAvailabilityRollover] Error during availability rollover:`, error);
+      throw error;
+    }
+  }
 
 
   private processSlots(

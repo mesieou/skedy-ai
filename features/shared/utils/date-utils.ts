@@ -222,4 +222,73 @@ export class DateUtils {
   static maxUTC(date1: string, date2: string): string {
     return this.isAfterUTC(date1, date2) ? date1 : date2;
   }
+
+  /**
+   * Get yesterday's date from a UTC ISO string
+   */
+  static getYesterdayUTC(utcIsoString: string): string {
+    return this.addDaysUTC(utcIsoString, -1);
+  }
+
+  /**
+   * Check if it's midnight (00:00) in a specific timezone for a given UTC time
+   */
+  static isMidnightInTimezone(utcIsoString: string, timezone: string): boolean {
+    try {
+      const date = new Date(utcIsoString);
+      const localTime = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(date);
+      
+      return localTime === '00:00';
+    } catch (error) {
+      console.error(`Invalid timezone: ${timezone}`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Convert UTC time to local time in a specific timezone
+   */
+  static convertUTCToTimezone(utcIsoString: string, timezone: string): { date: string; time: string } {
+    try {
+      const date = new Date(utcIsoString);
+      const localDate = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).format(date);
+      
+      const localTime = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(date);
+      
+      return { date: localDate, time: localTime };
+    } catch (error) {
+      console.error(`Error converting UTC to timezone ${timezone}:`, error);
+      throw new Error(`Invalid timezone: ${timezone}`);
+    }
+  }
+
+  /**
+   * Get the next date that needs availability generated based on existing slots
+   */
+  static getNextAvailabilityDate(existingSlots: { [dateKey: string]: { [durationKey: string]: [string, number][] } }): string {
+    const existingDates = Object.keys(existingSlots);
+        
+    // Sort dates and get the latest one
+    const sortedDates = existingDates.sort();
+    const latestDate = sortedDates[sortedDates.length - 1];
+    
+    // Return the day after the latest date
+    const nextDay = this.addDaysUTC(`${latestDate}T00:00:00.000Z`, 1);
+    return this.extractDateString(nextDay);
+  }
 }
