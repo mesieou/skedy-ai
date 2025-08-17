@@ -1,6 +1,6 @@
 import type { CreateCalendarSettingsData } from '../../types/calendar-settings';
 
-// Test calendar settings data for seeding
+// Test calendar settings data for seeding - Monday to Friday worker
 export const weekdayCalendarSettingsData: CreateCalendarSettingsData = {
   user_id: "placeholder-user-id", // Will be replaced with actual user_id
   settings: {
@@ -11,13 +11,13 @@ export const weekdayCalendarSettingsData: CreateCalendarSettingsData = {
     tue: { start: '07:00', end: '17:00' },
     wed: { start: '07:00', end: '17:00' },
     thu: { start: '07:00', end: '17:00' },
+    fri: { start: '07:00', end: '17:00' },
     sat: null,
-    sun: null, 
-
+    sun: null
   }
 };
 
-// Test calendar settings data for seeding
+// Test calendar settings data for seeding - Monday to Thursday + Weekend worker
 export const weekendCalendarSettingsData: CreateCalendarSettingsData = {
     user_id: "placeholder-user-id", // Will be replaced with actual user_id
     settings: {
@@ -28,7 +28,7 @@ export const weekendCalendarSettingsData: CreateCalendarSettingsData = {
       tue: { start: '07:00', end: '17:00' },
       wed: { start: '07:00', end: '17:00' },
       thu: { start: '07:00', end: '17:00' },
-      fri: null,
+      fri: null, // Takes Friday off
       sat: { start: '07:00', end: '13:00' },
       sun: { start: '07:00', end: '13:00' }
     }

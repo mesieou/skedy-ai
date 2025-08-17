@@ -8,16 +8,20 @@ import type {
   BookingAddress,
   ServiceWithQuantity 
 } from '../../../../scheduling/lib/types/booking-calculations';
+import type { Business } from '../types/business';
 import { BookingCalculator } from '../../../../scheduling/lib/bookings/booking-calculator';
 import { AddressRepository } from './address-repository';
 import { ServiceRepository } from './service-repository';
 import { BookingServiceRepository } from './booking-service-repository';
+import { AvailabilitySlotsRepository } from './availability-slots-repository';
+import { AvailabilityManager } from '../../../../scheduling/lib/availability/availability-manager';
 
 export class BookingsRepository extends BaseRepository<Booking> {
   private bookingCalculator: BookingCalculator;
   private addressesRepository: AddressRepository;
   private serviceRepository: ServiceRepository;
   private bookingServiceRepository: BookingServiceRepository;
+  private availabilitySlotsRepository: AvailabilitySlotsRepository;
 
   constructor() {
     super('bookings'); // Table name (plural)
@@ -25,6 +29,7 @@ export class BookingsRepository extends BaseRepository<Booking> {
     this.addressesRepository = new AddressRepository();
     this.serviceRepository = new ServiceRepository();
     this.bookingServiceRepository = new BookingServiceRepository();
+    this.availabilitySlotsRepository = new AvailabilitySlotsRepository();
   }
 
   /**
@@ -57,6 +62,9 @@ export class BookingsRepository extends BaseRepository<Booking> {
       
       // Step 5: Create booking services (many-to-many relationship)
       await this.createBookingServices(createdBooking.id, input.services);
+      
+      // Step 6: Update availability slots after successful booking creation
+      await this.updateAvailabilityAfterBooking(createdBooking, input.business);
       
       return createdBooking;
       
@@ -93,6 +101,39 @@ export class BookingsRepository extends BaseRepository<Booking> {
         service_id: serviceItem.service.id,
         quantity: serviceItem.quantity
       });
+    }
+  }
+
+  /**
+   * Update availability slots after booking creation
+   */
+  private async updateAvailabilityAfterBooking(booking: Booking, business: Business): Promise<void> {
+    try {
+      // Get current availability slots for the business
+      const currentAvailabilitySlots = await this.availabilitySlotsRepository.findOne({
+        business_id: booking.business_id
+      });
+
+      if (currentAvailabilitySlots) {
+        // Create availability manager instance
+        const availabilityManager = new AvailabilityManager(currentAvailabilitySlots, business);
+        
+        // Update availability after booking
+        const updatedAvailabilitySlots = availabilityManager.updateAvailabilityAfterBooking(booking);
+        
+        // Save updated availability slots back to database
+        await this.availabilitySlotsRepository.updateOne(
+          { id: currentAvailabilitySlots.id },
+          { slots: updatedAvailabilitySlots.slots }
+        );
+
+        console.log(`[BookingsRepository] Updated availability slots for business ${booking.business_id} after booking ${booking.id}`);
+      } else {
+        console.warn(`[BookingsRepository] No availability slots found for business ${booking.business_id}`);
+      }
+    } catch (error) {
+      console.error(`[BookingsRepository] Failed to update availability after booking: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Don't throw error to avoid breaking booking creation - availability update is non-critical
     }
   }
 }
