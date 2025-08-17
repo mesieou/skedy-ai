@@ -3,7 +3,7 @@ import { AvailabilityManager } from '@/features/scheduling/lib/availability/avai
 
 /**
  * API Route for availability rollover cron job
- * This endpoint is called by Vercel Cron every hour to check for businesses
+ * This endpoint is called by Vercel Cron daily at midnight UTC to check for businesses
  * that need availability rollover (midnight in their timezone)
  */
 export async function GET(request: NextRequest) {
