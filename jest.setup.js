@@ -1,6 +1,12 @@
 // Jest setup file - runs before each test
 
 import '@testing-library/jest-dom';
+import { initializeTestDatabase } from './features/shared/lib/test-setup';
+
+// Initialize database client once for all tests
+beforeAll(async () => {
+  await initializeTestDatabase();
+});
 
 // Mock Next.js router
 jest.mock('next/navigation', () => ({

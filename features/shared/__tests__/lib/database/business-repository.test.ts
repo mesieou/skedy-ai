@@ -1,6 +1,6 @@
 import { BusinessRepository } from '../../../lib/database/repositories/business-repository';
 import { BusinessSeeder } from '../../../lib/database/seeds/business-seeder';
-import { removalistBusinessData } from '../../../lib/database/seeds/data/business-data';
+import { createUniqueRemovalistBusinessData } from '../../../lib/database/seeds/data/business-data';
 import type { Business } from '../../../lib/database/types/business';
 
 describe('BusinessRepository', () => {
@@ -13,8 +13,8 @@ describe('BusinessRepository', () => {
     seeder = new BusinessSeeder();
     await seeder.cleanup();
     
-    // Create ONE business for all tests
-    testBusiness = await repository.create(removalistBusinessData);
+    // Create ONE business for all tests with unique data
+    testBusiness = await seeder.createBusinessWith(createUniqueRemovalistBusinessData());
   });
 
   afterAll(async () => {
@@ -25,23 +25,23 @@ describe('BusinessRepository', () => {
     it('should create a business', async () => {
       expect(testBusiness).toBeDefined();
       expect(testBusiness.id).toBeDefined();
-      expect(testBusiness.name).toBe(removalistBusinessData.name);
-      expect(testBusiness.email).toBe(removalistBusinessData.email);
-      expect(testBusiness.phone_number).toBe(removalistBusinessData.phone_number);
+      expect(testBusiness.name).toContain('Tiga Removals');
+      expect(testBusiness.email).toContain('edward+');
+      expect(testBusiness.phone_number).toMatch(/^\+61473164\d{3}$/);
       expect(testBusiness.minimum_charge).toBe(200);
-    expect(testBusiness.charges_deposit).toBe(true);
-    expect(testBusiness.payment_processing_fee_percentage).toBe(2.9);
-    expect(testBusiness.booking_platform_fee_percentage).toBe(2.0);
+      expect(testBusiness.charges_deposit).toBe(true);
+      expect(testBusiness.payment_processing_fee_percentage).toBe(2.9);
+      expect(testBusiness.booking_platform_fee_percentage).toBe(2.0);
     });
 
     it('should find business by phone number', async () => {
       const foundBusiness = await repository.findOne({ 
-        phone_number: removalistBusinessData.phone_number 
+        phone_number: testBusiness.phone_number 
       });
 
       expect(foundBusiness).toBeDefined();
       expect(foundBusiness?.id).toBe(testBusiness.id);
-      expect(foundBusiness?.phone_number).toBe(removalistBusinessData.phone_number);
+      expect(foundBusiness?.phone_number).toBe(testBusiness.phone_number);
     });
 
     it('should update a business', async () => {
@@ -53,10 +53,10 @@ describe('BusinessRepository', () => {
 
       expect(updatedBusiness.name).toBe(updatedName);
       expect(updatedBusiness.id).toBe(testBusiness.id);
-      expect(updatedBusiness.email).toBe(removalistBusinessData.email);
+      expect(updatedBusiness.email).toBe(testBusiness.email);
       
       // Reset name back for other tests
-      await repository.updateOne({ id: testBusiness.id }, { name: removalistBusinessData.name });
+      await repository.updateOne({ id: testBusiness.id }, { name: testBusiness.name });
     });
 
     it('should return null when business not found', async () => {

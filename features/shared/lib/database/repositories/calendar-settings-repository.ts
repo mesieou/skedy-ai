@@ -3,7 +3,7 @@ import type { CalendarSettings } from '../types/calendar-settings';
 
 export class CalendarSettingsRepository extends BaseRepository<CalendarSettings> {
   constructor() {
-    super('calendar_settings'); // Table name (plural)
+    super('calendar_settings');
   }
 
   async findByUserIds(userIds: string[]): Promise<CalendarSettings[]> {

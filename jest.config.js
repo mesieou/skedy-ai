@@ -51,7 +51,10 @@ const config = {
   clearMocks: true,
   
   // Verbose output
-  verbose: true
+  verbose: true,
+  
+  // Run database tests sequentially to avoid conflicts
+  maxWorkers: process.env.NODE_ENV === 'test' ? 1 : '50%'
 };
 
 module.exports = config;

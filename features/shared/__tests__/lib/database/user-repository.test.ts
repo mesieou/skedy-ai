@@ -2,9 +2,7 @@ import { UserRepository } from '../../../lib/database/repositories/user-reposito
 import { UserSeeder } from '../../../lib/database/seeds/user-seeder';
 import { AuthUserSeeder } from '../../../lib/database/seeds/auth-user-seeder';
 import { BusinessSeeder } from '../../../lib/database/seeds/business-seeder';
-import { adminProviderUserData, providerUserData } from '../../../lib/database/seeds/data/user-data';
-import { removalistBusinessData } from '../../../lib/database/seeds/data/business-data';
-import { adminAuthUserData, providerAuthUserData } from '../../../lib/database/seeds/data/auth-user-data';
+import { createUniqueRemovalistBusinessData } from '../../../lib/database/seeds/data/business-data';
 import { UserRole } from '../../../lib/database/types/user';
 import type { User } from '../../../lib/database/types/user';
 
@@ -27,7 +25,7 @@ describe('UserRepository', () => {
     await authUserSeeder.cleanup();
     await businessSeeder.cleanup();
     
-    const business = await businessSeeder.createBusinessWith(removalistBusinessData);
+    const business = await businessSeeder.createBusinessWith(createUniqueRemovalistBusinessData());
     businessId = business.id;
   });
 
@@ -38,36 +36,35 @@ describe('UserRepository', () => {
   });
 
   it('should create a user admin/provider successfully', async () => {
-    testUser = await userSeeder.createUserWith(
-      { ...adminProviderUserData, business_id: businessId },
-      adminAuthUserData
-    );
+    testUser = await userSeeder.createUniqueAdminProviderUser(businessId);
     
     expect(testUser).toBeDefined();
     expect(testUser.id).toBeDefined();
     expect(testUser.role).toBe(UserRole.ADMIN_PROVIDER);
     expect(testUser.business_id).toBe(businessId);
-    expect(testUser.first_name).toBe(adminProviderUserData.first_name);
+    expect(testUser.first_name).toBe("David");
+    expect(testUser.email).toContain('david+');
   });
 
   it('should create a user provider successfully with the correct role', async () => {
-    const providerUser = await userSeeder.createUserWith(
-      { ...providerUserData, business_id: businessId },
-      providerAuthUserData
-    );
+    const providerUser = await userSeeder.createUniqueProviderUser(businessId);
     
     expect(providerUser).toBeDefined();
     expect(providerUser.id).toBeDefined();
     expect(providerUser.role).toBe(UserRole.PROVIDER);
     expect(providerUser.business_id).toBe(businessId);
-    expect(providerUser.first_name).toBe(providerUserData.first_name);
+    expect(providerUser.first_name).toBe("Sarah");
+    expect(providerUser.email).toContain('sarah+');
   });
 
   it('should create a user with another role unsuccessfully', async () => {
     const invalidUserData = {
-      ...adminProviderUserData,
+      role: 'invalid_role' as UserRole,
+      first_name: "Invalid",
       business_id: businessId,
-      role: 'invalid_role' as UserRole
+      last_name: "User",
+      phone_number: "+61400000000",
+      email: "invalid@test.com",
     };
 
     await expect(userRepository.create(invalidUserData)).rejects.toThrow();

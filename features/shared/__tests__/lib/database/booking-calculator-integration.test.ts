@@ -17,8 +17,8 @@ import { UserSeeder } from '../../../lib/database/seeds/user-seeder';
 
 // Test data imports
 import { 
-  removalistBusinessData, 
-  mobileManicuristBusinessData
+  createUniqueRemovalistBusinessData, 
+  createUniqueMobileManicuristBusinessData
 } from '../../../lib/database/seeds/data/business-data';
 
 import {
@@ -100,8 +100,8 @@ describeRealApi('BookingCalculator - Real Google API Integration', () => {
 
   async function setupTestData() {
     // Create businesses
-    businesses.removalist = await businessSeeder.createBusinessWith(removalistBusinessData);
-    businesses.manicurist = await businessSeeder.createBusinessWith(mobileManicuristBusinessData);
+    businesses.removalist = await businessSeeder.createBusinessWith(createUniqueRemovalistBusinessData());
+    businesses.manicurist = await businessSeeder.createBusinessWith(createUniqueMobileManicuristBusinessData());
 
     // Create services
     services.removalistExample1 = await serviceSeeder.createServiceWith({

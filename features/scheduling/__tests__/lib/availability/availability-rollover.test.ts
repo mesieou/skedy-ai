@@ -14,24 +14,18 @@ import { AvailabilitySlotsRepository } from '../../../../shared/lib/database/rep
 
 // Test data imports
 import { 
-  removalistBusinessData,
-  mobileManicuristBusinessData
+  createUniqueRemovalistBusinessData,
+  createUniqueMobileManicuristBusinessData
 } from '../../../../shared/lib/database/seeds/data/business-data';
 
-import {
-  adminProviderUserData,
-  providerUserData
-} from '../../../../shared/lib/database/seeds/data/user-data';
+
 
 import {
   weekdayCalendarSettingsData,
   weekendCalendarSettingsData
 } from '../../../../shared/lib/database/seeds/data/calendar-settings-data';
 
-import {
-  adminAuthUserData,
-  providerAuthUserData
-} from '../../../../shared/lib/database/seeds/data/auth-user-data';
+
 
 import type { Business } from '../../../../shared/lib/database/types/business';
 import type { User } from '../../../../shared/lib/database/types/user';
@@ -42,7 +36,6 @@ import { DateUtils } from '../../../../shared/utils/date-utils';
 // Test constants
 const TEST_TIMEOUT = 30000;
 const AVAILABILITY_GENERATION_DAYS = 5;
-const PHONE_BASE = "+61422000";
 
 describe('Availability Rollover Functions', () => {
   jest.setTimeout(TEST_TIMEOUT);
@@ -96,59 +89,29 @@ describe('Availability Rollover Functions', () => {
   async function setupTestData() {
     // Create businesses in different timezones
     melbourneBusiness = await businessSeeder.createBusinessWith({
-      ...removalistBusinessData,
+      ...createUniqueRemovalistBusinessData(),
       name: "Melbourne Business",
-      time_zone: "Australia/Melbourne",
-      email: "melbourne@test.com",
-      phone_number: "+61422001001"
+      time_zone: "Australia/Melbourne"
     });
 
     sydneyBusiness = await businessSeeder.createBusinessWith({
-      ...mobileManicuristBusinessData,
+      ...createUniqueMobileManicuristBusinessData(),
       name: "Sydney Business", 
-      time_zone: "Australia/Sydney",
-      email: "sydney@test.com",
-      phone_number: "+61422001002"
+      time_zone: "Australia/Sydney"
     });
 
     londonBusiness = await businessSeeder.createBusinessWith({
-      ...removalistBusinessData,
+      ...createUniqueRemovalistBusinessData(),
       name: "London Business",
-      time_zone: "Europe/London", 
-      email: "london@test.com",
-      phone_number: "+44422001003"
+      time_zone: "Europe/London"
     });
 
     // Create providers for each business
-    provider1 = await userSeeder.createUserWith({
-      ...adminProviderUserData,
-      business_id: melbourneBusiness.id,
-      email: "provider1@test.com",
-      phone_number: `${PHONE_BASE}001`
-    }, {
-      ...adminAuthUserData,
-      email: "provider1@test.com"
-    });
+    provider1 = await userSeeder.createUniqueAdminProviderUser(melbourneBusiness.id);
 
-    provider2 = await userSeeder.createUserWith({
-      ...providerUserData,
-      business_id: sydneyBusiness.id,
-      email: "provider2@test.com",
-      phone_number: `${PHONE_BASE}002`
-    }, {
-      ...providerAuthUserData,
-      email: "provider2@test.com"
-    });
+    provider2 = await userSeeder.createUniqueProviderUser(sydneyBusiness.id);
 
-    provider3 = await userSeeder.createUserWith({
-      ...adminProviderUserData,
-      business_id: londonBusiness.id,
-      email: "provider3@test.com",
-      phone_number: `${PHONE_BASE}003`
-    }, {
-      ...adminAuthUserData,
-      email: "provider3@test.com"
-    });
+    provider3 = await userSeeder.createUniqueAdminProviderUser(londonBusiness.id);
 
     // Create calendar settings
     calendarSettings1 = await calendarSettingsSeeder.createCalendarSettingsWith({
@@ -367,11 +330,9 @@ describe('Availability Rollover Functions', () => {
     test('should handle business with no providers gracefully', async () => {
       // Create business without providers
       const emptyBusiness = await businessSeeder.createBusinessWith({
-        ...removalistBusinessData,
+        ...createUniqueRemovalistBusinessData(),
         name: "Empty Business",
-        email: "empty@test.com",
-        time_zone: "UTC",
-        phone_number: "+61422001004"
+        time_zone: "UTC"
       });
 
       // Should not throw error
@@ -578,21 +539,11 @@ describe('Availability Rollover Functions', () => {
     test('should handle business with no availability slots', async () => {
       // Create a business without availability slots
       const newBusiness = await businessSeeder.createBusinessWith({
-        ...removalistBusinessData,
-        name: "No Slots Business",
-        email: "noslots@test.com",
-        phone_number: "+61422001005"
+        ...createUniqueRemovalistBusinessData(),
+        name: "No Slots Business"
       });
 
-      const newProvider = await userSeeder.createUserWith({
-        ...providerUserData,
-        business_id: newBusiness.id,
-        email: "noslots.provider@test.com",
-        phone_number: `${PHONE_BASE}999`
-      }, {
-        ...providerAuthUserData,
-        email: "noslots.provider@test.com"
-      });
+      const newProvider = await userSeeder.createUniqueProviderUser(newBusiness.id);
 
       await calendarSettingsSeeder.createCalendarSettingsWith({
         ...weekdayCalendarSettingsData,

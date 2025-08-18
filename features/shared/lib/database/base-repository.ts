@@ -1,37 +1,19 @@
 // features/shared/lib/database/base-repository.ts
-import { createAuthenticatedServerClient } from '../supabase/server';
-import { createSecretClient } from '../supabase/admin-client';
+import { DatabaseClientFactory } from '../client-factory';
 import type { BaseEntity, QueryOptions, QueryConditions } from './types/base';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { DateUtils } from '../../utils/date-utils';
 
-// Singleton instances to prevent multiple client creation
-let testClient: SupabaseClient | null = null;
-let serverClient: SupabaseClient | null = null;
-
 export class BaseRepository<T extends BaseEntity> {
-  protected supabase: SupabaseClient | null = null;
-  
-  constructor(protected tableName: string) {
-    // We'll inject the client when needed to avoid async constructor
-  }
+  private client: SupabaseClient | null = null;
 
-  protected async getClient() {
-    if (!this.supabase) {
-      // Use secret client for tests and API routes, authenticated server client for app pages
-      if (process.env.NODE_ENV === 'test' || process.env.USE_SECRET_CLIENT === 'true') {
-        if (!testClient) {
-          testClient = createSecretClient();
-        }
-        this.supabase = testClient;
-      } else {
-        if (!serverClient) {
-          serverClient = await createAuthenticatedServerClient();
-        }
-        this.supabase = serverClient;
-      }
+  constructor(protected tableName: string) {}
+
+  protected async getClient(): Promise<SupabaseClient> {
+    if (!this.client) {
+      this.client = await DatabaseClientFactory.getClient();
     }
-    return this.supabase;
+    return this.client;
   }
 
   // Find one record by any conditions
@@ -96,8 +78,10 @@ export class BaseRepository<T extends BaseEntity> {
       query = query.eq(key, value);
     });
 
-    const { data: result, error } = await query.select().single();
+    // Use maybeSingle() instead of single() to handle edge cases better
+    const { data: result, error } = await query.select().maybeSingle();
     if (error) throw new Error(`Failed to update ${this.tableName}: ${error.message}`);
+    if (!result) throw new Error(`Failed to update ${this.tableName}: No record found matching conditions`);
     return result as unknown as T;
   }
 

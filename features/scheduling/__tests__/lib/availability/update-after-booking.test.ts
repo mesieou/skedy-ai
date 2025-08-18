@@ -8,24 +8,18 @@ import { AvailabilitySlotsSeeder } from '../../../../shared/lib/database/seeds/a
 
 // Test data imports
 import { 
-  removalistBusinessData,
-  mobileManicuristBusinessData
+  createUniqueRemovalistBusinessData,
+  createUniqueMobileManicuristBusinessData
 } from '../../../../shared/lib/database/seeds/data/business-data';
 
-import {
-  adminProviderUserData,
-  providerUserData
-} from '../../../../shared/lib/database/seeds/data/user-data';
+
 
 import {
   weekdayCalendarSettingsData,
   weekendCalendarSettingsData
 } from '../../../../shared/lib/database/seeds/data/calendar-settings-data';
 
-import {
-  adminAuthUserData,
-  providerAuthUserData
-} from '../../../../shared/lib/database/seeds/data/auth-user-data';
+
 
 import type { Business } from '../../../../shared/lib/database/types/business';
 import type { User } from '../../../../shared/lib/database/types/user';
@@ -41,7 +35,6 @@ const DAYS_AHEAD_FOR_TEST = 7;
 const AVAILABILITY_GENERATION_DAYS = 7;
 const SINGLE_PROVIDER_COUNT = 1;
 const MULTI_PROVIDER_COUNT = 2;
-const PHONE_BASE = "+61411000";
 const TEST_BOOKING_AMOUNT = 100;
 const TEST_DEPOSIT_AMOUNT = 50;
 const MULTI_HOUR_BOOKING_DURATION = 240; // 4 hours
@@ -119,40 +112,16 @@ describe('AvailabilityManager - updateAvailabilityAfterBooking', () => {
 
   async function setupTestData() {
     // Create businesses
-    singleProviderBusiness = await businessSeeder.createBusinessWith(removalistBusinessData);
-    multiProviderBusiness = await businessSeeder.createBusinessWith(mobileManicuristBusinessData);
+    singleProviderBusiness = await businessSeeder.createBusinessWith(createUniqueRemovalistBusinessData());
+    multiProviderBusiness = await businessSeeder.createBusinessWith(createUniqueMobileManicuristBusinessData());
 
     // Create users for single provider business
-    singleProvider = await userSeeder.createUserWith({
-      ...adminProviderUserData,
-      business_id: singleProviderBusiness.id,
-      email: "single.provider@test.com",
-      phone_number: `${PHONE_BASE}001`
-    }, {
-      ...adminAuthUserData,
-      email: "single.provider@test.com"
-    });
+    singleProvider = await userSeeder.createUniqueAdminProviderUser(singleProviderBusiness.id);
 
     // Create users for multi-provider business
-    provider1 = await userSeeder.createUserWith({
-      ...adminProviderUserData,
-      business_id: multiProviderBusiness.id,
-      email: "provider1@test.com",
-      phone_number: `${PHONE_BASE}002`
-    }, {
-      ...adminAuthUserData,
-      email: "provider1@test.com"
-    });
+    provider1 = await userSeeder.createUniqueAdminProviderUser(multiProviderBusiness.id);
 
-    provider2 = await userSeeder.createUserWith({
-      ...providerUserData,
-      business_id: multiProviderBusiness.id,
-      email: "provider2@test.com",
-      phone_number: `${PHONE_BASE}003`
-    }, {
-      ...providerAuthUserData,
-      email: "provider2@test.com"
-    });
+    provider2 = await userSeeder.createUniqueProviderUser(multiProviderBusiness.id);
 
     // Create calendar settings using existing data - test different schedules
     singleProviderCalendarSettings = await calendarSettingsSeeder.createCalendarSettingsWith({

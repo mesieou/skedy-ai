@@ -1,29 +1,39 @@
 import type { CreateAuthUserData } from '../../types/auth-user';
 
-// Admin auth user data
-export const adminAuthUserData: CreateAuthUserData = {
-  email: "admin@test.com",
-  password: "TestPassword123!",
-  email_confirm: true
-};
+// Helper function to generate unique test data for parallel test execution
+function generateUniqueIdentifier(): string {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
 
-// Provider auth user data
-export const providerAuthUserData: CreateAuthUserData = {
-  email: "provider@test.com",
-  password: "TestPassword123!",
-  email_confirm: true
-};
+// Function to create unique admin auth user data for tests
+export function createUniqueAdminAuthUserData(): CreateAuthUserData {
+  const uniqueId = generateUniqueIdentifier();
+  return {
+    email: `admin+${uniqueId}@test.com`,
+    password: "TestPassword123!",
+    email_confirm: true
+  };
+}
 
-// Customer auth user data
-export const customerAuthUserData: CreateAuthUserData = {
-  email: "customer@test.com",
-  password: "TestPassword123!",
-  email_confirm: true
-};
-// Export all auth users as an array for easy iteration
-export const allAuthUsersData = [
-  adminAuthUserData,
-  providerAuthUserData,
-  customerAuthUserData,
-];
+// Function to create unique provider auth user data for tests
+export function createUniqueProviderAuthUserData(): CreateAuthUserData {
+  const uniqueId = generateUniqueIdentifier();
+  return {
+    email: `provider+${uniqueId}@test.com`,
+    password: "TestPassword123!",
+    email_confirm: true
+  };
+}
+
+// Function to create unique customer auth user data for tests
+export function createUniqueCustomerAuthUserData(): CreateAuthUserData {
+  const uniqueId = generateUniqueIdentifier();
+  return {
+    email: `customer+${uniqueId}@test.com`,
+    password: "TestPassword123!",
+    email_confirm: true
+  };
+}
+
+
 

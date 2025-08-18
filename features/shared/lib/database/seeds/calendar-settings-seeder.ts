@@ -1,4 +1,4 @@
-// Business seeder with removalist data
+// Calendar settings seeder
 import { BaseSeeder } from './base-seeder';
 import { CalendarSettingsRepository } from '../repositories/calendar-settings-repository';
 import type { CalendarSettings, CreateCalendarSettingsData } from '../types/calendar-settings';

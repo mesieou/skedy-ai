@@ -7,9 +7,9 @@ import { UserSeeder } from '../../../lib/database/seeds/user-seeder';
 
 // Test data imports
 import { 
-  removalistBusinessData, 
-  mobileManicuristBusinessData, 
-  massageBusinessData 
+  createUniqueRemovalistBusinessData, 
+  createUniqueMobileManicuristBusinessData, 
+  createUniqueMassageBusinessData 
 } from '../../../lib/database/seeds/data/business-data';
 
 import {
@@ -135,9 +135,9 @@ describe('BookingCalculator - Test Scenarios (Mocked API)', () => {
 
   async function setupTestData() {
     // Create businesses
-    businesses.removalist = await businessSeeder.createBusinessWith(removalistBusinessData);
-    businesses.manicurist = await businessSeeder.createBusinessWith(mobileManicuristBusinessData);
-    businesses.spa = await businessSeeder.createBusinessWith(massageBusinessData);
+    businesses.removalist = await businessSeeder.createBusinessWith(createUniqueRemovalistBusinessData());
+    businesses.manicurist = await businessSeeder.createBusinessWith(createUniqueMobileManicuristBusinessData());
+    businesses.spa = await businessSeeder.createBusinessWith(createUniqueMassageBusinessData());
 
     // Create services with actual business IDs
     services.removalistExample1 = await serviceSeeder.createServiceWith({

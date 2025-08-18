@@ -4,7 +4,7 @@ import { DateUtils } from '@/features/shared/utils/date-utils';
 
 export class BusinessRepository extends BaseRepository<Business> {
   constructor() {
-    super('businesses'); // Table name (plural)
+    super('businesses');
   }
 
   async findBusinessesAtMidnight(currentUtcTime?: string): Promise<Business[]> {

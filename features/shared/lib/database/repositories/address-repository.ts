@@ -3,6 +3,6 @@ import type { Address } from '../types/addresses';
 
 export class AddressRepository extends BaseRepository<Address> {
   constructor() {
-    super('addresses'); // Table name (plural)
+    super('addresses');
   }
 }

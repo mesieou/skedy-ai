@@ -29,10 +29,14 @@ export class BaseSeeder<T extends BaseEntity> {
   async cleanup(): Promise<void> {
     this.checkTestEnvironment();
     const records = await this.repository.findAll();
-    for (const record of records) {
-      await this.repository.deleteOne({ id: record.id });
+    if (records.length > 0) {
+      // Use batch delete for better performance
+      const ids = records.map(record => record.id);
+      await this.repository.deleteMany(ids);
     }
   }
+
+
 
   // Create multiple records
   async createMultiple(items: Omit<T, 'id' | 'created_at' | 'updated_at'>[]): Promise<T[]> {

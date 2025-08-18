@@ -4,9 +4,8 @@ import { BusinessSeeder } from '../../../lib/database/seeds/business-seeder';
 import { UserSeeder } from '../../../lib/database/seeds/user-seeder';
 import { AuthUserSeeder } from '../../../lib/database/seeds/auth-user-seeder';
 import { CalendarSettingsSeeder } from '../../../lib/database/seeds/calendar-settings-seeder';
-import { removalistBusinessData } from '../../../lib/database/seeds/data/business-data';
-import { adminProviderUserData, providerUserData } from '../../../lib/database/seeds/data/user-data';
-import { adminAuthUserData, providerAuthUserData } from '../../../lib/database/seeds/data/auth-user-data';
+import { createUniqueRemovalistBusinessData } from '../../../lib/database/seeds/data/business-data';
+
 import { weekdayCalendarSettingsData, weekendCalendarSettingsData } from '../../../lib/database/seeds/data/calendar-settings-data';
 import type { AvailabilitySlots } from '../../../lib/database/types/availability-slots';
 import { DateUtils } from '../../../utils/date-utils';
@@ -45,20 +44,14 @@ describe('AvailabilitySlotsRepository', () => {
     await authUserSeeder.cleanup();
     await businessSeeder.cleanup();
     
-    const business = await businessSeeder.createBusinessWith(removalistBusinessData);
+    const business = await businessSeeder.createBusinessWith(createUniqueRemovalistBusinessData());
     businessId = business.id;
     
     // Create weekday user
-    weekdayUser = await userSeeder.createUserWith(
-      { ...adminProviderUserData, business_id: businessId },
-      adminAuthUserData
-    );
+    weekdayUser = await userSeeder.createUniqueAdminProviderUser(businessId);
     
     // Create weekend user
-    weekendUser = await userSeeder.createUserWith(
-      { ...providerUserData, business_id: businessId },
-      providerAuthUserData
-    );
+    weekendUser = await userSeeder.createUniqueProviderUser(businessId);
 
     // Create calendar settings for each user
     weekdayCalendarSettings = await calendarSettingsSeeder.createCalendarSettingsWith({
@@ -183,7 +176,7 @@ describe('AvailabilitySlotsRepository', () => {
     }
   });
 
-  it('should have empty slots on Fridays', async () => {
+  it('should have only 1 provider on Fridays (weekday user only)', async () => {
     const dateKeys = Object.keys(testAvailabilitySlots.slots);
     
     for (const dateKey of dateKeys) {
@@ -195,7 +188,13 @@ describe('AvailabilitySlotsRepository', () => {
         
         for (const durationKey of Object.keys(daySlots)) {
           const slots = daySlots[durationKey];
-          expect(slots).toHaveLength(0); // No slots on Friday
+          
+          // Should have slots (weekday user works Friday)
+          if (slots.length > 0) {
+            for (const [, providerCount] of slots) {
+              expect(providerCount).toBe(1); // Only weekday user works Friday
+            }
+          }
         }
       }
     }

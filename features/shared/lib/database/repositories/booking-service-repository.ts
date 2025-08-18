@@ -3,6 +3,6 @@ import type { BookingService } from '../types/booking-services';
 
 export class BookingServiceRepository extends BaseRepository<BookingService> {
   constructor() {
-    super('booking_services'); // Table name (plural)
+    super('booking_services');
   }
 }

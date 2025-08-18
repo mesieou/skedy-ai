@@ -4,7 +4,7 @@ import { PROVIDER_ROLES } from '../types/user';
 
 export class UserRepository extends BaseRepository<User> {
   constructor() {
-    super('users'); // Table name (plural)
+    super('users');
   }
 
   async findProvidersByBusinessId(businessId: string): Promise<User[]> {

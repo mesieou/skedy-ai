@@ -1,24 +1,17 @@
-import { createSecretClient } from '../../supabase/admin-client';
+import { BaseRepository } from '../base-repository';
 import type { AuthUser, CreateAuthUserData } from '../types/auth-user';
-import type { SupabaseClient } from '@supabase/supabase-js';
 
-// Singleton instance to prevent multiple client creation
-let authClient: SupabaseClient | null = null;
-
-export class AuthUserRepository {
-  private supabase: SupabaseClient;
+export class AuthUserRepository extends BaseRepository<AuthUser> {
   private createdUserIds: string[] = [];
 
   constructor() {
-    if (!authClient) {
-      authClient = createSecretClient();
-    }
-    this.supabase = authClient;
+    super('auth.users'); // Supabase auth table
   }
 
   // Create auth user
   async create(data: CreateAuthUserData): Promise<AuthUser> {
-    const { data: result, error } = await this.supabase.auth.admin.createUser({
+    const client = await this.getClient();
+    const { data: result, error } = await client.auth.admin.createUser({
       email: data.email,
       password: data.password || 'TestPassword123!',
       email_confirm: data.email_confirm !== false,
@@ -57,7 +50,8 @@ export class AuthUserRepository {
 
   // Delete auth user
   async deleteOne(conditions: { id: string }): Promise<void> {
-    const { error } = await this.supabase.auth.admin.deleteUser(conditions.id);
+    const client = await this.getClient();
+    const { error } = await client.auth.admin.deleteUser(conditions.id);
     if (error) {
       throw new Error(`Failed to delete auth user: ${error.message}`);
     }
@@ -67,7 +61,8 @@ export class AuthUserRepository {
 
   // Find one auth user
   async findOne(conditions: { id: string }): Promise<AuthUser | null> {
-    const { data, error } = await this.supabase.auth.admin.getUserById(conditions.id);
+    const client = await this.getClient();
+    const { data, error } = await client.auth.admin.getUserById(conditions.id);
     if (error || !data.user) return null;
     
     return {

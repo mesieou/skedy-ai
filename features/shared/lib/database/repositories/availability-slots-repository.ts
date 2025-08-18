@@ -7,7 +7,7 @@ import { Business } from '../types/business';
 
 export class AvailabilitySlotsRepository extends BaseRepository<AvailabilitySlots> {
   constructor() {
-    super('availability_slots'); // Table name (plural)
+    super('availability_slots');
   }
 
   async generateInitialBusinessAvailability(businessId: string, fromDate: string, providers: User[], calendarSettings: CalendarSettings[], days: number = 30): Promise<AvailabilitySlots> {

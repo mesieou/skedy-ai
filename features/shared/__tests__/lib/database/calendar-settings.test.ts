@@ -4,9 +4,9 @@ import { UserSeeder } from '../../../lib/database/seeds/user-seeder';
 import { AuthUserSeeder } from '../../../lib/database/seeds/auth-user-seeder';
 import { BusinessSeeder } from '../../../lib/database/seeds/business-seeder';
 import { weekdayCalendarSettingsData, weekendCalendarSettingsData } from '../../../lib/database/seeds/data/calendar-settings-data';
-import { adminProviderUserData, providerUserData } from '../../../lib/database/seeds/data/user-data';
-import { removalistBusinessData } from '../../../lib/database/seeds/data/business-data';
-import { adminAuthUserData, providerAuthUserData } from '../../../lib/database/seeds/data/auth-user-data';
+
+import { createUniqueRemovalistBusinessData } from '../../../lib/database/seeds/data/business-data';
+
 import type { CalendarSettings } from '../../../lib/database/types/calendar-settings';
 
 describe('CalendarSettingsRepository', () => {
@@ -34,21 +34,15 @@ describe('CalendarSettingsRepository', () => {
     await authUserSeeder.cleanup();
     await businessSeeder.cleanup();
     
-    const business = await businessSeeder.createBusinessWith(removalistBusinessData);
+    const business = await businessSeeder.createBusinessWith(createUniqueRemovalistBusinessData());
     businessId = business.id;
     
     // Create weekday user
-    const weekdayUser = await userSeeder.createUserWith(
-      { ...adminProviderUserData, business_id: businessId },
-      adminAuthUserData
-    );
+    const weekdayUser = await userSeeder.createUniqueAdminProviderUser(businessId);
     weekdayUserId = weekdayUser.id;
     
     // Create weekend user
-    const weekendUser = await userSeeder.createUserWith(
-      { ...providerUserData, business_id: businessId },
-      providerAuthUserData
-    );
+    const weekendUser = await userSeeder.createUniqueProviderUser(businessId);
     weekendUserId = weekendUser.id;
   });
 

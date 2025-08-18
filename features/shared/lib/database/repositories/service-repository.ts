@@ -3,6 +3,6 @@ import type { Service } from '../types/service';
 
 export class ServiceRepository extends BaseRepository<Service> {
   constructor() {
-    super('services'); // Table name (plural)
+    super('services');
   }
 }

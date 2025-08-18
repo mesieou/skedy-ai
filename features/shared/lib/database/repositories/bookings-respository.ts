@@ -24,7 +24,7 @@ export class BookingsRepository extends BaseRepository<Booking> {
   private availabilitySlotsRepository: AvailabilitySlotsRepository;
 
   constructor() {
-    super('bookings'); // Table name (plural)
+    super('bookings');
     this.bookingCalculator = new BookingCalculator();
     this.addressesRepository = new AddressRepository();
     this.serviceRepository = new ServiceRepository();
