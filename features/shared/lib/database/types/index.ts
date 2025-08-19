@@ -16,3 +16,4 @@ export * from './booking-services';
 export * from './addresses';
 export * from './wait-list-contacts';
 export * from './availability-slots';
+export * from './business-context';
