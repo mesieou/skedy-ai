@@ -1,6 +1,6 @@
 import { BaseEntity } from "./base";
 
-// Chat session enums
+// Chat enums
 export enum ChatChannel {
   WHATSAPP = 'whatsapp',
   FACEBOOK = 'facebook',
@@ -16,14 +16,32 @@ export enum ChatSessionStatus {
   TRANSFERRED = 'transferred'
 }
 
+export enum MessageSenderType {
+  USER = 'user',
+  AGENT = 'agent',
+  SYSTEM = 'system'
+}
+
+// Chat message interface
+export interface ChatMessage extends BaseEntity {
+  session_id: string;
+  content: string;
+  sender_type: MessageSenderType;
+}
+
+// Chat session interface
 export interface ChatSession extends BaseEntity {
   channel: ChatChannel;
   user_id: string;
   business_id: string;
   status: ChatSessionStatus;
   ended_at?: string | null;
-  all_messages?: Record<string, unknown> | null;
+  all_messages?: ChatMessage[]; // JSON column in database
 }
 
-export type CreateChatSessionData = Omit<ChatSession, 'id' | 'created_at' | 'updated_at'>;
-export type UpdateChatSessionData = Partial<Omit<ChatSession, 'id' | 'created_at'>>;
+// Create/Update types
+export type CreateChatMessageData = Omit<ChatMessage, 'id' | 'created_at' | 'updated_at' | 'session_id'>;
+
+
+
+

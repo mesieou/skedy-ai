@@ -47,4 +47,17 @@ export class BaseSeeder<T extends BaseEntity> {
     }
     return results;
   }
+
+  // CRUD operations
+  async findOne(conditions: import('../types/base').QueryConditions): Promise<T | null> {
+    return await this.repository.findOne(conditions);
+  }
+
+  async updateOne(conditions: import('../types/base').QueryConditions, updates: Partial<T>): Promise<T> {
+    return await this.repository.updateOne(conditions, updates);
+  }
+
+  async deleteOne(conditions: import('../types/base').QueryConditions): Promise<void> {
+    return await this.repository.deleteOne(conditions);
+  }
 }
