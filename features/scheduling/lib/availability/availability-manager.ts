@@ -5,7 +5,7 @@ import { DateUtils } from "@/features/shared/utils/date-utils";
 import { Business } from "@/features/shared/lib/database/types/business";
 import { User } from "@/features/shared/lib/database/types/user";
 import { CalendarSettings } from "@/features/shared/lib/database/types/calendar-settings";
-import { 
+import {
   generateAvailabilitySlotsForDate,
   findBusinessesNeedingRollover,
   rolloverBusinessesAvailability
@@ -29,7 +29,7 @@ export class AvailabilityManager {
     // Get slots for the booking date
     if (updatedSlots[dateStr]) {
       const dateSlots = { ...updatedSlots[dateStr] };
-      
+
       for (const duration of DURATION_INTERVALS) {
         const durationKey = duration.key;
         const slots = dateSlots[durationKey] || [];
@@ -40,7 +40,7 @@ export class AvailabilityManager {
           booking
         );
       }
-      
+      //
       updatedSlots[dateStr] = dateSlots;
     }
 
@@ -62,7 +62,7 @@ export class AvailabilityManager {
     for (let dayOffset = 0; dayOffset < days; dayOffset++) {
       const currentDate = DateUtils.addDaysUTC(fromDate, dayOffset);
       const dateKey = DateUtils.extractDateString(currentDate); // "2025-01-15"
-      
+
       // Generate availability for all duration intervals for this day
       allSlots[dateKey] = await generateAvailabilitySlotsForDate(
         providers,
@@ -84,21 +84,21 @@ export class AvailabilityManager {
    */
   static async orchestrateAvailabilityRollover(currentUtcTime?: string): Promise<void> {
     console.log(`[AvailabilityManager.orchestrateAvailabilityRollover] Starting availability rollover process`);
-    
+
     try {
       // 1. Find all businesses that need rollover (midnight in their timezone)
       const businessesNeedingRollover = await findBusinessesNeedingRollover(currentUtcTime);
-      
+
       if (businessesNeedingRollover.length === 0) {
         console.log(`[AvailabilityManager.orchestrateAvailabilityRollover] No businesses need rollover at this time`);
         return;
       }
-      
+
       // 2. Rollover availability for all businesses that need it
       await rolloverBusinessesAvailability(businessesNeedingRollover);
-      
+
       console.log(`[AvailabilityManager.orchestrateAvailabilityRollover] Successfully completed rollover for ${businessesNeedingRollover.length} businesses`);
-      
+
     } catch (error) {
       console.error(`[AvailabilityManager.orchestrateAvailabilityRollover] Error during availability rollover:`, error);
       throw error;
