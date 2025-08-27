@@ -12,6 +12,7 @@ export * from './components/ui/label';
 export * from './components/ui/dropdown-menu';
 export * from './components/ui/badge';
 export * from './components/ui/checkbox';
+export { FloatingElements } from './components/ui/floating-elements';
 
 // Utilities
 export { cn, hasEnvVars } from './utils/utils';
