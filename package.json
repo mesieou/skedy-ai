@@ -12,7 +12,8 @@
     "test:auth": "jest features/auth",
     "test:dashboard": "jest features/dashboard",
     "test:shared": "jest features/shared",
-    "test:ai-agent": "jest features/ai-agent"
+    "test:ai-agent": "jest features/ai-agent",
+    "seed:business": "tsx scripts/seed-business.ts"
   },
   "dependencies": {
     "@cartesia/cartesia-js": "^2.2.5",
@@ -62,6 +63,7 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "tailwindcss-animate": "^1.0.7",
+    "tsx": "^4.20.5",
     "typescript": "^5"
   }
 }

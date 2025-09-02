@@ -43,7 +43,7 @@ export class WebhookHandler {
     this.webSocketService = new WebSocketService();
   }
 
-  async handleIncomingCall(
+    async handleIncomingCall(
     event: WebhookEvent,
     options: WebhookHandlerOptions = {}
   ): Promise<void> {
@@ -51,6 +51,10 @@ export class WebhookHandler {
 
     console.log(`📞 Processing incoming call with ID: ${callId}`);
     console.log('📋 Full event data:', JSON.stringify(event, null, 2));
+
+    // Extract business identifier from SIP headers
+    const dialedNumber = this.extractDialedNumber(event.data.sip_headers || []);
+    console.log(`📞 Dialed business number: ${dialedNumber}`);
 
     // Use setTimeout to handle call asynchronously while returning webhook response quickly
     setTimeout(async () => {
@@ -120,12 +124,41 @@ export class WebhookHandler {
     return { ...this.config };
   }
 
-  // Utility method to update configuration
+    // Utility method to update configuration
   updateConfig(newConfig: Partial<OpenAIRealtimeConfig>): void {
     this.config = { ...this.config, ...newConfig };
 
     // Reinitialize services with new config
     this.signatureService = new SignatureService(this.config.webhookSecret);
     this.callService = new CallService(this.config.apiKey);
+  }
+
+  /**
+   * Extract the dialed business phone number from SIP headers
+   */
+  private extractDialedNumber(sipHeaders: Array<{name: string; value: string}>): string {
+    // Look for "Diversion" header which contains the original dialed number
+    const diversionHeader = sipHeaders.find(h => h.name === 'Diversion')?.value;
+
+    if (diversionHeader) {
+      // Extract phone number from: "<sip:+61468002102@twilio.com>;reason=unconditional"
+      const phoneMatch = diversionHeader.match(/\+\d{10,15}/);
+      if (phoneMatch) {
+        console.log(`📞 Found dialed number in Diversion header: ${phoneMatch[0]}`);
+        return phoneMatch[0];
+      }
+    }
+
+    // Fallback: look in "To" header
+    const toHeader = sipHeaders.find(h => h.name === 'To')?.value;
+    if (toHeader) {
+      const phoneMatch = toHeader.match(/\+\d{10,15}/);
+      if (phoneMatch) {
+        console.log(`📞 Found dialed number in To header: ${phoneMatch[0]}`);
+        return phoneMatch[0];
+      }
+    }
+
+    throw new Error('Could not extract dialed phone number from SIP headers');
   }
 }
