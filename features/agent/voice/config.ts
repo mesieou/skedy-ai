@@ -33,7 +33,7 @@ export const getOpenAIConfig = (): OpenAIRealtimeConfig => ({
   apiKey: process.env.OPENAI_API_KEY!,
   webhookSecret: process.env.OPENAI_WEBHOOK_SECRET!,
   model: process.env.OPENAI_MODEL || "gpt-4o-realtime-preview-2024-12-17",
-  voice: process.env.OPENAI_VOICE || "sage",
+  voice: process.env.OPENAI_VOICE || "marin",
   instructions: process.env.OPENAI_INSTRUCTIONS || "You are a helpful phone assistant for Skedy AI. Answer the caller's questions clearly and concisely. Keep responses brief since this is a phone call. Always be polite and professional.",
   inputAudioFormat: "pcm16",
   outputAudioFormat: "pcm16",
