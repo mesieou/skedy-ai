@@ -22,11 +22,11 @@ async function testPromptOutput() {
   try {
     console.log('🔥 Testing Prompt Builder Output...\n');
 
-    const phoneNumber = '+61473164581';
+    const twilioAccountSid = 'AC017f39060e7fafce96588f27c558c93f';
 
     // Get business context
-    console.log(`📋 Fetching business context for: ${phoneNumber}`);
-    const businessContext = await businessContextProvider.getBusinessContextByPhone(phoneNumber);
+    console.log(`📋 Fetching business context for Twilio SID: ${twilioAccountSid}`);
+    const businessContext = await businessContextProvider.getBusinessContextByTwilioSid(twilioAccountSid);
 
     console.log(`✅ Found business: ${businessContext.businessInfo.name}`);
     console.log(`🛠️  Services: ${businessContext.services.length}`);

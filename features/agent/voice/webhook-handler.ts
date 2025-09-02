@@ -7,6 +7,8 @@ import {
   getResponseCreateConfig,
   OpenAIRealtimeConfig
 } from './config';
+import { businessContextProvider } from '../../shared/lib/database/business-context-provider';
+import { PromptBuilder } from '../intelligence/prompt-builder';
 
 export interface WebhookEvent {
   id: string;
@@ -52,15 +54,29 @@ export class WebhookHandler {
     console.log(`📞 Processing incoming call with ID: ${callId}`);
     console.log('📋 Full event data:', JSON.stringify(event, null, 2));
 
-    // Extract business identifier from SIP headers
-    const dialedNumber = this.extractDialedNumber(event.data.sip_headers || []);
-    console.log(`📞 Dialed business number: ${dialedNumber}`);
+    // Extract Twilio Account SID from SIP headers
+    const twilioAccountSid = this.extractTwilioAccountSid(event.data.sip_headers || []);
+
+    if (!twilioAccountSid) {
+      console.error('❌ No Twilio Account SID found - cannot identify business');
+      return;
+    }
 
     // Use setTimeout to handle call asynchronously while returning webhook response quickly
     setTimeout(async () => {
       try {
-        // Step 1: Accept the call via REST API
-        const callAcceptConfig = getCallAcceptConfig(this.config);
+        // Step 1: Generate dynamic prompt based on Twilio Account SID
+        console.log(`🤖 Generating dynamic AI prompt for Twilio Account: ${twilioAccountSid}`);
+        const dynamicInstructions = await this.generateDynamicPromptByTwilioSid(twilioAccountSid);
+
+        // Update config with dynamic instructions
+        const dynamicConfig = {
+          ...this.config,
+          instructions: dynamicInstructions
+        };
+
+        // Step 2: Accept the call via REST API with dynamic config
+        const callAcceptConfig = getCallAcceptConfig(dynamicConfig);
         const acceptResult = await this.callService.acceptCall(callId, callAcceptConfig);
 
         if (!acceptResult.success) {
@@ -75,8 +91,10 @@ export class WebhookHandler {
           options.onCallAccepted(callId);
         }
 
-        // Step 2: Connect to WebSocket for real-time communication
-        const responseConfig = getResponseCreateConfig(options.customGreeting);
+        // Step 3: Connect to WebSocket for real-time communication
+        const businessContext = await businessContextProvider.getBusinessContextByTwilioSid(twilioAccountSid);
+        const dynamicGreeting = PromptBuilder.buildGreetingPrompt(businessContext.businessInfo.name);
+        const responseConfig = getResponseCreateConfig(dynamicGreeting);
 
         await this.webSocketService.connect({
           callId,
@@ -133,32 +151,50 @@ export class WebhookHandler {
     this.callService = new CallService(this.config.apiKey);
   }
 
-  /**
-   * Extract the dialed business phone number from SIP headers
+    /**
+   * Generate dynamic AI prompt based on Twilio Account SID
    */
-  private extractDialedNumber(sipHeaders: Array<{name: string; value: string}>): string {
-    // Look for "Diversion" header which contains the original dialed number
-    const diversionHeader = sipHeaders.find(h => h.name === 'Diversion')?.value;
+  private async generateDynamicPromptByTwilioSid(twilioAccountSid: string): Promise<string> {
+    try {
+      console.log(`📋 Fetching business context for Twilio SID: ${twilioAccountSid}`);
+      const businessContext = await businessContextProvider.getBusinessContextByTwilioSid(twilioAccountSid);
 
-    if (diversionHeader) {
-      // Extract phone number from: "<sip:+61468002102@twilio.com>;reason=unconditional"
-      const phoneMatch = diversionHeader.match(/\+\d{10,15}/);
-      if (phoneMatch) {
-        console.log(`📞 Found dialed number in Diversion header: ${phoneMatch[0]}`);
-        return phoneMatch[0];
-      }
+      console.log(`✅ Found business: ${businessContext.businessInfo.name}`);
+      console.log(`🛠️  Services: ${businessContext.services.length}`);
+      console.log(`❓ FAQs: ${businessContext.frequently_asked_questions.length}`);
+
+      // Generate complete AI receptionist prompt with business context
+      const dynamicPrompt = PromptBuilder.buildPrompt(businessContext, {
+        includeTools: true,
+        customInstructions: "Focus on closing leads quickly and professionally. Keep responses conversational and brief for phone calls."
+      });
+
+      console.log(`🤖 Generated dynamic prompt (${dynamicPrompt.length} chars) for ${businessContext.businessInfo.name}`);
+      return dynamicPrompt;
+
+    } catch (error) {
+      console.error(`❌ Failed to generate dynamic prompt for Twilio SID ${twilioAccountSid}:`, error);
+
+      // Fallback to default prompt
+      const fallbackPrompt = `You are a professional AI receptionist. We couldn't load the specific business information for this call. Be helpful and polite, and let them know you'll connect them to someone who can assist them better.`;
+
+      console.log(`🔄 Using fallback prompt for Twilio SID ${twilioAccountSid}`);
+      return fallbackPrompt;
+    }
+  }
+
+          /**
+   * Extract Twilio Account SID from SIP headers
+   */
+  private extractTwilioAccountSid(sipHeaders: Array<{name: string; value: string}>): string | null {
+    const twilioAccountSid = sipHeaders.find(h => h.name === 'X-Twilio-AccountSid')?.value;
+
+    if (twilioAccountSid) {
+      console.log(`🆔 Found Twilio Account SID: ${twilioAccountSid}`);
+      return twilioAccountSid;
     }
 
-    // Fallback: look in "To" header
-    const toHeader = sipHeaders.find(h => h.name === 'To')?.value;
-    if (toHeader) {
-      const phoneMatch = toHeader.match(/\+\d{10,15}/);
-      if (phoneMatch) {
-        console.log(`📞 Found dialed number in To header: ${phoneMatch[0]}`);
-        return phoneMatch[0];
-      }
-    }
-
-    throw new Error('Could not extract dialed phone number from SIP headers');
+    console.warn('⚠️ No Twilio Account SID found in headers');
+    return null;
   }
 }

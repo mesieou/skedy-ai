@@ -18,15 +18,15 @@ export class BusinessContextProvider {
 
 
   /**
-   * Get business context by phone number (for incoming calls)
+   * Get business context by Twilio Account SID (for incoming calls via Twilio)
    */
-  async getBusinessContextByPhone(phoneNumber: string): Promise<BusinessContext> {
-    console.log(`📋 Building business context for phone: ${phoneNumber}`);
+  async getBusinessContextByTwilioSid(twilioAccountSid: string): Promise<BusinessContext> {
+    console.log(`📋 Building business context for Twilio SID: ${twilioAccountSid}`);
 
-    // Fetch business data by phone number
-    const business = await this.businessRepo.findOne({ phone_number: phoneNumber });
+    // Fetch business data by Twilio Account SID
+    const business = await this.businessRepo.findOne({ twilio_account_sid: twilioAccountSid });
     if (!business) {
-      throw new Error(`Business not found for phone number: ${phoneNumber}`);
+      throw new Error(`Business not found for Twilio Account SID: ${twilioAccountSid}`);
     }
 
     return this.buildContextFromBusiness(business);

@@ -4,11 +4,11 @@ import type { BusinessContext } from '../../../shared/lib/database/types/busines
 
 describe('PromptBuilder', () => {
   let realBusinessContext: BusinessContext;
-  const testPhoneNumber = '+61473164581';
+  const testTwilioAccountSid = 'AC017f39060e7fafce96588f27c558c93f';
 
   beforeAll(async () => {
-    // Get real business context from database
-    realBusinessContext = await businessContextProvider.getBusinessContextByPhone(testPhoneNumber);
+    // Get real business context from database using Twilio Account SID
+    realBusinessContext = await businessContextProvider.getBusinessContextByTwilioSid(testTwilioAccountSid);
     console.log(`✅ Loaded real business context for: ${realBusinessContext.businessInfo.name}`);
   });
 
