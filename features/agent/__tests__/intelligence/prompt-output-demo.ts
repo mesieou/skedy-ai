@@ -27,7 +27,7 @@ async function testPromptOutput() {
     console.log('🔧 Initializing admin database client...');
     await DatabaseClientFactory.getAdminClient();
 
-    const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID || 'AC_TEST_AsCCOUNT_SID';
+    const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID || 'ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
 
     // Get business context
     console.log(`📋 Fetching business context for Twilio SID: ${twilioAccountSid}`);
