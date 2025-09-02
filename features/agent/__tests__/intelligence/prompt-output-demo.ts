@@ -12,8 +12,7 @@ import path from 'path';
 dotenv.config({ path: path.join(__dirname, '../../../../.env.local') });
 dotenv.config({ path: path.join(__dirname, '../../../../.env.test'), override: true });
 
-// Use admin client for database access
-process.env.USE_SECRET_CLIENT = 'true';
+// Admin client will be used automatically for local development
 
 import { businessContextProvider } from '../../../shared/lib/database/business-context-provider';
 import { PromptBuilder } from '../../intelligence/prompt-builder';
@@ -22,7 +21,7 @@ async function testPromptOutput() {
   try {
     console.log('🔥 Testing Prompt Builder Output...\n');
 
-    const twilioAccountSid = 'AC017f39060e7fafce96588f27c558c93f';
+    const twilioAccountSid = process.env.TEST_TWILIO_ACCOUNT_SID || 'ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
 
     // Get business context
     console.log(`📋 Fetching business context for Twilio SID: ${twilioAccountSid}`);

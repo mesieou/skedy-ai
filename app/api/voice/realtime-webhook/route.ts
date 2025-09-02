@@ -2,7 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { WebhookHandler, WebhookEvent } from '@/features/agent/voice/webhook-handler';
 
-
 // Initialize the webhook handler
 const webhookHandler = new WebhookHandler({
   // You can customize configuration here or use environment variables

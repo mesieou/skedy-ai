@@ -238,7 +238,7 @@ export class BusinessContextProvider {
    * Get business context formatted for LLM by phone number
    */
   async getBusinessContextByPhoneForLLM(phoneNumber: string): Promise<string> {
-    const context = await this.getBusinessContextByPhone(phoneNumber);
+    const context = await this.getBusinessContextByTwilioSid(phoneNumber);
     return this.formatContextForLLM(context);
   }
 }

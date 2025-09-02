@@ -4,7 +4,7 @@ import type { BusinessContext } from '../../../shared/lib/database/types/busines
 
 describe('PromptBuilder', () => {
   let realBusinessContext: BusinessContext;
-  const testTwilioAccountSid = 'AC017f39060e7fafce96588f27c558c93f';
+  const testTwilioAccountSid = process.env.TEST_TWILIO_ACCOUNT_SID || 'ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
 
   beforeAll(async () => {
     // Get real business context from database using Twilio Account SID

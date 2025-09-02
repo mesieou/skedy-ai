@@ -2,7 +2,7 @@ import { BusinessContextProvider } from '../../../lib/database/business-context-
 
 describe('BusinessContextProvider Performance Test', () => {
   let businessContextProvider: BusinessContextProvider;
-  const testTwilioAccountSid = 'AC017f39060e7fafce96588f27c558c93f';
+  const testTwilioAccountSid = process.env.TEST_TWILIO_ACCOUNT_SID || 'ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
 
   beforeAll(async () => {
     businessContextProvider = new BusinessContextProvider();

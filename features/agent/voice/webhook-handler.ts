@@ -38,7 +38,7 @@ export class WebhookHandler {
   private callService: CallService;
   private webSocketService: WebSocketService;
 
-  constructor(options: WebhookHandlerOptions = {}) {
+      constructor(options: WebhookHandlerOptions = {}) {
     this.config = { ...getOpenAIConfig(), ...options.config };
     this.signatureService = new SignatureService(this.config.webhookSecret);
     this.callService = new CallService(this.config.apiKey);
@@ -157,6 +157,7 @@ export class WebhookHandler {
   private async generateDynamicPromptByTwilioSid(twilioAccountSid: string): Promise<string> {
     try {
       console.log(`📋 Fetching business context for Twilio SID: ${twilioAccountSid}`);
+
       const businessContext = await businessContextProvider.getBusinessContextByTwilioSid(twilioAccountSid);
 
       console.log(`✅ Found business: ${businessContext.businessInfo.name}`);

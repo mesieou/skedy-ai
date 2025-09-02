@@ -14,8 +14,7 @@ import path from 'path';
 dotenv.config({ path: path.join(__dirname, '../.env.local') });
 dotenv.config({ path: path.join(__dirname, '../.env.test'), override: true });
 
-// Use admin client for seeding (avoids Next.js cookies requirement)
-process.env.USE_SECRET_CLIENT = 'true';
+// Admin client will be used automatically for scripts
 
 import { fullBusinessSetupSeeder } from '../features/shared/lib/database/seeds/full-business-setup';
 import { initializeTestDatabase } from '../features/shared/lib/test-setup';
