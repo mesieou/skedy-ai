@@ -8,20 +8,26 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load environment variables (same as Jest)
-dotenv.config({ path: path.join(__dirname, '../../../../.env.local') });
-dotenv.config({ path: path.join(__dirname, '../../../../.env.test'), override: true });
+// Load environment variables exactly like Jest does
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env.test'), override: true });
 
-// Admin client will be used automatically for local development
+// Force admin client for standalone script execution (must be set before imports)
+process.env.NEXT_RUNTIME = 'nodejs';
 
 import { businessContextProvider } from '../../../shared/lib/database/business-context-provider';
 import { PromptBuilder } from '../../intelligence/prompt-builder';
+import { DatabaseClientFactory } from '../../../shared/lib/client-factory';
 
 async function testPromptOutput() {
   try {
     console.log('🔥 Testing Prompt Builder Output...\n');
 
-    const twilioAccountSid = process.env.TEST_TWILIO_ACCOUNT_SID || 'ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
+    // Initialize admin client explicitly for standalone script
+    console.log('🔧 Initializing admin database client...');
+    await DatabaseClientFactory.getAdminClient();
+
+    const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID || 'AC_TEST_AsCCOUNT_SID';
 
     // Get business context
     console.log(`📋 Fetching business context for Twilio SID: ${twilioAccountSid}`);

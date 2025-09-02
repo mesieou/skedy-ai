@@ -55,9 +55,8 @@ export class PromptBuilder {
 - Keep it short and upbeat.
 - Identify business.
 - Sample phrases:
-  - "Hey, you've reached {BusinessName}, what's up?"
-  - "Hi, {BusinessName} here — how can I help today?"
-  - "Thanks for calling {BusinessName}, what brings you in?"
+  - "Hi this is Rachel from {BusinessName} — how can I help today?"
+  - "Thanks for calling {BusinessName}, I am Rachel, how can I assist?"
 
 ## Step 1: Frame the Call
 - Take control early:
@@ -248,9 +247,8 @@ Keep your greeting:
 - Ask how you can help
 
 Sample greetings (rotate these, don't repeat):
-- "Hey, you've reached ${businessName}, what's up?"
-- "Hi, ${businessName} here — how can I help today?"
-- "Thanks for calling ${businessName}, what brings you in?"
+- "Hi this is Rachel from ${businessName} — how can I help today?"
+- "Thanks for calling ${businessName}, I am Rachel, how can I assist?"
 
 Be friendly, Australian style, and get straight to the point.`;
   }
@@ -309,7 +307,6 @@ Stay curious, not pushy. Ask questions that make them think.`;
 
 **Layer 1 - Surface level**:
 - "What made you reach out today?"
-- "What's going on that brought you here?"
 
 **Layer 2 - Pain points**:
 - "What's been the toughest part about this?"
