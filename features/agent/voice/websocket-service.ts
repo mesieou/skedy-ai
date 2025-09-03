@@ -1,10 +1,12 @@
 import WebSocket from "ws";
-import { ResponseCreateConfig, getAuthHeaders } from "./config";
+import {
+  getAuthHeaders,
+  OpenAIWebSocketMessage,
+} from "./config";
 
 export interface WebSocketConnectionOptions {
   callId: string;
   apiKey: string;
-  responseConfig: ResponseCreateConfig;
   onMessage?: (message: string) => void;
   onError?: (error: Error) => void;
   onClose?: (code: number, reason: string) => void;
@@ -14,8 +16,7 @@ export class WebSocketService {
   private baseUrl = "wss://api.openai.com/v1/realtime";
 
   async connect(options: WebSocketConnectionOptions): Promise<WebSocket> {
-    const { callId, apiKey, responseConfig, onMessage, onError, onClose } =
-      options;
+    const { callId, apiKey, onMessage, onError, onClose } = options;
 
     console.log("🌐 Connecting to WebSocket for real-time communication...");
 
@@ -28,9 +29,13 @@ export class WebSocketService {
 
     ws.on("open", () => {
       console.log("✅ [WebSocket] Connected successfully");
-      console.log("📤 [WebSocket] Sending initial response...");
 
-      ws.send(JSON.stringify(responseConfig));
+      // Send response.create to start conversation (no additional instructions)
+      console.log("📤 [WebSocket] Sending response.create...");
+      const responseCreate = {
+        type: "response.create"
+      };
+      ws.send(JSON.stringify(responseCreate));
     });
 
     ws.on("message", (data) => {
@@ -75,17 +80,49 @@ export class WebSocketService {
     return ws;
   }
 
-  private handleSpecificMessageTypes(parsed: {
-    type: string;
-    delta?: string;
-    error?: unknown;
-  }) {
+  private handleSpecificMessageTypes(parsed: OpenAIWebSocketMessage) {
     switch (parsed.type) {
       case "session.created":
         console.log("🎯 [WebSocket] Session created successfully");
+        if (parsed.session) {
+          console.log("🔍 [WebSocket] Session Details:");
+          if (parsed.session.model)
+            console.log(`   Model: ${parsed.session.model}`);
+          if (parsed.session.voice)
+            console.log(`   Voice: ${parsed.session.voice}`);
+          if (parsed.session.instructions)
+            console.log(
+              `   Instructions length: ${parsed.session.instructions.length} chars`
+            );
+          console.log(
+            "📋 [WebSocket] Full session config:",
+            JSON.stringify(parsed.session, null, 2)
+          );
+        }
+        break;
+      case "session.updated":
+        console.log("🎯 [WebSocket] Session updated successfully");
+        if (parsed.session) {
+          console.log("🔍 [WebSocket] Updated Session Details:");
+          if (parsed.session.model)
+            console.log(`   Updated Model: ${parsed.session.model}`);
+          if (parsed.session.voice)
+            console.log(`   Updated Voice: ${parsed.session.voice}`);
+        }
         break;
       case "response.created":
         console.log("🎯 [WebSocket] Response created successfully");
+        if (parsed.response) {
+          console.log("🔍 [WebSocket] Response Details:");
+          if (parsed.response.model)
+            console.log(`   Response Model: ${parsed.response.model}`);
+          if (parsed.response.voice)
+            console.log(`   Response Voice: ${parsed.response.voice}`);
+          if (parsed.response.audio?.output?.voice)
+            console.log(
+              `   Audio Voice: ${parsed.response.audio.output.voice}`
+            );
+        }
         break;
       case "response.audio.delta":
         console.log("🔊 [WebSocket] Audio data being streamed");

@@ -54,25 +54,15 @@ async function testPromptOutput() {
     console.log(`- Word count: ~${fullPrompt.split(' ').length} words`);
     console.log(`- Lines: ${fullPrompt.split('\n').length}`);
 
-    // Test other prompt types
-    console.log('\n🎯 Testing specific prompt types...\n');
+    // Test business name injection
+    console.log('\n🎯 Testing business name injection...\n');
 
-    const greetingPrompt = PromptBuilder.buildGreetingPrompt(businessContext.businessInfo.name);
-    console.log('📞 GREETING PROMPT:');
+    const testText = "Welcome to {BusinessName}, how can {BusinessName} help you today?";
+    const injectedText = PromptBuilder.injectBusinessName(testText, businessContext.businessInfo.name);
+    console.log('🏷️  BUSINESS NAME INJECTION TEST:');
     console.log('-'.repeat(40));
-    console.log(greetingPrompt);
-    console.log('-'.repeat(40));
-
-    const closingPrompt = PromptBuilder.buildClosingPrompt(businessContext.businessInfo.name);
-    console.log('\n🎯 CLOSING PROMPT:');
-    console.log('-'.repeat(40));
-    console.log(closingPrompt);
-    console.log('-'.repeat(40));
-
-    const objectionPrompt = PromptBuilder.buildObjectionHandlingPrompt();
-    console.log('\n🛡️  OBJECTION HANDLING PROMPT:');
-    console.log('-'.repeat(40));
-    console.log(objectionPrompt);
+    console.log(`Original: ${testText}`);
+    console.log(`Injected: ${injectedText}`);
     console.log('-'.repeat(40));
 
     console.log('\n✅ Prompt testing completed successfully!');

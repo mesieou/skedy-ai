@@ -10,7 +10,7 @@ export enum LocationType {
 export enum TravelChargingModel {
   // Only charge between customer locations (pickup to dropoff)
   BETWEEN_CUSTOMER_LOCATIONS = 'between_customer_locations',
-  // Charge from business base to customers + between customers  
+  // Charge from business base to customers + between customers
   FROM_BASE_TO_CUSTOMERS = 'from_base_to_customers',
   // Charge between customers + return to base
   CUSTOMERS_AND_BACK_TO_BASE = 'customers_and_back_to_base',
@@ -72,6 +72,7 @@ interface BaseService extends BaseEntity {
   business_id: string;
   name: string;
   description: string;
+  how_it_works?: string;
   pricing_config: PricingConfig | null;
 }
 
@@ -99,7 +100,7 @@ export function isBusinessService(service: Service): service is BusinessService 
   return service.location_type === LocationType.BUSINESS;
 }
 
-export type CreateServiceData = 
+export type CreateServiceData =
   | Omit<BusinessService, 'id' | 'created_at' | 'updated_at'>
   | Omit<MobileService, 'id' | 'created_at' | 'updated_at'>;
 

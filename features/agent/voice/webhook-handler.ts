@@ -3,34 +3,13 @@ import { CallService } from './call-service';
 import { WebSocketService } from './websocket-service';
 import {
   getOpenAIConfig,
-  getCallAcceptConfig,
-  getResponseCreateConfig,
-  OpenAIRealtimeConfig
+  createCallAcceptConfig,
+  OpenAIRealtimeConfig,
+  WebhookEvent,
+  WebhookHandlerOptions
 } from './config';
 import { businessContextProvider } from '../../shared/lib/database/business-context-provider';
 import { PromptBuilder } from '../intelligence/prompt-builder';
-
-export interface WebhookEvent {
-  id: string;
-  object: string;
-  created_at: number;
-  type: string;
-  data: {
-    call_id: string;
-    sip_headers?: Array<{
-      name: string;
-      value: string;
-    }>;
-  };
-}
-
-export interface WebhookHandlerOptions {
-  config?: Partial<OpenAIRealtimeConfig>;
-  customGreeting?: string;
-  onCallAccepted?: (callId: string) => void;
-  onWebSocketConnected?: (callId: string) => void;
-  onError?: (error: Error, callId?: string) => void;
-}
 
 export class WebhookHandler {
   private config: OpenAIRealtimeConfig;
@@ -62,22 +41,21 @@ export class WebhookHandler {
       return;
     }
 
-    // Use setTimeout to handle call asynchronously while returning webhook response quickly
+    // Accept call IMMEDIATELY to prevent expiration
     setTimeout(async () => {
       try {
-        // Step 1: Generate dynamic prompt based on Twilio Account SID
+                // Step 1: Generate dynamic prompt first
         console.log(`🤖 Generating dynamic AI prompt for Twilio Account: ${twilioAccountSid}`);
         const dynamicInstructions = await this.generateDynamicPromptByTwilioSid(twilioAccountSid);
 
-        // Update config with dynamic instructions
-        const dynamicConfig = {
-          ...this.config,
-          instructions: dynamicInstructions
-        };
-
-        // Step 2: Accept the call via REST API with dynamic config
-        const callAcceptConfig = getCallAcceptConfig(dynamicConfig);
-        const acceptResult = await this.callService.acceptCall(callId, callAcceptConfig);
+        // Step 2: Accept call with FULL config (using factory function)
+        console.log(`📞 Accepting call with full configuration...`);
+        const callConfig = createCallAcceptConfig(
+          dynamicInstructions,
+          this.config.model,
+          this.config.voice
+        );
+        const acceptResult = await this.callService.acceptCall(callId, callConfig);
 
         if (!acceptResult.success) {
           console.error(`❌ Failed to accept call ${callId}:`, acceptResult.error);
@@ -87,19 +65,16 @@ export class WebhookHandler {
           return;
         }
 
+        console.log(`✅ Call accepted with full config - connecting WebSocket...`);
+
         if (options.onCallAccepted) {
           options.onCallAccepted(callId);
         }
 
-        // Step 3: Connect to WebSocket for real-time communication
-        const businessContext = await businessContextProvider.getBusinessContextByTwilioSid(twilioAccountSid);
-        const dynamicGreeting = PromptBuilder.buildGreetingPrompt(businessContext.businessInfo.name);
-        const responseConfig = getResponseCreateConfig(dynamicGreeting);
-
+        // Step 3: Connect WebSocket (Flask pattern - just response.create)
         await this.webSocketService.connect({
           callId,
           apiKey: this.config.apiKey,
-          responseConfig,
           onMessage: () => {
             // Additional custom message handling can be added here
           },

@@ -84,48 +84,39 @@ describe('PromptBuilder', () => {
     });
   });
 
-  describe('buildGreetingPrompt', () => {
-    it('should build greeting prompt with real business name', () => {
-      const prompt = PromptBuilder.buildGreetingPrompt(realBusinessContext.businessInfo.name);
+  describe('comprehensive prompt content', () => {
+    it('should include greeting variations in main prompt', () => {
+      const prompt = PromptBuilder.buildPrompt(realBusinessContext);
 
+      expect(prompt).toContain('Greeting');
+      expect(prompt).toContain('Rachel');
       expect(prompt).toContain(realBusinessContext.businessInfo.name);
-      expect(prompt).toContain('AI receptionist');
       expect(prompt).toContain('Short and upbeat');
-      expect(prompt).toContain(`Hey, you've reached ${realBusinessContext.businessInfo.name}`);
     });
-  });
 
-  describe('buildClosingPrompt', () => {
-    it('should build closing prompt with real business name', () => {
-      const prompt = PromptBuilder.buildClosingPrompt(realBusinessContext.businessInfo.name);
+    it('should include closing techniques in main prompt', () => {
+      const prompt = PromptBuilder.buildPrompt(realBusinessContext);
 
-      expect(prompt).toContain(realBusinessContext.businessInfo.name);
-      expect(prompt).toContain('closing the call');
+      expect(prompt).toContain('Close');
       expect(prompt).toContain('Do you want to get started?');
       expect(prompt).toContain('Let\'s book it in now');
+      expect(prompt).toContain('direct');
     });
-  });
 
-  describe('buildObjectionHandlingPrompt', () => {
-    it('should build objection handling prompt', () => {
-      const prompt = PromptBuilder.buildObjectionHandlingPrompt();
+    it('should include objection handling in main prompt', () => {
+      const prompt = PromptBuilder.buildPrompt(realBusinessContext);
 
+      expect(prompt).toContain('Handle Concerns');
       expect(prompt).toContain('Alex Hormozi');
-      expect(prompt).toContain('Money objections');
-      expect(prompt).toContain('Time objections');
-      expect(prompt).toContain('Spouse/decision maker objections');
-      expect(prompt).toContain('unanswered questions');
+      expect(prompt).toContain('reassurance');
     });
-  });
 
-  describe('buildDiagnosticPrompt', () => {
-    it('should build diagnostic questioning prompt', () => {
-      const prompt = PromptBuilder.buildDiagnosticPrompt();
+    it('should include diagnostic questions in main prompt', () => {
+      const prompt = PromptBuilder.buildPrompt(realBusinessContext);
 
-      expect(prompt).toContain('layered diagnostic questions');
-      expect(prompt).toContain('What made you reach out today?');
-      expect(prompt).toContain('What\'s been the toughest part');
-      expect(prompt).toContain('What happens if you don\'t fix this');
+      expect(prompt).toContain('Diagnose Before Prescribing');
+      expect(prompt).toContain('Can you tell me a little bit about the job?');
+      expect(prompt).toContain('When would you like us to get this sorted');
     });
   });
 

@@ -1,6 +1,7 @@
 // OpenAI Realtime SIP Webhook Handler
 import { NextRequest, NextResponse } from 'next/server';
-import { WebhookHandler, WebhookEvent } from '@/features/agent/voice/webhook-handler';
+import { WebhookHandler } from '@/features/agent/voice/webhook-handler';
+import { WebhookEvent } from '@/features/agent/voice/config';
 
 // Initialize the webhook handler
 const webhookHandler = new WebhookHandler({
