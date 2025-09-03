@@ -8,8 +8,12 @@ import {
   WebhookEvent,
   WebhookHandlerOptions
 } from './config';
+import { AITools } from '../tools/ai-tools';
+import type { ToolSchema } from '../tools/types';
 import { businessContextProvider } from '../../shared/lib/database/business-context-provider';
+import type { BusinessContext } from '../../shared/lib/database/types/business-context';
 import { PromptBuilder } from '../intelligence/prompt-builder';
+
 
 export class WebhookHandler {
   private config: OpenAIRealtimeConfig;
@@ -17,7 +21,7 @@ export class WebhookHandler {
   private callService: CallService;
   private webSocketService: WebSocketService;
 
-      constructor(options: WebhookHandlerOptions = {}) {
+  constructor(options: WebhookHandlerOptions = {}) {
     this.config = { ...getOpenAIConfig(), ...options.config };
     this.signatureService = new SignatureService(this.config.webhookSecret);
     this.callService = new CallService(this.config.apiKey);
@@ -38,68 +42,103 @@ export class WebhookHandler {
 
     if (!twilioAccountSid) {
       console.error('❌ No Twilio Account SID found - cannot identify business');
+      console.error('📋 Available SIP headers:', event.data.sip_headers?.map(h => h.name) || 'none');
+
+      if (options.onError) {
+        options.onError(new Error('Missing Twilio Account SID'), callId);
+      }
       return;
     }
 
-    // Accept call IMMEDIATELY to prevent expiration
+                    // Accept call IMMEDIATELY with dynamic instructions (Flask pattern)
+    try {
+      // Get business context for dynamic instructions
+      const businessContext: BusinessContext = await businessContextProvider.getBusinessContextByTwilioSid(twilioAccountSid);
+      console.log(`✅ Found business: ${businessContext.businessInfo.name}`);
+
+      // Generate dynamic instructions (no tools for now)
+      const dynamicInstructions = PromptBuilder.buildPrompt(businessContext, {
+        includeTools: false,
+        customInstructions: "Focus on closing leads quickly and professionally. Keep responses conversational and brief for phone calls."
+      });
+
+      // Use config factory without tools
+      const callConfig = createCallAcceptConfig(
+        dynamicInstructions,
+        this.config.model,
+        this.config.voice
+      );
+
+      const acceptResult = await this.callService.acceptCall(callId, callConfig);
+
+      if (!acceptResult.success) {
+        throw new Error(acceptResult.error || 'Call accept failed');
+      }
+
+      console.log(`✅ Call ${callId} accepted with dynamic instructions`);
+
+      // Start WebSocket in background (Flask threading pattern)
+      this.processWebSocketInBackground(callId, options);
+
+    } catch (error) {
+      console.error(`❌ Error accepting call ${callId}:`, error);
+      if (options.onError) {
+        options.onError(error as Error, callId);
+      }
+    }
+  }
+
+      /**
+   * Process WebSocket connection in background (Flask pattern)
+   */
+  private processWebSocketInBackground(
+    callId: string,
+    options: WebhookHandlerOptions
+  ): void {
+    // Start in background thread (like Flask threading.Thread)
     setTimeout(async () => {
       try {
-                // Step 1: Generate dynamic prompt first
-        console.log(`🤖 Generating dynamic AI prompt for Twilio Account: ${twilioAccountSid}`);
-        const dynamicInstructions = await this.generateDynamicPromptByTwilioSid(twilioAccountSid);
-
-        // Step 2: Accept call with FULL config (using factory function)
-        console.log(`📞 Accepting call with full configuration...`);
-        const callConfig = createCallAcceptConfig(
-          dynamicInstructions,
-          this.config.model,
-          this.config.voice
-        );
-        const acceptResult = await this.callService.acceptCall(callId, callConfig);
-
-        if (!acceptResult.success) {
-          console.error(`❌ Failed to accept call ${callId}:`, acceptResult.error);
-          if (options.onError) {
-            options.onError(new Error(acceptResult.error || 'Call accept failed'), callId);
-          }
-          return;
-        }
-
-        console.log(`✅ Call accepted with full config - connecting WebSocket...`);
-
-        if (options.onCallAccepted) {
-          options.onCallAccepted(callId);
-        }
-
-        // Step 3: Connect WebSocket (Flask pattern - just response.create)
-        await this.webSocketService.connect({
-          callId,
-          apiKey: this.config.apiKey,
-          onMessage: () => {
-            // Additional custom message handling can be added here
-          },
-          onError: (error) => {
-            console.error(`❌ WebSocket error for call ${callId}:`, error);
-            if (options.onError) {
-              options.onError(error, callId);
-            }
-          },
-          onClose: (code, reason) => {
-            console.log(`🔌 WebSocket closed for call ${callId} - Code: ${code}, Reason: ${reason}`);
-          }
-        });
-
-        if (options.onWebSocketConnected) {
-          options.onWebSocketConnected(callId);
-        }
-
+        console.log(`🔌 Starting WebSocket for call ${callId} in background...`);
+        await this.connectWebSocket(callId, options);
       } catch (error) {
-        console.error(`❌ Error handling call ${callId}:`, error);
+        console.error(`❌ Background WebSocket error for call ${callId}:`, error);
         if (options.onError) {
           options.onError(error as Error, callId);
         }
       }
     }, 0);
+  }
+
+
+
+  /**
+   * Connect WebSocket with proper error handling
+   */
+  private async connectWebSocket(callId: string, options: WebhookHandlerOptions): Promise<void> {
+    console.log(`🔌 Connecting WebSocket for call ${callId}...`);
+
+    await this.webSocketService.connect({
+      callId,
+      apiKey: this.config.apiKey,
+      onMessage: () => {
+        // Additional custom message handling can be added here
+      },
+      onError: (error) => {
+        console.error(`❌ WebSocket error for call ${callId}:`, error);
+        if (options.onError) {
+          options.onError(error, callId);
+        }
+      },
+      onClose: (code, reason) => {
+        console.log(`🔌 WebSocket closed for call ${callId} - Code: ${code}, Reason: ${reason}`);
+      }
+    });
+
+    console.log(`✅ WebSocket connected for call ${callId}`);
+
+    if (options.onWebSocketConnected) {
+      options.onWebSocketConnected(callId);
+    }
   }
 
   verifyWebhookSignature(
@@ -126,38 +165,10 @@ export class WebhookHandler {
     this.callService = new CallService(this.config.apiKey);
   }
 
-    /**
-   * Generate dynamic AI prompt based on Twilio Account SID
+  /**
+   * Generate dynamic AI prompt from business context
    */
-  private async generateDynamicPromptByTwilioSid(twilioAccountSid: string): Promise<string> {
-    try {
-      console.log(`📋 Fetching business context for Twilio SID: ${twilioAccountSid}`);
 
-      const businessContext = await businessContextProvider.getBusinessContextByTwilioSid(twilioAccountSid);
-
-      console.log(`✅ Found business: ${businessContext.businessInfo.name}`);
-      console.log(`🛠️  Services: ${businessContext.services.length}`);
-      console.log(`❓ FAQs: ${businessContext.frequently_asked_questions.length}`);
-
-      // Generate complete AI receptionist prompt with business context
-      const dynamicPrompt = PromptBuilder.buildPrompt(businessContext, {
-        includeTools: true,
-        customInstructions: "Focus on closing leads quickly and professionally. Keep responses conversational and brief for phone calls."
-      });
-
-      console.log(`🤖 Generated dynamic prompt (${dynamicPrompt.length} chars) for ${businessContext.businessInfo.name}`);
-      return dynamicPrompt;
-
-    } catch (error) {
-      console.error(`❌ Failed to generate dynamic prompt for Twilio SID ${twilioAccountSid}:`, error);
-
-      // Fallback to default prompt
-      const fallbackPrompt = `You are a professional AI receptionist. We couldn't load the specific business information for this call. Be helpful and polite, and let them know you'll connect them to someone who can assist them better.`;
-
-      console.log(`🔄 Using fallback prompt for Twilio SID ${twilioAccountSid}`);
-      return fallbackPrompt;
-    }
-  }
 
           /**
    * Extract Twilio Account SID from SIP headers

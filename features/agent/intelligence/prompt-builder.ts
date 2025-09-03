@@ -38,21 +38,27 @@ export class PromptBuilder {
 - If missing, say:
   - "I don't have that info right now, but I'll get back to you."`;
 
-  private static readonly TOOLS_SECTION = `# Tools
-- get_customer_info_for_escalation → collect details before handoff.
-- get_quote → get specific estimate for customer's job.
-- make_booking → confirm and lock appointments.
-- escalate_conversation → escalate to a human.
-- BEFORE tool use: say one short line, e.g.,
-  - "Let me check that for you…"
-  - "Give me a sec, pulling that up…"
+  private static readonly TOOLS_SECTION = `# Function Calling
+You have access to these functions to help customers:
 
-# Pricing Response Strategy
+- **get_quote()** → Calculate quote for specific service (parameters are dynamically generated per service)
+- **make_booking()** → Confirm booking after customer agrees to quote
+- **escalate_conversation()** → Transfer to human agent when needed
+
+# Smart Pricing Response Strategy
 When customer asks about pricing:
 1. Frame first: Recommend the most common/best-fit option for their situation (usually 2 movers), and explain why.
 2. Share the general pricing structure from business context.
-3. Then ask if they’d like a specific estimate for their job.
-4. IF YES: Use get_quote tool to get their personalized quote.`;
+3. Ask if they'd like a specific estimate for their job.
+4. If yes, ask which specific service they're interested in.
+5. Collect required info conversationally (the get_quote function will show you what's needed).
+6. Call get_quote() when you have all required information.
+
+# Function Usage
+- Use service NAME for service_id parameter (e.g., "house moving", "office cleaning")
+- The get_quote function will tell you exactly what parameters it needs for each service
+- Collect information naturally in conversation before making function calls
+- Don't announce function calls - just use them seamlessly`;
 
   private static readonly CONVERSATION_FLOW = `# Conversation Flow
 

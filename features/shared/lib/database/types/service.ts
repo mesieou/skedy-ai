@@ -49,6 +49,20 @@ export enum PricingCombination {
   SERVICE_FIXED_PER_SERVICE = 'service_fixed_per_service'
 }
 
+// Job scope types for duration estimates
+export enum JobScope {
+  ONE_ITEM = 'one_item',
+  FEW_ITEMS = 'few_items',
+  HOUSE_MOVE_1_BEDROOM = 'house_move_1_bedroom',
+  HOUSE_MOVE_2_BEDROOM = 'house_move_2_bedroom',
+  HOUSE_MOVE_3_BEDROOM = 'house_move_3_bedroom',
+  HOUSE_MOVE_4_BEDROOM = 'house_move_4_bedroom',
+  HOUSE_MOVE_5_PLUS_BEDROOM = 'house_move_5_plus_bedroom',
+  OFFICE_MOVE_SMALL = 'office_move_small',
+  OFFICE_MOVE_MEDIUM = 'office_move_medium',
+  OFFICE_MOVE_LARGE = 'office_move_large',
+}
+
 // Pricing structure types
 export interface PricingTier {
   min_quantity: number;

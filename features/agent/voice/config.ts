@@ -10,15 +10,40 @@ export const OPENAI_DEFAULTS = {
 // ============================================================================
 // OPENAI API TYPES
 // ============================================================================
+export interface OpenAITool {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    strict: true;
+    parameters: {
+      type: "object";
+      properties: Record<string, {
+        type: string;
+        description: string;
+        enum?: string[];
+        items?: { type: string };
+      }>;
+      required: string[];
+      additionalProperties: false;
+    };
+  };
+}
+
 export interface CallAcceptConfig {
   type: "realtime";
   instructions: string;
   model: string;
   audio: {
     output: {
+      format: {
+        type: "audio/pcm";
+        rate: 24000;
+      };
       voice: string;
     };
   };
+  tools?: OpenAITool[];
 }
 
 
@@ -108,16 +133,22 @@ export const getOpenAIConfig = (): OpenAIRealtimeConfig => ({
 export const createCallAcceptConfig = (
   instructions: string,
   model: string,
-  voice: string
+  voice: string,
+  tools?: OpenAITool[]
 ): CallAcceptConfig => ({
   type: "realtime",
   instructions,
   model,
   audio: {
     output: {
+      format: {
+        type: "audio/pcm",
+        rate: 24000
+      },
       voice
     }
-  }
+  },
+  ...(tools && { tools })
 });
 
 
