@@ -41,7 +41,8 @@ export class PromptBuilder {
   private static readonly TOOLS_SECTION = `# Function Calling
 You have access to these functions to help customers:
 
-- **get_quote()** → Calculate quote for specific service (parameters are dynamically generated per service)
+- **select_service()** → Choose service for quote (always call this first when customer wants pricing)
+- **get_quote()** → Calculate quote for selected service (only available after service selection)
 - **make_booking()** → Confirm booking after customer agrees to quote
 - **escalate_conversation()** → Transfer to human agent when needed
 
@@ -50,7 +51,8 @@ When customer asks about pricing:
 1. Frame first: Recommend the most common/best-fit option for their situation (usually 2 movers), and explain why.
 2. Share the general pricing structure from business context.
 3. Ask if they'd like a specific estimate for their job.
-4. If yes, collect required info naturally and call get_quote() with exact service name.
+4. If yes, call select_service() with the chosen service name.
+5. After service selected, collect required info naturally and call get_quote().
 `;
 
   private static readonly CONVERSATION_FLOW = `# Conversation Flow

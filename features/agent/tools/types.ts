@@ -34,24 +34,22 @@ export interface FunctionCallResult {
   message?: string;
 }
 
-// Tool schema generation
+// Tool schema generation (OpenAI Realtime API format)
 export interface ToolSchema {
   type: "function";
-  function: {
-    name: string;
-    description: string;
-    strict: true;
-    parameters: {
-      type: "object";
-      properties: Record<string, {
-        type: string;
-        description: string;
-        enum?: string[];
-        items?: { type: string };
-      }>;
-      required: string[];
-      additionalProperties: false;
-    };
+  name: string;
+  description: string;
+  parameters: {
+    type: "object";
+    properties: Record<string, {
+      type: string;
+      description: string;
+      enum?: string[];
+      items?: { type: string };
+      minimum?: number;
+    }>;
+    required: string[];
+    additionalProperties: false;
   };
 }
 
@@ -72,7 +70,9 @@ export interface QuoteFunctionArgs {
   quantity?: number;
   job_scope?: string;
   pickup_address?: string;
+  pickup_addresses?: string[];  // Plural array (new schema format)
   dropoff_address?: string;
+  dropoff_addresses?: string[]; // Plural array (new schema format)
   service_address?: string;
   customer_addresses?: string[];
   preferred_datetime?: string;
@@ -81,6 +81,11 @@ export interface QuoteFunctionArgs {
   number_of_rooms?: number;
   square_meters?: number;
   number_of_vehicles?: number;
+}
+
+// Service selection arguments
+export interface ServiceSelectionFunctionArgs {
+  service_name: string;
 }
 
 // Tool configuration
