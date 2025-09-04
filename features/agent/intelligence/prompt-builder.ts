@@ -50,15 +50,8 @@ When customer asks about pricing:
 1. Frame first: Recommend the most common/best-fit option for their situation (usually 2 movers), and explain why.
 2. Share the general pricing structure from business context.
 3. Ask if they'd like a specific estimate for their job.
-4. If yes, ask which specific service they're interested in.
-5. Collect required info conversationally (the get_quote function will show you what's needed).
-6. Call get_quote() when you have all required information.
-
-# Function Usage
-- Use service NAME for service_id parameter (e.g., "house moving", "office cleaning")
-- The get_quote function will tell you exactly what parameters it needs for each service
-- Collect information naturally in conversation before making function calls
-- Don't announce function calls - just use them seamlessly`;
+4. If yes, collect required info naturally and call get_quote() with exact service name.
+`;
 
   private static readonly CONVERSATION_FLOW = `# Conversation Flow
 

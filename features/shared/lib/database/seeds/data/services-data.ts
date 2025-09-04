@@ -17,7 +17,8 @@ export * from './addresses-data';
 export const removalistExample1ServiceData: CreateServiceData = {
   business_id: "placeholder-business-id", // Will be replaced with actual business_id
   name: "Local Removals - Between Customers",
-  description: "Professional local moving services. Charges only for travel between customer locations.",
+  description: "Professional house move, furniture removal services.",
+  how_it_works: "We send a team to pick up your items from the pickup location, transport them safely, and deliver to your dropoff location. You don't lift a finger - we handle all the heavy lifting, packing protection, and careful placement at the destination.",
   location_type: LocationType.PICKUP_AND_DROPOFF,
   travel_charging_model: TravelChargingModel.BETWEEN_CUSTOMER_LOCATIONS,
   pricing_config: {
@@ -30,19 +31,43 @@ export const removalistExample1ServiceData: CreateServiceData = {
             min_quantity: 1,
             max_quantity: 1,
             price: 95.00,
-            duration_estimate_mins: 120
+            duration_estimate_mins: {
+              "one_item": 60,
+              "few_items": 90,
+              "house_move_1_bedroom": 120,
+              "house_move_2_bedroom": 180,
+              "house_move_3_bedroom": 240,
+              "office_move_small": 100,
+              "office_move_medium": 140
+            }
           },
           {
             min_quantity: 2,
             max_quantity: 2,
             price: 145.00,
-            duration_estimate_mins: 90
+            duration_estimate_mins: {
+              "one_item": 30,
+              "few_items": 60,
+              "house_move_1_bedroom": 90,
+              "house_move_2_bedroom": 120,
+              "house_move_3_bedroom": 180,
+              "office_move_small": 75,
+              "office_move_medium": 100
+            }
           },
           {
             min_quantity: 3,
             max_quantity: 3,
             price: 185.00,
-            duration_estimate_mins: 60
+            duration_estimate_mins: {
+              "one_item": 20,
+              "few_items": 45,
+              "house_move_1_bedroom": 60,
+              "house_move_2_bedroom": 90,
+              "house_move_3_bedroom": 120,
+              "office_move_small": 50,
+              "office_move_medium": 75
+            }
           }
         ]
       },
@@ -531,4 +556,3 @@ export const massageExample9Service2Data: CreateServiceData = {
     ]
   }
 };
-

@@ -5,25 +5,18 @@
  * Supports dynamic quote requirements for multiple business types
  */
 
-// Core classes
-export { AITools } from './ai-tools';
-export { RequirementsEngine } from './requirements-engine';
-export { FunctionExecutor } from './function-executor';
-export { AdaptiveQuoteTool } from './adaptive-quote-tool';
+export { ToolsManager } from './tools-manager';
 
-// All types from unified types file
+// Scheduling tools
+export { QuoteTool } from './scheduling/quote';
+
+// All types
 export type {
   QuoteRequirement,
   QuoteRequirements,
-  QuoteSession,
   FunctionCallResult,
   ToolSchema,
   ToolConfig,
-  MultiServiceQuoteInput,
   QuoteContext,
   QuoteFunctionArgs
 } from './types';
-
-// Legacy exports for backward compatibility (deprecated)
-/** @deprecated Use RequirementsEngine instead */
-export { RequirementsEngine as QuoteRequirementsAnalyzer } from './requirements-engine';

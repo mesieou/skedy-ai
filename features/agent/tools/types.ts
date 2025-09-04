@@ -24,15 +24,7 @@ export interface QuoteRequirements {
   optional: QuoteRequirement[];
 }
 
-// Session management
-export interface QuoteSession {
-  serviceIds: string[];
-  collectedInfo: Record<string, string | number | boolean | string[]>;
-  missingRequirements: string[];
-  nextQuestion?: string;
-  isMultiService: boolean;
-  currentStep: 'service_selection' | 'info_collection' | 'quote_generation' | 'booking_confirmation';
-}
+
 
 // Function execution
 export interface FunctionCallResult {
@@ -63,13 +55,7 @@ export interface ToolSchema {
   };
 }
 
-// Multi-service support
-export interface MultiServiceQuoteInput {
-  serviceIds: string[];
-  isSimultaneous: boolean;
-  customerAddresses?: string[];
-  specialRequirements?: string;
-}
+
 
 // Quote generation context
 export interface QuoteContext {
@@ -81,8 +67,8 @@ export interface QuoteContext {
 
 // Function arguments (unified interface for all functions)
 export interface QuoteFunctionArgs {
-  service_id?: string;
-  service_ids?: string[];
+  service_name?: string;
+  service_names?: string[];
   quantity?: number;
   job_scope?: string;
   pickup_address?: string;
@@ -99,7 +85,6 @@ export interface QuoteFunctionArgs {
 
 // Tool configuration
 export interface ToolConfig {
-  enableMultiService: boolean;
   enableEscalation: boolean;
   enableBooking: boolean;
   customSchemas?: ToolSchema[];

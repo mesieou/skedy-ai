@@ -93,7 +93,7 @@ export class FullBusinessSetupSeeder {
         ...removalistExample1ServiceData,
         business_id: business.id // Replace placeholder with actual business ID
       };
-      const service = await this.serviceSeeder.createServiceWith(serviceData);
+      const service = await this.serviceSeeder.createWithRequirements(serviceData);
       console.log(`✅ Service created: ${service.name} (ID: ${service.id})`);
 
       // Step 4: Create Calendar Settings for Providers
@@ -153,13 +153,72 @@ export class FullBusinessSetupSeeder {
 
       return setup;
 
-    } catch (error) {
+        } catch (error) {
       console.error('❌ Failed to create full business setup:', error);
       throw error;
     }
   }
 
+    /**
+   * Cleanup only removalist businesses and their related data
+   */
+    async cleanupRemovalistBusinesses(): Promise<void> {
+    console.log('🧹 Cleaning up transport businesses only...');
 
+    try {
+      // Find all transport businesses (removalist companies)
+      const allBusinesses = await this.businessSeeder['repository'].findAll();
+      const transportBusinesses = allBusinesses.filter(b =>
+        b.business_category === 'transport'
+      );
+
+      console.log(`🔍 Found ${transportBusinesses.length} transport businesses to clean up`);
+
+      // Clean up each transport business and its related data
+      for (const business of transportBusinesses) {
+        console.log(`🗑️ Cleaning up business: ${business.name}`);
+
+        // Clean up related data (cascade delete)
+        const relatedUsers = await this.userSeeder['repository'].findAll({}, { business_id: business.id });
+        for (const user of relatedUsers) {
+          await this.calendarSettingsSeeder['repository'].deleteOne({ user_id: user.id });
+          await this.userSeeder['repository'].deleteOne({ id: user.id });
+        }
+
+        await this.availabilitySlotsSeeder['repository'].deleteOne({ business_id: business.id });
+        await this.serviceSeeder['repository'].findAll({}, { business_id: business.id }).then(services => {
+          return Promise.all(services.map(s => this.serviceSeeder['repository'].deleteOne({ id: s.id })));
+        });
+        await this.businessSeeder['repository'].deleteOne({ id: business.id });
+      }
+
+      console.log('✅ Transport business cleanup completed');
+    } catch (error) {
+      console.error('❌ Transport cleanup failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cleanup all seeded data (for testing)
+   */
+  async cleanup(): Promise<void> {
+    console.log('🧹 Cleaning up all seeded data...');
+
+    try {
+      await this.availabilitySlotsSeeder.cleanup();
+      await this.calendarSettingsSeeder.cleanup();
+      await this.serviceSeeder.cleanup();
+      await this.userSeeder.cleanup();
+      await this.authUserSeeder.cleanup();
+      await this.businessSeeder.cleanup();
+
+      console.log('✅ Cleanup completed successfully');
+    } catch (error) {
+      console.error('❌ Cleanup failed:', error);
+      throw error;
+    }
+  }
 }
 
 // Export singleton instance for easy use

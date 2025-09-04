@@ -14,21 +14,25 @@ import path from 'path';
 dotenv.config({ path: path.join(__dirname, '../.env.local') });
 dotenv.config({ path: path.join(__dirname, '../.env.test'), override: true });
 
-// Admin client will be used automatically for scripts
+// Admin client will be detected automatically for scripts
 
 import { fullBusinessSetupSeeder } from '../features/shared/lib/database/seeds/full-business-setup';
 import { initializeTestDatabase } from '../features/shared/lib/test-setup';
 
 async function main() {
   try {
-    console.log('🌱 Starting business seeding...\n');
+    console.log('🌱 Starting removalist business seeding...\n');
 
     // Initialize database client (same as tests do)
     console.log('🔧 Initializing database client...');
     await initializeTestDatabase();
 
-        // Create one complete business setup
-    console.log('📊 Creating complete business setup...');
+    // Clean up any existing removalist businesses first
+    console.log('🧹 Cleaning up existing removalist businesses...');
+    await fullBusinessSetupSeeder.cleanupRemovalistBusinesses();
+
+    // Create one removalist business setup
+    console.log('📊 Creating removalist business setup...');
     const setup = await fullBusinessSetupSeeder.createFullBusinessSetup();
 
     console.log('\n📋 Business Setup Complete!');
@@ -49,12 +53,13 @@ async function main() {
     console.log(`🕐 Availability Days: ${Object.keys(setup.availabilitySlots.slots).length}`);
     console.log('=====================================\n');
 
-    console.log('🎉 Business setup completed successfully!');
+    console.log('🎉 Removalist business setup completed successfully!');
     console.log('💡 You can now:');
-    console.log('   - Test voice calls with the generated phone number');
+    console.log(`   - Test voice calls to: ${setup.business.phone_number}`);
     console.log('   - Use the business context in your AI assistant');
     console.log('   - Test booking flows with the created users');
     console.log('   - Check availability slots for scheduling');
+    console.log('   - AI will use the generated service requirements for quotes');
 
   } catch (error) {
     console.error('❌ Seeding failed:', error);

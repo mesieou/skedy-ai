@@ -18,10 +18,13 @@ export class BusinessContextProvider {
 
 
   /**
-   * Get business context by Twilio Account SID (for incoming calls via Twilio)
+   * Get complete business data by Twilio SID (for incoming calls)
    */
-  async getBusinessContextByTwilioSid(twilioAccountSid: string): Promise<BusinessContext> {
-    console.log(`📋 Building business context for Twilio SID: ${twilioAccountSid}`);
+  async getBusinessDataByTwilioSid(twilioAccountSid: string): Promise<{
+    businessContext: BusinessContext;  // For user-facing purposes (AI prompts, conversations)
+    businessEntity: Business;          // For backend purposes (calculations, database operations)
+  }> {
+    console.log(`📋 Building business data for Twilio SID: ${twilioAccountSid}`);
 
     // Fetch business data by Twilio Account SID
     const business = await this.businessRepo.findOne({ twilio_account_sid: twilioAccountSid });
@@ -29,7 +32,20 @@ export class BusinessContextProvider {
       throw new Error(`Business not found for Twilio Account SID: ${twilioAccountSid}`);
     }
 
-    return this.buildContextFromBusiness(business);
+    const businessContext = await this.buildContextFromBusiness(business);
+
+    return {
+      businessContext,      // User-facing info
+      businessEntity: business  // Complete backend entity
+    };
+  }
+
+  /**
+   * Get business context only (for user-facing purposes)
+   */
+  async getBusinessContextByTwilioSid(twilioAccountSid: string): Promise<BusinessContext> {
+    const { businessContext } = await this.getBusinessDataByTwilioSid(twilioAccountSid);
+    return businessContext;
   }
 
   /**
@@ -182,12 +198,7 @@ export class BusinessContextProvider {
 
     prompt += `## Instructions for AI Assistant\n`;
     prompt += `- You are representing ${businessInfo.name}\n`;
-    prompt += `- Be helpful and professional\n`;
-    prompt += `- Provide accurate information about our services and pricing\n`;
-    prompt += `- Help customers with booking inquiries\n`;
     prompt += `- Direct payment questions to our preferred method: ${businessInfo.preferred_payment_method}\n`;
-    prompt += `- Always confirm service location (mobile vs location-based)\n`;
-    prompt += `- Keep responses concise for phone conversations\n`;
 
     return prompt;
   }
