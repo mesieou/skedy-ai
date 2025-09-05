@@ -324,15 +324,19 @@ export class BookingCalculator {
 
         switch (component.pricing_combination) {
           case PricingCombination.TRAVEL_PER_KM:
-            return total_distance_km * tier.price;
           case PricingCombination.TRAVEL_PER_KM_PER_PERSON:
           case PricingCombination.TRAVEL_PER_KM_PER_VEHICLE:
-            return total_distance_km * tier.price * firstMobileService.quantity;
+            // Price is the total rate for this tier/quantity
+            return total_distance_km * tier.price;
           case PricingCombination.TRAVEL_PER_MINUTE:
-            return total_travel_time_mins * tier.price;
           case PricingCombination.TRAVEL_PER_MINUTE_PER_PERSON:
           case PricingCombination.TRAVEL_PER_MINUTE_PER_VEHICLE:
-            return total_travel_time_mins * tier.price * firstMobileService.quantity;
+            // Price is the total rate for this tier/quantity
+            return total_travel_time_mins * tier.price;
+          case PricingCombination.TRAVEL_PER_HOUR_PER_PERSON:
+          case PricingCombination.TRAVEL_PER_HOUR_PER_VEHICLE:
+            // Price is the total rate for this tier/quantity
+            return (total_travel_time_mins / 60) * tier.price;
         }
       }
     }
@@ -358,7 +362,21 @@ export class BookingCalculator {
 
     switch (component.pricing_combination) {
       case PricingCombination.LABOR_PER_HOUR_PER_PERSON:
-        // Calculate based on estimated duration - tier price already includes per-person rate
+        // Calculate based on estimated duration - tier price is total rate for this quantity
+        duration_mins = this.getEstimatedDuration(tier.duration_estimate_mins, jobScope);
+        cost = (duration_mins / 60) * tier.price;
+        console.log(`💰 Labor calculation: ${duration_mins}min ÷ 60 × $${tier.price} = $${cost}`);
+        break;
+
+      case PricingCombination.LABOR_PER_MINUTE_PER_PERSON:
+        // Price is total rate per minute for this tier/quantity
+        duration_mins = this.getEstimatedDuration(tier.duration_estimate_mins, jobScope);
+        cost = duration_mins * tier.price;
+        console.log(`💰 Labor calculation: ${duration_mins}min × $${tier.price} = $${cost}`);
+        break;
+
+      case PricingCombination.LABOR_PER_HOUR_PER_ROOM:
+        // Price is total rate per hour for this number of rooms
         duration_mins = this.getEstimatedDuration(tier.duration_estimate_mins, jobScope);
         cost = (duration_mins / 60) * tier.price;
         console.log(`💰 Labor calculation: ${duration_mins}min ÷ 60 × $${tier.price} = $${cost}`);
@@ -371,10 +389,46 @@ export class BookingCalculator {
         console.log(`💰 Labor calculation: ${duration_mins}min ÷ 60 × $${tier.price} = $${cost}`);
         break;
 
+      case PricingCombination.LABOUR_PER_MINUTE:
+        // Simple per minute rate
+        duration_mins = this.getEstimatedDuration(tier.duration_estimate_mins, jobScope);
+        cost = duration_mins * tier.price;
+        console.log(`💰 Labor calculation: ${duration_mins}min × $${tier.price} = $${cost}`);
+        break;
+
+      case PricingCombination.SERVICE_PER_HOUR_PER_PERSON:
+        // Price is total rate per hour for this tier/quantity
+        duration_mins = this.getEstimatedDuration(tier.duration_estimate_mins, jobScope);
+        cost = (duration_mins / 60) * tier.price;
+        console.log(`💰 Service calculation: ${duration_mins}min ÷ 60 × $${tier.price} = $${cost}`);
+        break;
+
+      case PricingCombination.SERVICE_PER_MINUTE_PER_PERSON:
+        // Price is total rate per minute for this tier/quantity
+        duration_mins = this.getEstimatedDuration(tier.duration_estimate_mins, jobScope);
+        cost = duration_mins * tier.price;
+        console.log(`💰 Service calculation: ${duration_mins}min × $${tier.price} = $${cost}`);
+        break;
+
+      case PricingCombination.SERVICE_PER_ROOM:
+        // Price is total rate per room for this tier
+        cost = tier.price;
+        duration_mins = this.getEstimatedDuration(tier.duration_estimate_mins, jobScope);
+        console.log(`💰 Service calculation: $${tier.price} per room`);
+        break;
+
+      case PricingCombination.SERVICE_PER_SQM:
+        // Price is rate per square meter
+        cost = tier.price;
+        duration_mins = this.getEstimatedDuration(tier.duration_estimate_mins, jobScope);
+        console.log(`💰 Service calculation: $${tier.price} per sqm`);
+        break;
+
       case PricingCombination.SERVICE_FIXED_PER_SERVICE:
         // Fixed price regardless of other factors
         cost = tier.price;
         duration_mins = this.getEstimatedDuration(tier.duration_estimate_mins, jobScope);
+        console.log(`💰 Service calculation: Fixed $${tier.price}`);
         break;
 
       default:
@@ -579,8 +633,10 @@ export class BookingCalculator {
       PricingCombination.TRAVEL_PER_MINUTE,
       PricingCombination.TRAVEL_PER_KM_PER_PERSON,
       PricingCombination.TRAVEL_PER_MINUTE_PER_PERSON,
+      PricingCombination.TRAVEL_PER_HOUR_PER_PERSON,
       PricingCombination.TRAVEL_PER_KM_PER_VEHICLE,
       PricingCombination.TRAVEL_PER_MINUTE_PER_VEHICLE,
+      PricingCombination.TRAVEL_PER_HOUR_PER_VEHICLE,
     ].includes(combination);
   }
 

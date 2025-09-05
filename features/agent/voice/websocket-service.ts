@@ -265,6 +265,24 @@ export class WebSocketService {
       case "conversation.item.created":
         console.log("💭 [WebSocket] Conversation item created");
         break;
+      case "conversation.item.done":
+        // Log completed conversation items (user input, AI responses)
+        const parsedItem = parsed as unknown as { item?: { role?: string; content?: Array<{ transcript?: string; type?: string }> } };
+        if (parsedItem.item?.content) {
+          const item = parsedItem.item;
+          if (item.role === 'user' && item.content) {
+            // User input - check for transcript in different content types
+            const transcript = item.content.find(c => c.transcript)?.transcript;
+            if (transcript) {
+              console.log(`👤 [User said]: "${transcript}"`);
+            } else if (item.content.some(c => c.type === 'input_audio')) {
+              console.log(`👤 [User spoke]: [Audio input - transcript pending]`);
+            }
+          } else if (item.role === 'assistant' && item.content?.[0]?.transcript) {
+            console.log(`🤖 [AI said]: "${item.content[0].transcript}"`);
+          }
+        }
+        break;
       case "response.output_item.added":
         console.log("📝 [WebSocket] Output item added to response");
         break;
@@ -272,20 +290,42 @@ export class WebSocketService {
         console.log("🧩 [WebSocket] Content part added to response");
         break;
       case "response.function_call_arguments.delta":
-      case "response.output_audio_transcript.delta":
-      case "input_audio_buffer.speech_started":
-      case "input_audio_buffer.speech_stopped":
-      case "input_audio_buffer.committed":
       case "rate_limits.updated":
       case "output_audio_buffer.started":
       case "output_audio_buffer.stopped":
         // Silent - too verbose
+        break;
+      case "response.output_audio_transcript.delta":
+      case "input_audio_transcript.delta":
+      case "conversation.item.input_audio_transcription.delta":
+        // Silent - too verbose (but these might contain user transcripts)
+        break;
+      case "input_audio_transcript.completed":
+      case "conversation.item.input_audio_transcription.completed":
+        // Log completed user transcripts
+        const transcript = (parsed as unknown as { transcript?: string }).transcript;
+        if (transcript) {
+          console.log(`👤 [User transcript]: "${transcript}"`);
+        }
+        break;
+      case "input_audio_buffer.speech_started":
+        console.log("🎤 [User started speaking]");
+        break;
+      case "input_audio_buffer.speech_stopped":
+        console.log("🎤 [User stopped speaking]");
+        break;
+      case "input_audio_buffer.committed":
+        console.log("🎤 [User audio committed - processing...]");
         break;
       case "response.function_call_arguments.done":
         console.log(`🎯 [WebSocket] Function call completed: ${(parsed as unknown as Record<string, unknown>).name} with args`);
         break;
       default:
         console.log(`📨 [WebSocket] Message type: ${parsed.type}`);
+        // Temporarily log unknown events to find user transcript events
+        if (parsed.type.includes('transcript') || parsed.type.includes('input')) {
+          console.log(`🔍 [Debug] Unknown transcript/input event:`, parsed);
+        }
     }
   }
 

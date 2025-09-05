@@ -10,7 +10,7 @@ import type { Service } from '../../../shared/lib/database/types/service';
 import type { Business } from '../../../shared/lib/database/types/business';
 import type { FunctionCallResult, QuoteFunctionArgs } from '../types';
 import { BookingCalculator } from '../../../scheduling/lib/bookings/booking-calculator';
-import type { BookingCalculationInput, BookingAddress, ServiceBreakdown } from '../../../scheduling/lib/types/booking-calculations';
+import type { BookingCalculationInput, BookingAddress } from '../../../scheduling/lib/types/booking-calculations';
 import { AddressRole } from '../../../scheduling/lib/types/booking-calculations';
 import type { Address } from '../../../shared/lib/database/types/addresses';
 import { AddressType } from '../../../shared/lib/database/types/addresses';
@@ -39,17 +39,25 @@ export class QuoteTool {
       console.log(`📋 Booking input:`, JSON.stringify(bookingInput, null, 2));
 
       const quote = await this.bookingCalculator.calculateBooking(bookingInput, args.job_scope);
-      console.log(`💰 Quote breakdown:`, {
-        total_estimate_amount: quote.total_estimate_amount,
-        total_estimate_time_in_minutes: quote.total_estimate_time_in_minutes,
+      console.log(`💰 Quote breakdown organized:`, {
+        total_amount: quote.total_estimate_amount,
+        total_time: quote.total_estimate_time_in_minutes,
+        labor: {
+          cost: quote.price_breakdown?.service_breakdowns?.[0]?.total_cost || 0,
+          duration_mins: quote.price_breakdown?.service_breakdowns?.[0]?.estimated_duration_mins || 0
+        },
+        travel: {
+          cost: quote.price_breakdown?.travel_breakdown?.total_travel_cost || 0,
+          duration_mins: quote.price_breakdown?.travel_breakdown?.total_travel_time_mins || 0,
+          distance_km: quote.price_breakdown?.travel_breakdown?.total_distance_km || 0
+        },
+        fees: {
+          gst: quote.price_breakdown?.business_fees?.gst_amount || 0,
+          platform: quote.price_breakdown?.business_fees?.platform_fee || 0,
+          payment: quote.price_breakdown?.business_fees?.payment_processing_fee || 0
+        },
         deposit_amount: quote.deposit_amount,
-        minimum_charge_applied: quote.minimum_charge_applied,
-        service_breakdowns: quote.price_breakdown?.service_breakdowns?.map((s: ServiceBreakdown) => ({
-          service_name: s.service_name,
-          total_cost: s.total_cost,
-          estimated_duration_mins: s.estimated_duration_mins
-        })),
-        travel_breakdown: quote.price_breakdown?.travel_breakdown
+        minimum_charge_applied: quote.minimum_charge_applied
       });
 
       console.log(`💰 Quote calculated for ${service.name}: ${quote.total_estimate_amount}`);
@@ -57,12 +65,40 @@ export class QuoteTool {
       return {
         success: true,
         data: {
+          // Core booking information (matches database structure)
           service_name: service.name,
-          total_amount: quote.total_estimate_amount,
-          total_time: quote.total_estimate_time_in_minutes,
+          total_estimate_amount: quote.total_estimate_amount,
+          total_estimate_time_in_minutes: quote.total_estimate_time_in_minutes,
           deposit_amount: quote.deposit_amount,
+          remaining_balance: quote.remaining_balance,
+          deposit_paid: quote.deposit_paid,
+          minimum_charge_applied: quote.minimum_charge_applied,
           currency: this.businessContext.businessInfo.currency_code,
-          booking_status: 'pending'
+          status: 'quote', // This is a quote, not a booking yet
+
+          // Organized breakdown for AI and customer
+          breakdown: {
+            labor: {
+              cost: quote.price_breakdown?.service_breakdowns?.[0]?.total_cost || 0,
+              duration_mins: quote.price_breakdown?.service_breakdowns?.[0]?.estimated_duration_mins || 0,
+              rate_description: `${service.name} labor`
+            },
+            travel: {
+              cost: quote.price_breakdown?.travel_breakdown?.total_travel_cost || 0,
+              duration_mins: quote.price_breakdown?.travel_breakdown?.total_travel_time_mins || 0,
+              distance_km: quote.price_breakdown?.travel_breakdown?.total_distance_km || 0,
+              rate_description: "Travel between locations"
+            },
+            fees: {
+              gst_amount: quote.price_breakdown?.business_fees?.gst_amount || 0,
+              gst_rate: quote.price_breakdown?.business_fees?.gst_rate || 0,
+              platform_fee: quote.price_breakdown?.business_fees?.platform_fee || 0,
+              payment_processing_fee: quote.price_breakdown?.business_fees?.payment_processing_fee || 0
+            }
+          },
+
+          // Complete price breakdown (ready for database if needed)
+          price_breakdown: quote.price_breakdown
         },
         message: this.formatQuoteMessage(quote, service.name, this.businessContext.businessInfo.currency_code)
       };
