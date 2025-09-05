@@ -35,10 +35,19 @@ export interface CallAcceptConfig {
   instructions: string;
   model: string;
   audio: {
+    input: {
+      format: "pcm16";
+      turn_detection: {
+        type: "semantic_vad";
+        create_response: boolean;
+        interrupt_response: boolean;
+        eagerness: "auto" | "low" | "medium" | "high";
+       };
+    };
     output: {
       format: {
-        type: "audio/pcm";
-        rate: 24000;
+        type: "pcm16";
+        rate: number;
       };
       voice: string;
     };
@@ -140,9 +149,18 @@ export const createCallAcceptConfig = (
   instructions,
   model,
   audio: {
+    input: {
+      format: "pcm16",
+      turn_detection: {
+        type: "semantic_vad",
+        create_response: true,
+        interrupt_response: true,
+        eagerness: "auto",
+      }
+    },
     output: {
       format: {
-        type: "audio/pcm",
+        type: "pcm16",
         rate: 24000
       },
       voice

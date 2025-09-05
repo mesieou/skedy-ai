@@ -51,10 +51,6 @@ export class WebSocketService {
 
     ws.on("message", (data) => {
       const message = data.toString();
-      console.log(
-        "📥 [WebSocket] Received message:",
-        this.formatMessageForLog(message)
-      );
 
       // Parse and handle specific message types for better logging
       try {
@@ -253,10 +249,10 @@ export class WebSocketService {
         }
         break;
       case "response.audio.delta":
-        console.log("🔊 [WebSocket] Audio data being streamed");
+        // Silent - too verbose
         break;
       case "response.audio_transcript.delta":
-        console.log(`💬 [WebSocket] Audio transcript: "${parsed.delta}"`);
+        // Silent - too verbose
         break;
       case "response.done":
         console.log(
@@ -274,6 +270,19 @@ export class WebSocketService {
         break;
       case "response.content_part.added":
         console.log("🧩 [WebSocket] Content part added to response");
+        break;
+      case "response.function_call_arguments.delta":
+      case "response.output_audio_transcript.delta":
+      case "input_audio_buffer.speech_started":
+      case "input_audio_buffer.speech_stopped":
+      case "input_audio_buffer.committed":
+      case "rate_limits.updated":
+      case "output_audio_buffer.started":
+      case "output_audio_buffer.stopped":
+        // Silent - too verbose
+        break;
+      case "response.function_call_arguments.done":
+        console.log(`🎯 [WebSocket] Function call completed: ${(parsed as unknown as Record<string, unknown>).name} with args`);
         break;
       default:
         console.log(`📨 [WebSocket] Message type: ${parsed.type}`);

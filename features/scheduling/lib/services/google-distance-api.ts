@@ -3,9 +3,9 @@
  * Handles distance and duration calculations between addresses
  */
 
-import type { 
-  DistanceApiResponse, 
-  DistanceApiRequest, 
+import type {
+  DistanceApiResponse,
+  DistanceApiRequest,
   GoogleApiResponse,
   ApiConfiguration,
   IDistanceApiService,
@@ -13,8 +13,8 @@ import type {
   RequestMapping
 } from '../types/google-distance-api';
 
-import { 
-  DEFAULT_DRIVING_SPEED_KMH, 
+import {
+  DEFAULT_DRIVING_SPEED_KMH,
   API_BASE_URL,
   DistanceApiStatus as Status,
   DistanceUnits,
@@ -26,13 +26,17 @@ export class GoogleDistanceApiService implements IDistanceApiService {
 
   constructor(apiKey?: string) {
     const key = apiKey || process.env.GOOGLE_MAPS_API_KEY || '';
-    
-    // Simple: if you have a key AND explicitly want real API, use it
+
+    // For production quotes, we need real API data
     const forceReal = process.env.USE_MOCK_DISTANCE_API === 'false';
     const useMockData = !key || (!forceReal && process.env.NODE_ENV === 'test');
-    
+
     this.config = Object.freeze({ apiKey: key, baseUrl: API_BASE_URL, useMockData });
-    
+
+    console.log(`🔑 [GoogleDistanceApiService] API Key available: ${!!key}`);
+    console.log(`🧪 [GoogleDistanceApiService] Using mock data: ${this.config.useMockData}`);
+    console.log(`🌍 [GoogleDistanceApiService] Force real API: ${forceReal}`);
+
     if (this.config.useMockData && process.env.NODE_ENV !== 'test') {
       console.warn('[GoogleDistanceApiService] Using mock data - no API key configured');
     }
@@ -60,7 +64,7 @@ export class GoogleDistanceApiService implements IDistanceApiService {
 
       this.addOptionalParams(params, request);
       const url = `${this.config.baseUrl}?${params.toString()}`;
-      
+
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -71,8 +75,14 @@ export class GoogleDistanceApiService implements IDistanceApiService {
 
     } catch (error) {
       console.error(`[GoogleDistanceApiService] Failed to fetch distance data:`, error);
-      // Fallback to mock data if real API fails
-      console.warn('[GoogleDistanceApiService] Falling back to mock data');
+
+      // For production quotes, fail hard instead of using mock data
+      if (!this.config.useMockData) {
+        throw new Error(`Google Distance API failed: ${error instanceof Error ? error.message : 'Unknown error'}. Cannot calculate accurate travel costs.`);
+      }
+
+      // Only fallback to mock data in test environments
+      console.warn('[GoogleDistanceApiService] Falling back to mock data (test environment)');
       return this.generateMockResponse(request);
     }
   }
@@ -93,6 +103,14 @@ export class GoogleDistanceApiService implements IDistanceApiService {
       return await this.processBatchWithMatrix(requests);
     } catch (error) {
       console.error(`[GoogleDistanceApiService] Batch calculation failed:`, error);
+
+      // For production quotes, fail hard instead of using mock data
+      if (!this.config.useMockData) {
+        throw new Error(`Google Distance API batch request failed: ${error instanceof Error ? error.message : 'Unknown error'}. Cannot calculate accurate travel costs.`);
+      }
+
+      // Only fallback to mock data in test environments
+      console.warn('[GoogleDistanceApiService] Falling back to mock data (test environment)');
       const results = requests.map(request => this.generateMockResponse(request));
       return Object.freeze(results);
     }
@@ -118,7 +136,7 @@ export class GoogleDistanceApiService implements IDistanceApiService {
 
     this.addOptionalParams(params, requests[0]);
     const url = `${this.config.baseUrl}?${params.toString()}`;
-    
+
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -176,7 +194,7 @@ export class GoogleDistanceApiService implements IDistanceApiService {
 
   private extractMatrixElement(matrixData: GoogleApiResponse, mapping: RequestMapping): DistanceApiResponse {
     const element = matrixData.rows?.[mapping.originIndex]?.elements?.[mapping.destinationIndex];
-    
+
     if (!element || element.status !== Status.OK) {
       return this.createApiErrorResponse(element?.status || Status.UNKNOWN_ERROR, 'No route found');
     }

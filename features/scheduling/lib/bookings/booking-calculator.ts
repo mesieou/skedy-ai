@@ -37,7 +37,8 @@ export class BookingCalculator {
    * Main entry point for booking calculations
    */
   async calculateBooking(
-    input: BookingCalculationInput
+    input: BookingCalculationInput,
+    jobScope?: string
   ): Promise<BookingCalculationResult> {
     try {
       // Step 1: Calculate shared travel for the entire booking
@@ -53,7 +54,7 @@ export class BookingCalculator {
       let total_estimate_time_in_minutes = 0;
 
       for (const serviceItem of input.services) {
-        const breakdown = await this.calculateServiceCost(serviceItem);
+        const breakdown = await this.calculateServiceCost(serviceItem, jobScope);
 
         service_breakdowns.push(breakdown);
         total_estimate_amount += breakdown.total_cost;
@@ -156,9 +157,11 @@ export class BookingCalculator {
     );
 
     // Single API call for all booking segments using Distance Matrix
+    console.log(`🌍 Making Google Distance API call for ${distanceRequests.length} segments:`, distanceRequests);
     const distanceResults = await this.googleDistanceApi.getBatchDistances(
       distanceRequests
     );
+    console.log(`🌍 Google API results:`, distanceResults);
 
     const route_segments: RouteSegment[] = [];
     let total_distance_km = 0;
@@ -166,6 +169,19 @@ export class BookingCalculator {
 
     chargeableSegments.forEach((segment, index) => {
       const distance_data = distanceResults[index];
+
+      // Check if Google API failed or returned invalid data
+      if (distance_data.status !== 'OK') {
+        throw new Error(`Google Distance API failed for route ${segment.from_address} → ${segment.to_address}: ${distance_data.error_message || distance_data.status}`);
+      }
+
+      // Check if distance/duration are zero (suspicious for real addresses)
+      if (distance_data.distance_km === 0 && distance_data.duration_mins === 0) {
+        console.warn(`⚠️ Zero distance/duration for ${segment.from_address} → ${segment.to_address}`);
+        // This might be valid (same location) or might indicate an API issue
+      }
+
+      console.log(`🛣️ Route segment ${index}: ${segment.from_address} → ${segment.to_address} = ${distance_data.distance_km}km, ${distance_data.duration_mins}min`);
 
       const route_segment: RouteSegment = {
         from_address: segment.from_address,
@@ -204,9 +220,11 @@ export class BookingCalculator {
   }
 
   private async calculateServiceCost(
-    serviceItem: ServiceWithQuantity
+    serviceItem: ServiceWithQuantity,
+    jobScope?: string
   ): Promise<ServiceBreakdown> {
     const { service, quantity } = serviceItem;
+    console.log(`💼 Calculating service cost for: ${service.name}, quantity: ${quantity}, job_scope: ${jobScope}`);
     let service_cost = 0;
     let estimated_duration_mins = 0;
 
@@ -223,7 +241,8 @@ export class BookingCalculator {
 
       const componentCost = await this.calculateComponentCost(
         component,
-        quantity
+        quantity,
+        jobScope
       );
 
       service_cost += componentCost.cost;
@@ -301,15 +320,19 @@ export class BookingCalculator {
           continue;
         }
 
+        console.log(`💰 Travel cost calculation: ${component.pricing_combination}, time: ${total_travel_time_mins}min, price: $${tier.price}, quantity: ${firstMobileService.quantity}`);
+
         switch (component.pricing_combination) {
           case PricingCombination.TRAVEL_PER_KM:
+            return total_distance_km * tier.price;
           case PricingCombination.TRAVEL_PER_KM_PER_PERSON:
           case PricingCombination.TRAVEL_PER_KM_PER_VEHICLE:
-            return total_distance_km * tier.price;
+            return total_distance_km * tier.price * firstMobileService.quantity;
           case PricingCombination.TRAVEL_PER_MINUTE:
+            return total_travel_time_mins * tier.price;
           case PricingCombination.TRAVEL_PER_MINUTE_PER_PERSON:
           case PricingCombination.TRAVEL_PER_MINUTE_PER_VEHICLE:
-            return total_travel_time_mins * tier.price;
+            return total_travel_time_mins * tier.price * firstMobileService.quantity;
         }
       }
     }
@@ -319,7 +342,8 @@ export class BookingCalculator {
 
   private async calculateComponentCost(
     component: PricingComponent,
-    quantity: number
+    quantity: number,
+    jobScope?: string
   ): Promise<{ cost: number; duration_mins: number }> {
     // Find the appropriate tier based on quantity
     const tier = this.findApplicableTier(component.tiers, quantity);
@@ -335,20 +359,22 @@ export class BookingCalculator {
     switch (component.pricing_combination) {
       case PricingCombination.LABOR_PER_HOUR_PER_PERSON:
         // Calculate based on estimated duration - tier price already includes per-person rate
-        duration_mins = this.getEstimatedDuration(tier.duration_estimate_mins);
+        duration_mins = this.getEstimatedDuration(tier.duration_estimate_mins, jobScope);
         cost = (duration_mins / 60) * tier.price;
+        console.log(`💰 Labor calculation: ${duration_mins}min ÷ 60 × $${tier.price} = $${cost}`);
         break;
 
       case PricingCombination.LABOUR_PER_HOUR:
         // Calculate based on estimated duration - simple hourly rate
-        duration_mins = this.getEstimatedDuration(tier.duration_estimate_mins);
+        duration_mins = this.getEstimatedDuration(tier.duration_estimate_mins, jobScope);
         cost = (duration_mins / 60) * tier.price;
+        console.log(`💰 Labor calculation: ${duration_mins}min ÷ 60 × $${tier.price} = $${cost}`);
         break;
 
       case PricingCombination.SERVICE_FIXED_PER_SERVICE:
         // Fixed price regardless of other factors
         cost = tier.price;
-        duration_mins = this.getEstimatedDuration(tier.duration_estimate_mins);
+        duration_mins = this.getEstimatedDuration(tier.duration_estimate_mins, jobScope);
         break;
 
       default:
@@ -514,7 +540,7 @@ export class BookingCalculator {
           const isFromBase = sortedAddresses[i].role === AddressRole.BUSINESS_BASE;
           const isToBase = sortedAddresses[i + 1].role === AddressRole.BUSINESS_BASE;
           const isBetweenCustomers = !isFromBase && !isToBase;
-          
+
           segments.push({
             from_address: `${sortedAddresses[i].address.address_line_1}, ${sortedAddresses[i].address.city}`,
             to_address: `${sortedAddresses[i + 1].address.address_line_1}, ${
@@ -530,7 +556,7 @@ export class BookingCalculator {
         // Charge from base to customers + between customers (skip return to base)
         for (let i = 0; i < sortedAddresses.length - 1; i++) {
           const isToBase = sortedAddresses[i + 1].role === AddressRole.BUSINESS_BASE;
-          
+
           segments.push({
             from_address: `${sortedAddresses[i].address.address_line_1}, ${sortedAddresses[i].address.city}`,
             to_address: `${sortedAddresses[i + 1].address.address_line_1}, ${
@@ -570,13 +596,21 @@ export class BookingCalculator {
   }
 
   private getEstimatedDuration(
-    duration: number | Record<string, number> | null | undefined
+    duration: number | Record<string, number> | null | undefined,
+    jobScope?: string
   ): number {
     if (typeof duration === "number") {
       return duration;
     }
     if (typeof duration === "object" && duration !== null) {
-      return duration.multiple_items || duration.house_move_one_room || 60;
+      // Use job scope if provided and exists in duration object
+      if (jobScope && duration[jobScope] !== undefined) {
+        console.log(`⏱️ Using job scope duration: ${jobScope} = ${duration[jobScope]} minutes`);
+        return duration[jobScope];
+      }
+
+      // Fallback to common job scopes
+      return duration.multiple_items || duration.house_move_one_room || duration.house_move_1_bedroom || 60;
     }
     return 60; // Default fallback
   }

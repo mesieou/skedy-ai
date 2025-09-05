@@ -38,7 +38,7 @@ export class QuoteTool {
       const bookingInput = this.convertToBookingInput(args, service);
       console.log(`📋 Booking input:`, JSON.stringify(bookingInput, null, 2));
 
-      const quote = await this.bookingCalculator.calculateBooking(bookingInput);
+      const quote = await this.bookingCalculator.calculateBooking(bookingInput, args.job_scope);
       console.log(`💰 Quote breakdown:`, {
         total_estimate_amount: quote.total_estimate_amount,
         total_estimate_time_in_minutes: quote.total_estimate_time_in_minutes,
@@ -101,10 +101,13 @@ export class QuoteTool {
 
     // Handle pickup addresses (plural array)
     if (args.pickup_addresses && Array.isArray(args.pickup_addresses)) {
+      console.log(`📍 Processing ${args.pickup_addresses.length} pickup addresses:`, args.pickup_addresses);
       args.pickup_addresses.forEach((address, index) => {
+        const parsedAddress = this.parseAddress(address);
+        console.log(`📍 Parsed pickup address ${index}:`, parsedAddress);
         addresses.push({
           id: `pickup_${index}`,
-          address: this.parseAddress(address),
+          address: parsedAddress,
           role: AddressRole.PICKUP,
           sequence_order: sequenceOrder++,
           service_id: service.id
@@ -123,10 +126,13 @@ export class QuoteTool {
 
     // Handle dropoff addresses (plural array)
     if (args.dropoff_addresses && Array.isArray(args.dropoff_addresses)) {
+      console.log(`📍 Processing ${args.dropoff_addresses.length} dropoff addresses:`, args.dropoff_addresses);
       args.dropoff_addresses.forEach((address, index) => {
+        const parsedAddress = this.parseAddress(address);
+        console.log(`📍 Parsed dropoff address ${index}:`, parsedAddress);
         addresses.push({
           id: `dropoff_${index}`,
-          address: this.parseAddress(address),
+          address: parsedAddress,
           role: AddressRole.DROPOFF,
           sequence_order: sequenceOrder++,
           service_id: service.id

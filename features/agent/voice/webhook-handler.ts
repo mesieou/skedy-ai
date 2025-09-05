@@ -39,7 +39,7 @@ export class WebhookHandler {
     const callId = event.data.call_id;
 
     console.log(`📞 Processing incoming call with ID: ${callId}`);
-    console.log('📋 Full event data:', JSON.stringify(event, null, 2));
+    // console.log('📋 Full event data:', JSON.stringify(event, null, 2));
 
     // Extract Twilio Account SID from SIP headers
     const twilioAccountSid = this.extractTwilioAccountSid(event.data.sip_headers || []);

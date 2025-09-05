@@ -73,7 +73,7 @@ export const removalistExample1ServiceData: CreateServiceData = {
       },
       {
         name: "Travel Cost",
-        pricing_combination: PricingCombination.TRAVEL_PER_MINUTE_PER_PERSON,
+        pricing_combination: PricingCombination.TRAVEL_PER_HOUR_PER_PERSON,
         tiers: [
           {
             min_quantity: 1,
