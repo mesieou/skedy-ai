@@ -51,8 +51,13 @@ export class CallContextManager {
   private callStateManager: CallStateManager;
   private realTimeConversationManager: RealTimeConversationManager;
   private conversationPersistenceService: ConversationPersistenceService;
+  private instanceId: string;
+  private static instanceCount = 0;
 
   constructor() {
+    CallContextManager.instanceCount++;
+    this.instanceId = `CallContextManager-${CallContextManager.instanceCount}`;
+    console.log(`🏗️ [${this.instanceId}] Creating new CallContextManager instance (total: ${CallContextManager.instanceCount})`);
     // Create per-call services (stateful)
     this.callStateManager = agentServiceContainer.createCallStateManager();
     this.realTimeConversationManager = agentServiceContainer.createRealTimeConversationManager();
@@ -328,11 +333,14 @@ export class CallContextManager {
 
   private setupEventListeners(): void {
     // Listen for WebSocket connection events
-    voiceEventBus.subscribe('voice:websocket:connected', this.handleWebSocketConnected.bind(this));
-    voiceEventBus.subscribe('voice:websocket:disconnected', this.handleWebSocketDisconnected.bind(this));
+    console.log(`🔧 [${this.instanceId}] Setting up event listeners`);
+    voiceEventBus.subscribe('voice:websocket:connected', this.handleWebSocketConnected.bind(this), this.instanceId);
+    voiceEventBus.subscribe('voice:websocket:disconnected', this.handleWebSocketDisconnected.bind(this), this.instanceId);
+    voiceEventBus.subscribe('voice:call:ended', this.handleCallEndedEvent.bind(this), this.instanceId);
   }
 
   private async handleWebSocketConnected(event: VoiceEvent): Promise<void> {
+    console.log(`🔌 [${this.instanceId}] Handling WebSocket connected event for call ${event.callId}`);
     await this.updateCallState(event.callId, {
       webSocketStatus: 'connected',
       lastActivity: Date.now()
@@ -340,9 +348,25 @@ export class CallContextManager {
   }
 
   private async handleWebSocketDisconnected(event: VoiceEvent): Promise<void> {
+    console.log(`🔌 [${this.instanceId}] Handling WebSocket disconnected event for call ${event.callId}`);
     await this.updateCallState(event.callId, {
       webSocketStatus: 'disconnected'
     });
+  }
+
+  private async handleCallEndedEvent(event: VoiceEvent): Promise<void> {
+    console.log(`🏁 [${this.instanceId}] Handling call ended event for call ${event.callId}`);
+
+    // Update call state to ended (this replaces the direct endCall method)
+    await this.updateCallState(event.callId, {
+      status: 'ended',
+      lastActivity: Date.now()
+    });
+
+    // Set TTL for cleanup (1 hour)
+    await simpleTTL.setEndedCallTTL(event.callId);
+
+    console.log(`✅ [${this.instanceId}] Call ended and TTL set for ${event.callId}`);
   }
 
   // ============================================================================

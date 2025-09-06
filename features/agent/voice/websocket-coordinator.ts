@@ -24,13 +24,6 @@ export interface WebSocketCoordinatorOptions {
   onClose?: (code: number, reason: string) => void;
 }
 
-interface ReconnectionState {
-  attempts: number;
-  maxAttempts: number;
-  baseDelayMs: number;
-  maxDelayMs: number;
-  isReconnecting: boolean;
-}
 
 // ============================================================================
 // WEBSOCKET COORDINATOR (MVP)
@@ -40,12 +33,13 @@ export class WebSocketCoordinator {
   private webSocketService: WebSocketService;
   private callContextManager: CallContextManager;
   private activeWebSocket: WebSocket | null = null;
-
-  // Reconnection management (simplified)
-  private reconnectionState: Map<string, ReconnectionState> = new Map();
-  private reconnectionTimers: Map<string, NodeJS.Timeout> = new Map();
+  private static instanceCount = 0;
+  private instanceId: string;
 
   constructor(callContextManager?: CallContextManager) {
+    WebSocketCoordinator.instanceCount++;
+    this.instanceId = `WebSocketCoordinator-${WebSocketCoordinator.instanceCount}`;
+    console.log(`🏗️ [${this.instanceId}] Creating new WebSocketCoordinator instance (total: ${WebSocketCoordinator.instanceCount})`);
     this.webSocketService = new WebSocketService();
     this.callContextManager = callContextManager || new CallContextManager();
     this.setupEventListeners();
@@ -59,10 +53,7 @@ export class WebSocketCoordinator {
     const { callId } = options;
     console.log(`🔌 [WebSocketCoordinator] Starting session for call ${callId}`);
 
-    // Initialize reconnection state
-    this.initializeReconnectionState(callId);
-
-    // Attempt initial connection
+    // Attempt connection
     await this.attemptConnection(options);
   }
 
@@ -70,7 +61,6 @@ export class WebSocketCoordinator {
     const { callId, apiKey, initialTools, onError } = options;
 
     try {
-      this.updateReconnectionAttempt(callId);
       console.log(`🔌 [WebSocketCoordinator] Attempting connection for ${callId}`);
 
       // Create WebSocket connection
@@ -79,7 +69,7 @@ export class WebSocketCoordinator {
         apiKey,
         initialTools,
         onMessage: () => {}, // Messages handled by WebSocketService
-        onError: (error) => this.handleWebSocketError(callId, error, options),
+        onError: (error) => this.handleWebSocketError(callId, error),
         onClose: (code, reason) => this.handleWebSocketClose(callId, code, reason, options),
         onFunctionCall: async (functionName, args, functionCallId) => {
           // Forward to webhook handler via events
@@ -94,27 +84,22 @@ export class WebSocketCoordinator {
       });
 
       this.activeWebSocket = ws;
-      this.resetReconnectionState(callId);
-
-      // Restore state if this was a reconnection
-      const reconnectState = this.getReconnectionState(callId);
-      if (reconnectState && reconnectState.attempts > 1) {
-        await this.restoreStateFromRedis(callId);
-      }
 
       // Emit connection success
       await voiceEventBus.publish({
         type: 'voice:websocket:connected',
         callId,
         timestamp: Date.now(),
-        data: { reconnection: (reconnectState?.attempts || 0) > 1 }
+        data: { reconnection: false }
       });
 
       console.log(`✅ [WebSocketCoordinator] Connected successfully for ${callId}`);
 
     } catch (error) {
       console.error(`❌ [WebSocketCoordinator] Connection failed for ${callId}:`, error);
-      await this.scheduleReconnection(callId, options);
+
+      // Clean up on connection failure
+      this.cleanup(callId);
 
       if (onError) {
         onError(error as Error);
@@ -122,64 +107,12 @@ export class WebSocketCoordinator {
     }
   }
 
-  // ============================================================================
-  // AUTO-RECONNECTION (Quality Voice Agent Feature)
-  // ============================================================================
-
-  private async scheduleReconnection(callId: string, options: WebSocketCoordinatorOptions): Promise<void> {
-    const state = this.getReconnectionState(callId);
-    if (!state || state.attempts >= state.maxAttempts) {
-      console.error(`❌ [WebSocketCoordinator] Max reconnection attempts exceeded for ${callId}`);
-      return;
-    }
-
-    // Simple exponential backoff (1s, 2s, 4s, 8s, max 10s)
-    const delay = Math.min(state.baseDelayMs * Math.pow(2, state.attempts), state.maxDelayMs);
-
-    console.log(`🔄 [WebSocketCoordinator] Reconnecting ${callId} in ${delay}ms (attempt ${state.attempts + 1})`);
-
-    const timer = setTimeout(() => {
-      this.attemptConnection(options);
-    }, delay);
-
-    this.reconnectionTimers.set(callId, timer);
-    state.isReconnecting = true;
-  }
-
-  // ============================================================================
-  // STATE RESTORATION (Quality Voice Agent Feature)
-  // ============================================================================
-
-  private async restoreStateFromRedis(callId: string): Promise<void> {
-    try {
-      console.log(`🔄 [WebSocketCoordinator] Restoring conversation state for ${callId}`);
-
-      // Get recent messages for context
-      const recentMessages = await this.callContextManager.getRecentMessages(callId, 5);
-
-      if (recentMessages.length > 0) {
-        // Add system message about reconnection with context
-        const lastUserMessage = recentMessages.filter(m => m.role === 'user').pop();
-        const contextHint = lastUserMessage ? ` We were discussing: "${lastUserMessage.content.substring(0, 50)}..."` : '';
-
-        await this.callContextManager.addSystemMessage(
-          callId,
-          `Connection restored.${contextHint}`
-        );
-
-        console.log(`✅ [WebSocketCoordinator] State restored with ${recentMessages.length} messages`);
-      }
-
-    } catch (error) {
-      console.error(`❌ [WebSocketCoordinator] Failed to restore state for ${callId}:`, error);
-    }
-  }
 
   // ============================================================================
   // EVENT HANDLERS
   // ============================================================================
 
-  private async handleWebSocketError(callId: string, error: Error, options: WebSocketCoordinatorOptions): Promise<void> {
+  private async handleWebSocketError(callId: string, error: Error): Promise<void> {
     console.error(`❌ [WebSocketCoordinator] WebSocket error for ${callId}:`, error);
 
     // Emit error event
@@ -190,7 +123,9 @@ export class WebSocketCoordinator {
       data: { error: error.message }
     });
 
-    await this.scheduleReconnection(callId, options);
+    // Always clean up on error - no reconnection for MVP
+    console.log(`🧹 [WebSocketCoordinator] WebSocket error - cleaning up resources for ${callId}`);
+    this.cleanup(callId);
   }
 
   private async handleWebSocketClose(callId: string, code: number, reason: string, options: WebSocketCoordinatorOptions): Promise<void> {
@@ -204,58 +139,32 @@ export class WebSocketCoordinator {
       data: { code, reason }
     });
 
-    // Only reconnect if it wasn't a normal closure
-    if (code !== 1000) {
-      await this.scheduleReconnection(callId, options);
-    } else {
-      this.cleanup(callId);
-    }
+    // Emit call ended event (triggers call state update and cleanup)
+    await voiceEventBus.publish({
+      type: 'voice:call:ended',
+      callId,
+      timestamp: Date.now(),
+      data: { reason: `websocket_close: ${code}` }
+    });
+
+    // Always clean up - no reconnection for MVP
+    console.log(`🧹 [WebSocketCoordinator] WebSocket closed - cleaning up resources for ${callId}`);
+    this.cleanup(callId);
 
     if (options.onClose) {
       options.onClose(code, reason);
     }
   }
 
-  // ============================================================================
-  // STATE MANAGEMENT (Simplified)
-  // ============================================================================
-
-  private initializeReconnectionState(callId: string): void {
-    this.reconnectionState.set(callId, {
-      attempts: 0,
-      maxAttempts: 5, // 5 attempts max
-      baseDelayMs: 1000, // Start with 1 second
-      maxDelayMs: 10000, // Max 10 seconds
-      isReconnecting: false
-    });
-  }
-
-  private updateReconnectionAttempt(callId: string): void {
-    const state = this.reconnectionState.get(callId);
-    if (state) {
-      state.attempts++;
-    }
-  }
-
-  private resetReconnectionState(callId: string): void {
-    const state = this.reconnectionState.get(callId);
-    if (state) {
-      state.attempts = 0;
-      state.isReconnecting = false;
-    }
-  }
-
-  private getReconnectionState(callId: string): ReconnectionState | undefined {
-    return this.reconnectionState.get(callId);
-  }
 
   // ============================================================================
   // EVENT LISTENERS & CLEANUP
   // ============================================================================
 
   private setupEventListeners(): void {
-    voiceEventBus.subscribe('voice:call:ended', this.handleCallEnded.bind(this));
-    console.log('🔌 [WebSocketCoordinator] Event listeners initialized');
+    console.log(`🔧 [${this.instanceId}] Setting up event listeners`);
+    voiceEventBus.subscribe('voice:call:ended', this.handleCallEnded.bind(this), this.instanceId);
+    console.log(`🔌 [${this.instanceId}] Event listeners initialized`);
   }
 
   private async handleCallEnded(event: VoiceEvent): Promise<void> {
@@ -264,15 +173,11 @@ export class WebSocketCoordinator {
   }
 
   private cleanup(callId: string): void {
-    // Clear reconnection timer
-    const timer = this.reconnectionTimers.get(callId);
-    if (timer) {
-      clearTimeout(timer);
-      this.reconnectionTimers.delete(callId);
+    // Close WebSocket if still active
+    if (this.activeWebSocket && this.activeWebSocket.readyState === WebSocket.OPEN) {
+      this.activeWebSocket.close();
+      this.activeWebSocket = null;
     }
-
-    // Clean up state
-    this.reconnectionState.delete(callId);
 
     console.log(`🧹 [WebSocketCoordinator] Cleaned up resources for ${callId}`);
   }

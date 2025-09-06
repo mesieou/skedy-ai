@@ -109,21 +109,28 @@ export class VoiceEventBus {
   // SUBSCRIBING
   // ============================================================================
 
-  async subscribe(eventType: string, handler: EventHandler): Promise<void> {
+  async subscribe(eventType: string, handler: EventHandler, subscriberInfo?: string): Promise<void> {
     // Store handler for this event type
     if (!this.subscriptions.has(eventType)) {
       this.subscriptions.set(eventType, []);
     }
-    this.subscriptions.get(eventType)!.push(handler);
+
+    const subscriber = subscriberInfo || 'Unknown';
+    const currentHandlers = this.subscriptions.get(eventType)!;
+    currentHandlers.push(handler);
+
+    // Log how many handlers are now registered for this event
+    const handlerCount = currentHandlers.length;
 
     // Subscribe to Redis channel for this event type (only if not already subscribed)
     const channel = this.getChannelForEventType(eventType);
+
     if (!this.channelSubscriptions.has(channel)) {
       await this.subscribeToChannel(channel);
       this.channelSubscriptions.add(channel);
-      console.log(`📥 [EventBus] Subscribed to ${eventType} on channel ${channel}`);
+      console.log(`📥 [EventBus] Subscribed to ${eventType} on channel ${channel} by ${subscriber} (${handlerCount} handler${handlerCount > 1 ? 's' : ''})`);
     } else {
-      console.log(`📥 [EventBus] Added handler for ${eventType} (channel ${channel} already subscribed)`);
+      console.log(`📥 [EventBus] Added handler for ${eventType} (channel ${channel} already subscribed) by ${subscriber} (${handlerCount} handler${handlerCount > 1 ? 's' : ''} total)`);
     }
   }
 
@@ -192,15 +199,16 @@ export class VoiceEventBus {
       return `voice:call:${event.callId}`;
     }
 
-    // Global events go to global channel
-    return 'voice:global';
+    // Each event type gets its own channel (industry standard)
+    return event.type;
   }
 
   private getChannelForEventType(eventType: string): string {
     if (eventType.includes('call:') || eventType.includes('message:')) {
       return 'voice:call:*'; // Pattern subscription
     }
-    return 'voice:global';
+    // Each event type gets its own channel (industry standard)
+    return eventType;
   }
 
   // ============================================================================

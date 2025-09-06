@@ -54,7 +54,7 @@ export class UserCreationService {
 
   private setupEventListeners(): void {
     // Listen for call started events to trigger user lookup
-    voiceEventBus.subscribe('voice:call:started', this.handleCallStarted.bind(this));
+    voiceEventBus.subscribe('voice:call:started', this.handleCallStarted.bind(this), 'UserCreationService');
 
     console.log('👤 [UserCreation] Event listeners initialized');
   }

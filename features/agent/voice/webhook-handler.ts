@@ -21,6 +21,7 @@ import {
 import { ToolsManager } from '../tools/tools-manager';
 import { UserCreationService } from '../tools/user-creation';
 import { CallContextManager, initializeAgentMemory, agentServiceContainer } from '../memory';
+import { voiceEventBus } from '../memory/redis/event-bus';
 import { businessContextProvider } from '../../shared/lib/database/business-context-provider';
 import { PromptBuilder } from '../intelligence/prompt-builder';
 import type { QuoteFunctionArgs } from '../tools/types';
@@ -228,13 +229,20 @@ export class VoiceWebhookHandler {
   // ERROR HANDLING
   // ============================================================================
 
-  private handleCallError(callId: string, error: Error, options: WebhookHandlerOptions): void {
+  private async handleCallError(callId: string, error: Error, options: WebhookHandlerOptions): Promise<void> {
     console.error(`❌ [VoiceHandler] Call error ${callId}:`, error);
 
-    // End call context
-    this.callContextManager.endCall(callId, `error: ${error.message}`).catch(endError => {
-      console.error(`❌ [VoiceHandler] Failed to end call context:`, endError);
-    });
+    // Emit call ended event (triggers call state update via events)
+    try {
+      await voiceEventBus.publish({
+        type: 'voice:call:ended',
+        callId,
+        timestamp: Date.now(),
+        data: { reason: `error: ${error.message}` }
+      });
+    } catch (endError) {
+      console.error(`❌ [VoiceHandler] Failed to publish call ended event:`, endError);
+    }
 
     if (options.onError) {
       options.onError(error, callId);
@@ -245,10 +253,8 @@ export class VoiceWebhookHandler {
     console.log(`🔌 [VoiceHandler] Call ${callId} closed - Code: ${code}, Reason: ${reason}`);
 
     try {
-      // 1. End call context (triggers Redis TTL + conversation persistence)
-      await this.callContextManager.endCall(callId, `websocket_close: ${code}`);
-
-      // 2. Clean up local webhook handler resources
+      // 1. Clean up local webhook handler resources only
+      // Note: Call state updates happen via events from WebSocketCoordinator
       await this.cleanupLocalResources(callId);
 
       console.log(`✅ [VoiceHandler] Call ${callId} cleanup completed`);

@@ -59,13 +59,13 @@ export class ConversationPersistenceService {
 
   private setupEventListeners(): void {
     // Listen for call started to prepare session info
-    voiceEventBus.subscribe('voice:call:started', this.handleCallStarted.bind(this));
+    voiceEventBus.subscribe('voice:call:started', this.handleCallStarted.bind(this), 'ConversationPersistenceService');
 
     // Listen for user resolved to update session info
-    voiceEventBus.subscribe('voice:user:resolved', this.handleUserResolved.bind(this));
+    voiceEventBus.subscribe('voice:user:resolved', this.handleUserResolved.bind(this), 'ConversationPersistenceService');
 
     // Listen for call ended to flush complete conversation
-    voiceEventBus.subscribe('voice:call:ended', this.handleCallEnded.bind(this));
+    voiceEventBus.subscribe('voice:call:ended', this.handleCallEnded.bind(this), 'ConversationPersistenceService');
 
     console.log('💾 [ConversationPersistence] Event listeners initialized (end-of-call only)');
   }
