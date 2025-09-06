@@ -13,7 +13,7 @@ export class SignatureService {
     this.client = new OpenAI({ webhookSecret: this.webhookSecret });
   }
 
-          verifySignature(
+  verifySignature(
     rawBody: string,
     signatureHeader: string,
     timestamp: string,
@@ -31,7 +31,7 @@ export class SignatureService {
         'webhook-id': webhookId || 'unknown',
       };
 
-            console.log("🔍 Using OpenAI SDK webhooks.unwrap() method");
+      console.log("🔍 Using OpenAI SDK webhooks.unwrap() method");
       console.log("🔍 Timestamp:", timestamp);
       console.log("🔍 Raw body length:", rawBody.length);
 

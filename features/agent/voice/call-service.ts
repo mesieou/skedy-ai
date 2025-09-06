@@ -25,10 +25,6 @@ export class CallService {
 
     const acceptUrl = `${this.baseUrl}/${callId}/accept`;
     console.log(`🔗 Accept URL: ${acceptUrl}`);
-    // console.log(
-    //   `📤 Payload being sent to OpenAI:`,
-    //   JSON.stringify(config, null, 2)
-    // );
 
     try {
       const response = await axios.post(acceptUrl, config, {

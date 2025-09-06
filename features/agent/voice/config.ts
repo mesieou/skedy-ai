@@ -43,6 +43,13 @@ export interface CallAcceptConfig {
         interrupt_response: boolean;
         eagerness: "auto" | "low" | "medium" | "high";
        };
+      transcription: {
+        model: string;
+        language: string;
+      };
+      noise_reduction: {
+        type: string;
+      };
     };
     output: {
       format: {
@@ -156,6 +163,13 @@ export const createCallAcceptConfig = (
         create_response: true,
         interrupt_response: true,
         eagerness: "auto",
+      },
+      transcription: {
+        model: "gpt-4o-transcribe",
+        language: "en"
+      },
+      noise_reduction: {
+        type: "near_field"
       }
     },
     output: {

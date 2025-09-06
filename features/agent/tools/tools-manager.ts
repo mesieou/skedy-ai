@@ -12,6 +12,7 @@ import type { FunctionCallResult, QuoteFunctionArgs, ServiceSelectionFunctionArg
 import { QuoteTool } from './scheduling/quote';
 import { ServiceSelectionTool } from './scheduling/service-selection';
 import { SchemaManager } from './schema-generator';
+import { createToolError } from '../../shared/utils/error-utils';
 
 export class ToolsManager {
   private businessContext: BusinessContext;
@@ -56,7 +57,7 @@ export class ToolsManager {
       case 'get_quote':
         // Check if service is selected first
         if (!this.selectedService) {
-          return this.createErrorResult(
+          return createToolError(
             "No service selected",
             "Please select a service first before requesting a quote."
           );
@@ -70,7 +71,7 @@ export class ToolsManager {
       //   return this.bookingTool.makeBooking(args);
 
       default:
-        return this.createErrorResult(
+        return createToolError(
           "Unknown function",
           `Sorry, I don't know how to handle: ${functionName}`
         );
@@ -119,9 +120,5 @@ export class ToolsManager {
   clearSelectedService(): void {
     this.selectedService = null;
     console.log('🧹 Cleared selected service');
-  }
-
-  private createErrorResult(error: string, message: string): FunctionCallResult {
-    return { success: false, error, message };
   }
 }

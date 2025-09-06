@@ -13,6 +13,7 @@
     "test:dashboard": "jest features/dashboard",
     "test:shared": "jest features/shared",
     "test:ai-agent": "jest features/ai-agent",
+    "test:memory": "jest features/agent/__tests__/memory/",
     "seed:business": "tsx scripts/seed-business.ts"
   },
   "dependencies": {
@@ -24,6 +25,7 @@
     "@radix-ui/react-slot": "^1.2.2",
     "@supabase/ssr": "latest",
     "@supabase/supabase-js": "latest",
+    "@types/ioredis": "^4.28.10",
     "@types/luxon": "^3.7.1",
     "@types/ws": "^8.18.1",
     "assemblyai": "^4.15.0",
@@ -31,6 +33,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.12",
+    "ioredis": "^5.7.0",
     "lucide-react": "^0.511.0",
     "luxon": "^3.7.1",
     "next": "latest",

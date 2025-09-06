@@ -12,6 +12,9 @@ export { ToolsManager } from './tools-manager';
 // Schema management (used internally by ToolsManager)
 export { SchemaManager } from './schema-generator';
 
+// User management (reusable across channels)
+export { UserCreationService } from './user-creation';
+
 // Scheduling tools
 export { QuoteTool } from './scheduling/quote';
 export { ServiceSelectionTool } from './scheduling/service-selection';

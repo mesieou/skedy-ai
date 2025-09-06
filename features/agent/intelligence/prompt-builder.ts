@@ -6,11 +6,13 @@
  */
 
 import type { BusinessContext } from '../../shared/lib/database/types/business-context';
+import type { User } from '../../shared/lib/database/types/user';
 
 interface PromptOptions {
   includeTools?: boolean;
   customInstructions?: string;
   conversationHistory?: string;
+  userContext?: User | null;
 }
 
 export class PromptBuilder {
@@ -71,10 +73,12 @@ You have access to the following functions to assist customers:
 ## Greeting
 - Keep it short and upbeat.
 - Identify business and yourself as Rachel.
+- FOR RETURNING CUSTOMERS: Use their name and acknowledge them warmly.
+- FOR NEW CUSTOMERS: Use standard greeting.
 - Sample phrases (rotate these, don't repeat):
-  - "Hi! Thanks for calling {BusinessName}, I'm Rachel — how can I make things easier for you today?"
-  - "Hi! Rachel from {BusinessName} — how can I make your day less of a circus?"
-  - "Hello! Rachel here from {BusinessName}. What can I do for you?"
+  - NEW: "Hi! Thanks for calling {BusinessName}, I'm Rachel — how can I make things easier for you today?"
+  - NEW: "Hi! Rachel from {BusinessName} — how can I make your day less of a circus?"
+  - RETURNING: "Hi {CustomerName}! Rachel from {BusinessName} — great to hear from you again!"
 
 ## Step 1: Diagnose Before Prescribing
 - Ask layered questions to understand their needs:
@@ -204,6 +208,11 @@ Trigger only after the customer shows agreement (e.g., says “yeah,” “that 
     // Inject business context
     sections.push(this.buildBusinessContextSection(businessContext));
 
+    // Add user context if provided
+    if (options.userContext) {
+      sections.push(this.buildUserContextSection(options.userContext));
+    }
+
     // Add custom instructions if provided
     if (options.customInstructions) {
       sections.push(`# Additional Instructions\n${options.customInstructions}`);
@@ -215,6 +224,19 @@ Trigger only after the customer shows agreement (e.g., says “yeah,” “that 
     }
 
     return sections.join('\n\n');
+  }
+
+  /**
+   * Build user context section for personalized interactions
+   */
+  private static buildUserContextSection(user: User): string {
+    return `# CUSTOMER CONTEXT
+**Customer Information**:
+- **Name**: ${user.first_name}${user.last_name ? ` ${user.last_name}` : ''}
+- **Phone**: ${user.phone_number}
+- **Status**: RETURNING CUSTOMER
+- **Email**: ${user.email || 'Not provided'}
+`;
   }
 
   /**

@@ -1,83 +1,90 @@
 import WebSocket from "ws";
-import {
-  getAuthHeaders,
-  OpenAIWebSocketMessage,
-} from "./config";
+import { getAuthHeaders, OpenAIWebSocketMessage } from "./config";
+
+// ============================================================================
+// TYPES & INTERFACES
+// ============================================================================
 
 export interface WebSocketConnectionOptions {
   callId: string;
   apiKey: string;
-  initialTools?: Array<Record<string, unknown>>; // Initial tools to set via session.update
+  initialTools?: Array<Record<string, unknown>>;
   onMessage?: (message: string) => void;
   onError?: (error: Error) => void;
   onClose?: (code: number, reason: string) => void;
   onFunctionCall?: (functionName: string, args: Record<string, unknown>, functionCallId: string) => Promise<unknown>;
 }
 
+interface ConversationItem {
+  role?: string;
+  content?: Array<{
+    transcript?: string;
+    type?: string;
+  }>;
+}
+
+interface FunctionCallOutput {
+  type: string;
+  name?: string;
+  arguments?: string;
+  call_id?: string;
+}
+
+// ============================================================================
+// WEBSOCKET SERVICE CLASS
+// ============================================================================
+
 export class WebSocketService {
-  private baseUrl = "wss://api.openai.com/v1/realtime";
+  private readonly baseUrl = "wss://api.openai.com/v1/realtime";
   private activeWebSocket: WebSocket | null = null;
+
+  // ============================================================================
+  // CONNECTION MANAGEMENT
+  // ============================================================================
 
   async connect(options: WebSocketConnectionOptions): Promise<WebSocket> {
     const { callId, apiKey, initialTools, onMessage, onError, onClose, onFunctionCall } = options;
 
     console.log("🌐 Connecting to WebSocket for real-time communication...");
+    console.log(`🔗 WebSocket URL: ${this.baseUrl}?call_id=${callId}`);
 
-    const wsUrl = `${this.baseUrl}?call_id=${callId}`;
-    console.log(`🔗 WebSocket URL: ${wsUrl}`);
-
-    const ws = new WebSocket(wsUrl, {
+    const ws = new WebSocket(`${this.baseUrl}?call_id=${callId}`, {
       headers: getAuthHeaders(apiKey),
     });
 
     this.activeWebSocket = ws;
 
+    // Setup event handlers
+    this.setupConnectionHandlers(ws, onError, onClose);
+    this.setupMessageHandlers(ws, onMessage, onFunctionCall);
+    this.setupOpenHandler(ws, initialTools);
+
+    return ws;
+  }
+
+  private setupOpenHandler(ws: WebSocket, initialTools?: Array<Record<string, unknown>>): void {
     ws.on("open", () => {
       console.log("✅ [WebSocket] Connected successfully");
 
-      // First: Set initial tools via session.update (if provided)
+      // Set initial tools if provided
       if (initialTools && initialTools.length > 0) {
-        console.log("📤 [WebSocket] Setting initial tools via session.update...");
+        console.log(`📤 [WebSocket] Setting initial tools: [${initialTools.map(t => t.name).join(', ')}]`);
         this.updateSessionTools(initialTools);
       }
 
-      // Then: Send response.create to start conversation
-      console.log("📤 [WebSocket] Sending response.create...");
-      const responseCreate = {
-        type: "response.create"
-      };
-      ws.send(JSON.stringify(responseCreate));
+      // Start conversation
+      this.sendMessage({ type: "response.create" });
     });
+  }
 
-    ws.on("message", (data) => {
-      const message = data.toString();
-
-      // Parse and handle specific message types for better logging
-      try {
-        const parsed = JSON.parse(message);
-        this.handleSpecificMessageTypes(parsed);
-
-        // Handle function calls
-        if (onFunctionCall) {
-          // Don't await here to avoid blocking message processing
-          this.handleFunctionCalls(parsed, onFunctionCall, ws).catch(error => {
-            console.error('❌ [WebSocket] Function call handling failed:', error);
-          });
-        }
-      } catch {
-        console.warn("⚠️ [WebSocket] Could not parse message as JSON");
-      }
-
-      if (onMessage) {
-        onMessage(message);
-      }
-    });
-
+  private setupConnectionHandlers(
+    ws: WebSocket,
+    onError?: (error: Error) => void,
+    onClose?: (code: number, reason: string) => void
+  ): void {
     ws.on("close", (code, reason) => {
       const reasonStr = reason?.toString() || "No reason provided";
-      console.log(
-        `🔌 [WebSocket] Connection closed - Code: ${code}, Reason: ${reasonStr}`
-      );
+      console.log(`🔌 [WebSocket] Connection closed - Code: ${code}, Reason: ${reasonStr}`);
 
       if (onClose) {
         onClose(code, reasonStr);
@@ -91,57 +98,228 @@ export class WebSocketService {
         onError(error);
       }
     });
-
-    return ws;
   }
 
-  /**
-   * Handle function calls from OpenAI response.done events
-   */
+  private setupMessageHandlers(
+    ws: WebSocket,
+    onMessage?: (message: string) => void,
+    onFunctionCall?: (functionName: string, args: Record<string, unknown>, functionCallId: string) => Promise<unknown>
+  ): void {
+    ws.on("message", (data) => {
+      const message = data.toString();
+
+      try {
+        const parsed = JSON.parse(message);
+
+        // Handle specific message types
+        this.handleMessage(parsed);
+
+        // Handle function calls
+        if (onFunctionCall) {
+          this.handleFunctionCalls(parsed, onFunctionCall, ws).catch(error => {
+            console.error('❌ [WebSocket] Function call handling failed:', error);
+          });
+        }
+
+        // Pass through to custom handler
+        if (onMessage) {
+          onMessage(message);
+        }
+
+      } catch {
+        console.warn("⚠️ [WebSocket] Could not parse message as JSON");
+      }
+    });
+  }
+
+  // ============================================================================
+  // MESSAGE HANDLING
+  // ============================================================================
+
+  private handleMessage(parsed: OpenAIWebSocketMessage): void {
+    const messageType = parsed.type;
+
+    switch (messageType) {
+      // Session Management
+      case "session.created":
+        this.handleSessionCreated(parsed);
+        break;
+      case "session.updated":
+        console.log("🎯 [WebSocket] Session updated successfully");
+        break;
+
+      // Conversation Flow
+      case "conversation.item.done":
+        this.handleConversationItem(parsed);
+        break;
+      case "response.done":
+        console.log("✅ [WebSocket] Response completed - audio should be playing");
+        break;
+
+      // User Speech Detection
+      case "input_audio_buffer.speech_started":
+        console.log("🎤 [User started speaking]");
+        break;
+      case "input_audio_buffer.speech_stopped":
+        console.log("🎤 [User stopped speaking]");
+        break;
+      case "input_audio_buffer.committed":
+        console.log("🎤 [User audio committed - processing...]");
+        break;
+
+      // User Transcription
+      case "conversation.item.input_audio_transcription.completed":
+        this.handleUserTranscript(parsed);
+        break;
+
+      // Function Calling
+      case "response.function_call_arguments.done":
+        this.handleFunctionCallCompleted(parsed);
+        break;
+
+      // Errors
+      case "error":
+        console.error("❌ [WebSocket] Received error:", parsed.error);
+        break;
+
+      // Silent events (too verbose for normal operation)
+      case "conversation.item.created":
+      case "conversation.item.added":
+      case "response.created":
+      case "response.output_item.added":
+      case "response.content_part.added":
+      case "response.output_audio.done":
+      case "response.output_audio_transcript.done":
+      case "response.content_part.done":
+      case "response.output_item.done":
+      case "response.audio.delta":
+      case "response.audio_transcript.delta":
+      case "response.output_audio_transcript.delta":
+      case "input_audio_transcript.delta":
+      case "conversation.item.input_audio_transcription.delta":
+      case "response.function_call_arguments.delta":
+      case "rate_limits.updated":
+      case "output_audio_buffer.started":
+      case "output_audio_buffer.stopped":
+        // Silent - normal WebSocket events
+        break;
+
+      default:
+        // Silent for truly unknown events
+        break;
+    }
+  }
+
+  // ============================================================================
+  // SPECIFIC EVENT HANDLERS
+  // ============================================================================
+
+  private handleSessionCreated(parsed: OpenAIWebSocketMessage): void {
+    console.log("🎯 [WebSocket] Session created successfully");
+
+    if (parsed.session) {
+      const session = parsed.session as Record<string, unknown>;
+
+      console.log("🔍 [Session Details]:");
+      console.log(`   Model: ${parsed.session.model}`);
+      console.log(`   Voice: ${parsed.session.voice}`);
+
+      // Check transcription status
+      if (session.input_audio_transcription) {
+        console.log(`   🎤 Transcription: Enabled`);
+      } else {
+        console.log(`   🎤 Transcription: NOT CONFIGURED`);
+      }
+    }
+  }
+
+  private handleConversationItem(parsed: OpenAIWebSocketMessage): void {
+    const parsedItem = parsed as unknown as { item?: ConversationItem };
+    const item = parsedItem.item;
+
+    if (item?.content && item.role === 'assistant') {
+      const transcript = item.content[0]?.transcript;
+      if (transcript) {
+        console.log(`🤖 [AI said]: "${transcript}"`);
+      }
+    }
+    // User transcripts are handled by transcription.completed events
+  }
+
+  private handleUserTranscript(parsed: OpenAIWebSocketMessage): void {
+    const transcriptData = parsed as unknown as {
+      transcript?: string;
+      item_id?: string;
+    };
+
+    if (transcriptData.transcript) {
+      console.log(`👤 [User said]: "${transcriptData.transcript}"`);
+    }
+  }
+
+  private handleFunctionCallCompleted(parsed: OpenAIWebSocketMessage): void {
+    const functionData = parsed as unknown as { name?: string };
+    if (functionData.name) {
+      console.log(`🎯 [Function completed]: ${functionData.name}`);
+    }
+  }
+
+  // ============================================================================
+  // FUNCTION CALL HANDLING
+  // ============================================================================
+
   private async handleFunctionCalls(
     parsed: Record<string, unknown>,
     onFunctionCall: (functionName: string, args: Record<string, unknown>, functionCallId: string) => Promise<unknown>,
     ws: WebSocket
   ): Promise<void> {
-    if (parsed.type === 'response.done') {
-      const response = parsed.response as { output?: Array<{ type: string; name?: string; arguments?: string; call_id?: string }> };
+    if (parsed.type !== 'response.done') return;
 
-      if (response?.output) {
-        for (const output of response.output) {
-          if (output.type === 'function_call' && output.name && output.arguments && output.call_id) {
-            const { name: functionName, arguments: argsString, call_id: functionCallId } = output;
+    const response = parsed.response as { output?: Array<FunctionCallOutput> };
+    if (!response?.output) return;
 
-            try {
-              console.log(`🚀 [WebSocket] Executing function: ${functionName}`);
-
-              // Parse function arguments
-              const args = JSON.parse(argsString) as Record<string, unknown>;
-
-              // Execute the function
-              const result = await onFunctionCall(functionName, args, functionCallId);
-
-              // Send result back to OpenAI
-              await this.sendFunctionResult(functionCallId, result, ws);
-
-            } catch (error) {
-              console.error(`❌ [WebSocket] Function execution failed:`, error);
-
-              // Send error result back
-              const errorResult = {
-                success: false,
-                error: error instanceof Error ? error.message : 'Unknown error'
-              };
-              await this.sendFunctionResult(functionCallId, errorResult, ws);
-            }
-          }
-        }
+    for (const output of response.output) {
+      if (output.type === 'function_call' && output.name && output.arguments && output.call_id) {
+        await this.executeFunctionCall(output, onFunctionCall, ws);
       }
     }
   }
 
-  /**
-   * Send function call result back to OpenAI
-   */
+  private async executeFunctionCall(
+    output: FunctionCallOutput,
+    onFunctionCall: (functionName: string, args: Record<string, unknown>, functionCallId: string) => Promise<unknown>,
+    ws: WebSocket
+  ): Promise<void> {
+    const { name: functionName, arguments: argsString, call_id: functionCallId } = output;
+
+    try {
+      console.log(`🚀 [Function Call]: ${functionName}`);
+      console.log(`📋 [Call ID]: ${functionCallId}`);
+
+      const args = JSON.parse(argsString!) as Record<string, unknown>;
+
+      // Log function parameters in detail
+      this.logFunctionParameters(functionName!, args);
+
+      const result = await onFunctionCall(functionName!, args, functionCallId!);
+
+      // Log function result details
+      this.logFunctionResult(functionName!, result);
+
+      await this.sendFunctionResult(functionCallId!, result, ws);
+
+    } catch (error) {
+      console.error(`❌ [Function Error]: ${functionName} failed`);
+      console.error(`   Error Details:`, error instanceof Error ? error.message : error);
+
+      const errorResult = {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+      await this.sendFunctionResult(functionCallId!, errorResult, ws);
+    }
+  }
+
   private async sendFunctionResult(functionCallId: string, result: unknown, ws: WebSocket): Promise<void> {
     const conversationItem = {
       type: "conversation.item.create",
@@ -152,198 +330,50 @@ export class WebSocketService {
       }
     };
 
-    console.log('📤 [WebSocket] Sending function result to OpenAI:', conversationItem);
+    console.log(`📤 [Function Response]: Sending result for ${functionCallId}`);
     ws.send(JSON.stringify(conversationItem));
 
-    // Trigger a new response
-    const responseCreate = {
-      type: "response.create"
-    };
-
-    console.log('📤 [WebSocket] Requesting new response from OpenAI');
-    ws.send(JSON.stringify(responseCreate));
+    // Trigger new response
+    ws.send(JSON.stringify({ type: "response.create" }));
   }
 
-  /**
-   * Send a message via the active WebSocket connection
-   */
+  // ============================================================================
+  // SESSION MANAGEMENT
+  // ============================================================================
+
+  updateSessionTools(tools: Array<Record<string, unknown>>): void {
+    const sessionUpdate = {
+      type: "session.update",
+      session: {
+        type: "realtime",
+        tools,
+        tool_choice: "auto"
+      },
+      event_id: `tools_update_${Date.now()}`
+    };
+
+    console.log(`🔄 [Session Update]: Tools updated - [${tools.map(t => t.name).join(', ')}]`);
+    this.sendMessage(sessionUpdate);
+  }
+
   sendMessage(message: Record<string, unknown>): void {
     if (this.activeWebSocket && this.activeWebSocket.readyState === WebSocket.OPEN) {
       this.activeWebSocket.send(JSON.stringify(message));
-      console.log('📤 [WebSocket] Sent message:', message);
     } else {
       console.warn('⚠️ [WebSocket] Cannot send message - WebSocket not connected');
     }
   }
 
-  /**
-   * Update session tools dynamically (for service-specific schemas)
-   * Following OpenAI Realtime API session.update specification
-   */
-  updateSessionTools(tools: Array<Record<string, unknown>>): void {
-    const sessionUpdate = {
-      type: "session.update",
-      session: {
-        type: "realtime",           // ✅ Required parameter as per OpenAI error
-        tools,                      // Only update tools property
-        tool_choice: "auto"         // Ensure AI can choose functions automatically
-      },
-      event_id: `tools_update_${Date.now()}`  // For error tracking as per OpenAI docs
-    };
+  // ============================================================================
+  // FUNCTION CALL LOGGING
+  // ============================================================================
 
-    console.log('🔄 [WebSocket] Updating session tools:', tools.map((t: Record<string, unknown>) => t.name));
-    this.sendMessage(sessionUpdate);
+  private logFunctionParameters(functionName: string, args: Record<string, unknown>): void {
+    console.log(`📝 [AI Called]: ${functionName}`, args);
   }
 
-  private handleSpecificMessageTypes(parsed: OpenAIWebSocketMessage) {
-    switch (parsed.type) {
-      case "session.created":
-        console.log("🎯 [WebSocket] Session created successfully");
-        if (parsed.session) {
-          console.log("🔍 [WebSocket] Session Details:");
-          if (parsed.session.model)
-            console.log(`   Model: ${parsed.session.model}`);
-          if (parsed.session.voice)
-            console.log(`   Voice: ${parsed.session.voice}`);
-          if (parsed.session.instructions)
-            console.log(
-              `   Instructions length: ${parsed.session.instructions.length} chars`
-            );
-          console.log(
-            "📋 [WebSocket] Full session config:",
-            JSON.stringify(parsed.session, null, 2)
-          );
-        }
-        break;
-      case "session.updated":
-        console.log("🎯 [WebSocket] Session updated successfully");
-        if (parsed.session) {
-          const session = parsed.session as Record<string, unknown>; // Type assertion for tools properties
-          console.log("🔍 [WebSocket] Updated Session Details:");
-          if (session.model)
-            console.log(`   Updated Model: ${session.model}`);
-          if (session.voice)
-            console.log(`   Updated Voice: ${session.voice}`);
-                    if (session.tools) {
-            const toolNames = Array.isArray(session.tools)
-              ? session.tools.map((t: { name?: string }) => t.name).filter(Boolean)
-              : [];
-            console.log(`   Updated Tools: [${toolNames.join(', ')}]`);
-          }
-          if (session.tool_choice)
-            console.log(`   Tool Choice: ${session.tool_choice}`);
-        }
-        break;
-      case "response.created":
-        console.log("🎯 [WebSocket] Response created successfully");
-        if (parsed.response) {
-          console.log("🔍 [WebSocket] Response Details:");
-          if (parsed.response.model)
-            console.log(`   Response Model: ${parsed.response.model}`);
-          if (parsed.response.voice)
-            console.log(`   Response Voice: ${parsed.response.voice}`);
-          if (parsed.response.audio?.output?.voice)
-            console.log(
-              `   Audio Voice: ${parsed.response.audio.output.voice}`
-            );
-        }
-        break;
-      case "response.audio.delta":
-        // Silent - too verbose
-        break;
-      case "response.audio_transcript.delta":
-        // Silent - too verbose
-        break;
-      case "response.done":
-        console.log(
-          "✅ [WebSocket] Response completed - audio should be playing"
-        );
-        break;
-      case "error":
-        console.error("❌ [WebSocket] Received error:", parsed.error);
-        break;
-      case "conversation.item.created":
-        console.log("💭 [WebSocket] Conversation item created");
-        break;
-      case "conversation.item.done":
-        // Log completed conversation items (user input, AI responses)
-        const parsedItem = parsed as unknown as { item?: { role?: string; content?: Array<{ transcript?: string; type?: string }> } };
-        if (parsedItem.item?.content) {
-          const item = parsedItem.item;
-          if (item.role === 'user' && item.content) {
-            // User input - check for transcript in different content types
-            const transcript = item.content.find(c => c.transcript)?.transcript;
-            if (transcript) {
-              console.log(`👤 [User said]: "${transcript}"`);
-            } else if (item.content.some(c => c.type === 'input_audio')) {
-              console.log(`👤 [User spoke]: [Audio input - transcript pending]`);
-            }
-          } else if (item.role === 'assistant' && item.content?.[0]?.transcript) {
-            console.log(`🤖 [AI said]: "${item.content[0].transcript}"`);
-          }
-        }
-        break;
-      case "response.output_item.added":
-        console.log("📝 [WebSocket] Output item added to response");
-        break;
-      case "response.content_part.added":
-        console.log("🧩 [WebSocket] Content part added to response");
-        break;
-      case "response.function_call_arguments.delta":
-      case "rate_limits.updated":
-      case "output_audio_buffer.started":
-      case "output_audio_buffer.stopped":
-        // Silent - too verbose
-        break;
-      case "response.output_audio_transcript.delta":
-      case "input_audio_transcript.delta":
-      case "conversation.item.input_audio_transcription.delta":
-        // Silent - too verbose (but these might contain user transcripts)
-        break;
-      case "input_audio_transcript.completed":
-      case "conversation.item.input_audio_transcription.completed":
-        // Log completed user transcripts
-        const transcript = (parsed as unknown as { transcript?: string }).transcript;
-        if (transcript) {
-          console.log(`👤 [User transcript]: "${transcript}"`);
-        }
-        break;
-      case "input_audio_buffer.speech_started":
-        console.log("🎤 [User started speaking]");
-        break;
-      case "input_audio_buffer.speech_stopped":
-        console.log("🎤 [User stopped speaking]");
-        break;
-      case "input_audio_buffer.committed":
-        console.log("🎤 [User audio committed - processing...]");
-        break;
-      case "response.function_call_arguments.done":
-        console.log(`🎯 [WebSocket] Function call completed: ${(parsed as unknown as Record<string, unknown>).name} with args`);
-        break;
-      default:
-        console.log(`📨 [WebSocket] Message type: ${parsed.type}`);
-        // Temporarily log unknown events to find user transcript events
-        if (parsed.type.includes('transcript') || parsed.type.includes('input')) {
-          console.log(`🔍 [Debug] Unknown transcript/input event:`, parsed);
-        }
-    }
+  private logFunctionResult(functionName: string, result: unknown): void {
+    console.log(`✅ [Function Result]: ${functionName}`, result);
   }
 
-  private formatMessageForLog(message: string): string {
-    // Truncate very long messages (like audio data) for cleaner logs
-    if (message.length > 500) {
-      try {
-        const parsed = JSON.parse(message);
-        if (parsed.type === "response.audio.delta") {
-          return `{"type":"response.audio.delta","delta":"[${
-            parsed.delta?.length || 0
-          } bytes of audio data]",...}`;
-        }
-      } catch {
-        // If parsing fails, just truncate
-      }
-      return message.substring(0, 500) + "... [truncated]";
-    }
-    return message;
-  }
 }

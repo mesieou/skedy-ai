@@ -1,5 +1,5 @@
 import { BaseRepository } from '../base-repository';
-import type { 
+import type {
   ChatSession,
   ChatMessage,
   CreateChatMessageData,
@@ -17,7 +17,7 @@ export class ChatSessionRepository extends BaseRepository<ChatSession> {
     // First get the current session
     const session = await this.findOne({ id: sessionId });
     if (!session) throw new Error(`Session ${sessionId} not found`);
-    
+
     // Add message to all_messages array
     const currentMessages = session.all_messages || [];
     const newMessage: ChatMessage = {
@@ -27,9 +27,9 @@ export class ChatSessionRepository extends BaseRepository<ChatSession> {
       created_at: DateUtils.nowUTC(),
       updated_at: DateUtils.nowUTC()
     };
-    
+
     const updatedMessages = [...currentMessages, newMessage];
-    
+
     // Update the session with new messages
     await this.updateOne({ id: sessionId }, { all_messages: updatedMessages });
   }
@@ -37,20 +37,20 @@ export class ChatSessionRepository extends BaseRepository<ChatSession> {
   async getMessages(sessionId: string, options?: QueryOptions): Promise<ChatMessage[]> {
     const session = await this.findOne({ id: sessionId });
     if (!session) return [];
-    
+
     let messages = session.all_messages || [];
-    
+
     if (options?.limit) {
       messages = messages.slice(0, options.limit);
     }
-    
+
     return messages;
   }
 
   async getMessageCount(sessionId: string): Promise<number> {
     const session = await this.findOne({ id: sessionId });
     if (!session) return 0;
-    
+
     return (session.all_messages || []).length;
   }
 }

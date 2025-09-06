@@ -14,6 +14,7 @@ import type { BookingCalculationInput, BookingAddress } from '../../../schedulin
 import { AddressRole } from '../../../scheduling/lib/types/booking-calculations';
 import type { Address } from '../../../shared/lib/database/types/addresses';
 import { AddressType } from '../../../shared/lib/database/types/addresses';
+import { createToolError } from '../../../shared/utils/error-utils';
 
 export class QuoteTool {
   private businessContext: BusinessContext;
@@ -36,7 +37,6 @@ export class QuoteTool {
 
       // Convert args to booking input and calculate
       const bookingInput = this.convertToBookingInput(args, service);
-      console.log(`📋 Booking input:`, JSON.stringify(bookingInput, null, 2));
 
       const quote = await this.bookingCalculator.calculateBooking(bookingInput, args.job_scope);
       console.log(`💰 Quote breakdown organized:`, {
@@ -104,20 +104,9 @@ export class QuoteTool {
       };
     } catch (error) {
       console.error('❌ Quote calculation failed:', error);
-      return this.createErrorResult("Quote calculation failed", "Sorry, I couldn't calculate a quote right now. Please try again.");
+      return createToolError("Quote calculation failed", "Sorry, I couldn't calculate a quote right now. Please try again.");
     }
   }
-
-
-  /**
-   * Helper methods
-   */
-
-
-  private createErrorResult(error: string, message: string): FunctionCallResult {
-    return { success: false, error, message };
-  }
-
   /**
    * Convert function arguments to BookingCalculationInput
    */

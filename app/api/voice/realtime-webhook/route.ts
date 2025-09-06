@@ -1,28 +1,19 @@
-// OpenAI Realtime SIP Webhook Handler
+// OpenAI Realtime SIP Webhook Handler - New Architecture
 import { NextRequest, NextResponse } from 'next/server';
-import { WebhookHandler } from '@/features/agent/voice/webhook-handler';
+import { VoiceWebhookHandler } from '@/features/agent/voice/webhook-handler';
 import { WebhookEvent } from '@/features/agent/voice/config';
 
-// Initialize the webhook handler
-const webhookHandler = new WebhookHandler({
-  // You can customize configuration here or use environment variables
-  customGreeting: "Thank you for calling Skedy AI! How can I assist you today?",
-
-  // Optional event handlers
-  onCallAccepted: (callId) => {
-    console.log(`🎉 Call ${callId} accepted successfully`);
-  },
-
-  onWebSocketConnected: (callId) => {
-    console.log(`🌐 WebSocket connected for call ${callId}`);
-  },
-
-  onError: (error, callId) => {
-    console.error(`💥 Error handling call ${callId}:`, error.message);
-  }
-});
+// Initialize the voice webhook handler
+let voiceHandler: VoiceWebhookHandler | null = null;
+let handlerInitialized = false;
 
 export async function POST(req: NextRequest) {
+  // Initialize handler on first request (lazy initialization)
+  if (!handlerInitialized) {
+    voiceHandler = await VoiceWebhookHandler.initialize();
+    handlerInitialized = true;
+  }
+
   const rawBody = await req.text();
 
   // Log incoming webhook details
@@ -31,13 +22,13 @@ export async function POST(req: NextRequest) {
   console.log("📊 Raw body length:", rawBody.length);
   console.log("👀 Raw body preview:", rawBody.slice(0, 200));
 
-    // Get signature headers
+  // Get signature headers
   const signatureHeader = req.headers.get("webhook-signature") || "";
   const timestamp = req.headers.get("webhook-timestamp") || "";
   const webhookId = req.headers.get("webhook-id") || "";
 
   // Verify webhook signature
-  if (!webhookHandler.verifyWebhookSignature(rawBody, signatureHeader, timestamp, webhookId)) {
+  if (!voiceHandler!.verifyWebhookSignature(rawBody, signatureHeader, timestamp, webhookId)) {
     console.error("❌ Invalid webhook signature");
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
@@ -55,8 +46,8 @@ export async function POST(req: NextRequest) {
   if (event.type === 'realtime.call.incoming') {
     console.log(`📞 Handling incoming call event: ${event.data.call_id}`);
 
-    // Handle the call asynchronously
-    await webhookHandler.handleIncomingCall(event);
+    // Handle the call with the new voice webhook handler
+    await voiceHandler!.handleIncomingCall(event);
 
     // Return immediate response to webhook
     return NextResponse.json({

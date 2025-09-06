@@ -1,19 +1,19 @@
 // features/shared/lib/database/base-repository.ts
-import { DatabaseClientFactory } from '../client-factory';
+import { DatabaseClientFactory, ClientType } from '../client-factory';
 import type { BaseEntity, QueryOptions, QueryConditions } from './types/base';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { DateUtils } from '../../utils/date-utils';
 
 export class BaseRepository<T extends BaseEntity> {
-  private client: SupabaseClient | null = null;
+  private clientType: ClientType;
 
-  constructor(protected tableName: string) {}
+  constructor(protected tableName: string, clientType?: ClientType) {
+    this.clientType = clientType || ClientType.ADMIN;
+  }
 
   protected async getClient(): Promise<SupabaseClient> {
-    if (!this.client) {
-      this.client = await DatabaseClientFactory.getClient();
-    }
-    return this.client;
+    // Explicitly pass client type to override auto-detection
+    return await DatabaseClientFactory.getClient({ type: this.clientType });
   }
 
   // Find one record by any conditions
@@ -135,5 +135,11 @@ export class BaseRepository<T extends BaseEntity> {
       .in('id', ids);
 
     if (error) throw new Error(`Failed to delete multiple ${this.tableName}: ${error.message}`);
+  }
+
+  // Create with overrides (supports optional ID and other overrides)
+  async createWith(baseData: Omit<T, 'id' | 'created_at' | 'updated_at'>, overrides: Partial<Omit<T, 'created_at' | 'updated_at'>> = {}): Promise<T> {
+    const data = { ...baseData, ...overrides } as Omit<T, 'id' | 'created_at' | 'updated_at'>;
+    return await this.create(data);
   }
 }

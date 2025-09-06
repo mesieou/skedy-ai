@@ -8,6 +8,7 @@
 import type { BusinessContext } from '../../../shared/lib/database/types/business-context';
 import type { Service } from '../../../shared/lib/database/types/service';
 import type { FunctionCallResult } from '../types';
+import { createToolError } from '../../../shared/utils/error-utils';
 
 export interface ServiceSelectionArgs {
   service_name: string;
@@ -32,7 +33,7 @@ export class ServiceSelectionTool {
 
     if (!service) {
       const availableServices = this.businessContext.services.map(s => s.name).join(', ');
-      return this.createErrorResult(
+      return createToolError(
         "Service not found",
         `Service "${serviceName}" not available. Available services: ${availableServices}`
       );
@@ -68,7 +69,4 @@ export class ServiceSelectionTool {
     return this.businessContext.services;
   }
 
-  private createErrorResult(error: string, message: string): FunctionCallResult {
-    return { success: false, error, message };
-  }
 }
