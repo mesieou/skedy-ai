@@ -25,6 +25,7 @@ export class BusinessContextProvider {
     businessEntity: Business;          // For backend purposes (calculations, database operations)
   }> {
     console.log(`📋 Building business data for Twilio SID: ${twilioAccountSid}`);
+    console.log(`📋 Business data building stack:`, new Error().stack?.split('\n').slice(1, 5).join('\n'));
 
     // Fetch business data by Twilio Account SID
     const business = await this.businessRepo.findOne({ twilio_account_sid: twilioAccountSid });

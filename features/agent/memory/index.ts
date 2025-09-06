@@ -77,11 +77,8 @@ export async function initializeAgentMemory(): Promise<void> {
 
   try {
     // Initialize Redis infrastructure
-    const { initializeVoiceRedis, voiceEventBus } = await import('./redis');
+    const { initializeVoiceRedis } = await import('./redis');
     await initializeVoiceRedis();
-
-    // Initialize event bus
-    await voiceEventBus.initialize();
 
     // Initialize service container (shared services)
     const { agentServiceContainer } = await import('./service-container');

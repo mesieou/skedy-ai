@@ -9,7 +9,7 @@
 
 import WebSocket from 'ws';
 import { WebSocketService } from './websocket-service';
-import { voiceEventBus, type VoiceEvent } from '../memory/redis/event-bus';
+import { type VoiceEvent, type VoiceEventBus } from '../memory/redis/event-bus';
 import { CallContextManager } from '../memory/call-context-manager';
 
 // ============================================================================
@@ -32,16 +32,18 @@ export interface WebSocketCoordinatorOptions {
 export class WebSocketCoordinator {
   private webSocketService: WebSocketService;
   private callContextManager: CallContextManager;
+  private voiceEventBus: VoiceEventBus;
   private activeWebSocket: WebSocket | null = null;
   private static instanceCount = 0;
   private instanceId: string;
 
-  constructor(callContextManager?: CallContextManager) {
+  constructor(callContextManager: CallContextManager, voiceEventBus: VoiceEventBus) {
     WebSocketCoordinator.instanceCount++;
     this.instanceId = `WebSocketCoordinator-${WebSocketCoordinator.instanceCount}`;
     console.log(`🏗️ [${this.instanceId}] Creating new WebSocketCoordinator instance (total: ${WebSocketCoordinator.instanceCount})`);
     this.webSocketService = new WebSocketService();
-    this.callContextManager = callContextManager || new CallContextManager();
+    this.callContextManager = callContextManager;
+    this.voiceEventBus = voiceEventBus;
     this.setupEventListeners();
   }
 
@@ -67,13 +69,14 @@ export class WebSocketCoordinator {
       const ws = await this.webSocketService.connect({
         callId,
         apiKey,
+        voiceEventBus: this.voiceEventBus,
         initialTools,
         onMessage: () => {}, // Messages handled by WebSocketService
         onError: (error) => this.handleWebSocketError(callId, error),
         onClose: (code, reason) => this.handleWebSocketClose(callId, code, reason, options),
         onFunctionCall: async (functionName, args, functionCallId) => {
           // Forward to webhook handler via events
-          await voiceEventBus.publish({
+          await this.voiceEventBus.publish({
             type: 'voice:function:called',
             callId,
             timestamp: Date.now(),
@@ -86,7 +89,7 @@ export class WebSocketCoordinator {
       this.activeWebSocket = ws;
 
       // Emit connection success
-      await voiceEventBus.publish({
+      await this.voiceEventBus.publish({
         type: 'voice:websocket:connected',
         callId,
         timestamp: Date.now(),
@@ -116,7 +119,7 @@ export class WebSocketCoordinator {
     console.error(`❌ [WebSocketCoordinator] WebSocket error for ${callId}:`, error);
 
     // Emit error event
-    await voiceEventBus.publish({
+    await this.voiceEventBus.publish({
       type: 'voice:websocket:error',
       callId,
       timestamp: Date.now(),
@@ -132,19 +135,11 @@ export class WebSocketCoordinator {
     console.log(`🔌 [WebSocketCoordinator] WebSocket closed for ${callId} - Code: ${code}, Reason: ${reason}`);
 
     // Emit disconnection event
-    await voiceEventBus.publish({
+    await this.voiceEventBus.publish({
       type: 'voice:websocket:disconnected',
       callId,
       timestamp: Date.now(),
       data: { code, reason }
-    });
-
-    // Emit call ended event (triggers call state update and cleanup)
-    await voiceEventBus.publish({
-      type: 'voice:call:ended',
-      callId,
-      timestamp: Date.now(),
-      data: { reason: `websocket_close: ${code}` }
     });
 
     // Always clean up - no reconnection for MVP
@@ -162,9 +157,29 @@ export class WebSocketCoordinator {
   // ============================================================================
 
   private setupEventListeners(): void {
-    console.log(`🔧 [${this.instanceId}] Setting up event listeners`);
-    voiceEventBus.subscribe('voice:call:ended', this.handleCallEnded.bind(this), this.instanceId);
-    console.log(`🔌 [${this.instanceId}] Event listeners initialized`);
+    // Enterprise pattern: One subscription per service with internal event filtering
+    console.log(`🔧 [${this.instanceId}] Setting up service-based event listener`);
+
+    const relevantEvents = ['voice:call:ended'];
+    this.voiceEventBus.subscribe('voice:events', this.handleAllEvents.bind(this), `WebSocketCoordinator-${this.instanceId}`);
+
+    console.log(`🏢 [${this.instanceId}] Subscribed to voice:events stream for events: [${relevantEvents.join(', ')}]`);
+  }
+
+  private async handleAllEvents(event: VoiceEvent): Promise<void> {
+    console.log(`📨 [${this.instanceId}] Received event: ${event.type} - filtering for relevance`);
+
+    // Internal event routing (enterprise pattern)
+    switch (event.type) {
+      case 'voice:call:ended':
+        console.log(`🎯 [${this.instanceId}] Processing relevant event: ${event.type}`);
+        await this.handleCallEnded(event);
+        break;
+
+      default:
+        console.log(`⏭️ [${this.instanceId}] Ignoring irrelevant event: ${event.type}`);
+        break;
+    }
   }
 
   private async handleCallEnded(event: VoiceEvent): Promise<void> {

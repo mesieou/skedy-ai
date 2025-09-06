@@ -1,5 +1,6 @@
 import WebSocket from "ws";
 import { getAuthHeaders, OpenAIWebSocketMessage } from "./config";
+import { type VoiceEventBus } from "../memory/redis/event-bus";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -8,6 +9,7 @@ import { getAuthHeaders, OpenAIWebSocketMessage } from "./config";
 export interface WebSocketConnectionOptions {
   callId: string;
   apiKey: string;
+  voiceEventBus: VoiceEventBus;
   initialTools?: Array<Record<string, unknown>>;
   onMessage?: (message: string) => void;
   onError?: (error: Error) => void;
@@ -37,13 +39,19 @@ interface FunctionCallOutput {
 export class WebSocketService {
   private readonly baseUrl = "wss://api.openai.com/v1/realtime";
   private activeWebSocket: WebSocket | null = null;
+  private callId: string | null = null;
+  private voiceEventBus: VoiceEventBus | null = null;
 
   // ============================================================================
   // CONNECTION MANAGEMENT
   // ============================================================================
 
   async connect(options: WebSocketConnectionOptions): Promise<WebSocket> {
-    const { callId, apiKey, initialTools, onMessage, onError, onClose, onFunctionCall } = options;
+    const { callId, apiKey, voiceEventBus, initialTools, onMessage, onError, onClose, onFunctionCall } = options;
+
+    // Store for message event publishing
+    this.callId = callId;
+    this.voiceEventBus = voiceEventBus;
 
     console.log("🌐 Connecting to WebSocket for real-time communication...");
     console.log(`🔗 WebSocket URL: ${this.baseUrl}?call_id=${callId}`);
@@ -150,7 +158,9 @@ export class WebSocketService {
 
       // Conversation Flow
       case "conversation.item.done":
-        this.handleConversationItem(parsed);
+        this.handleConversationItem(parsed).catch(error => {
+          console.error('❌ [WebSocket] Failed to handle conversation item:', error);
+        });
         break;
       case "response.done":
         console.log("✅ [WebSocket] Response completed - audio should be playing");
@@ -169,7 +179,9 @@ export class WebSocketService {
 
       // User Transcription
       case "conversation.item.input_audio_transcription.completed":
-        this.handleUserTranscript(parsed);
+        this.handleUserTranscript(parsed).catch(error => {
+          console.error('❌ [WebSocket] Failed to handle user transcript:', error);
+        });
         break;
 
       // Function Calling
@@ -233,27 +245,49 @@ export class WebSocketService {
     }
   }
 
-  private handleConversationItem(parsed: OpenAIWebSocketMessage): void {
+  private async handleConversationItem(parsed: OpenAIWebSocketMessage): Promise<void> {
     const parsedItem = parsed as unknown as { item?: ConversationItem };
     const item = parsedItem.item;
 
-    if (item?.content && item.role === 'assistant') {
+    if (item?.content && item.role === 'assistant' && this.callId && this.voiceEventBus) {
       const transcript = item.content[0]?.transcript;
       if (transcript) {
         console.log(`🤖 [AI said]: "${transcript}"`);
+
+        // Publish assistant message event for storage in Redis
+        await this.voiceEventBus.publish({
+          type: 'voice:message:assistant',
+          callId: this.callId,
+          timestamp: Date.now(),
+          data: {
+            content: transcript,
+            openai_item_id: (parsedItem as { item_id?: string }).item_id
+          }
+        });
       }
     }
     // User transcripts are handled by transcription.completed events
   }
 
-  private handleUserTranscript(parsed: OpenAIWebSocketMessage): void {
+  private async handleUserTranscript(parsed: OpenAIWebSocketMessage): Promise<void> {
     const transcriptData = parsed as unknown as {
       transcript?: string;
       item_id?: string;
     };
 
-    if (transcriptData.transcript) {
+    if (transcriptData.transcript && this.callId && this.voiceEventBus) {
       console.log(`👤 [User said]: "${transcriptData.transcript}"`);
+
+      // Publish user message event for storage in Redis
+      await this.voiceEventBus.publish({
+        type: 'voice:message:user',
+        callId: this.callId,
+        timestamp: Date.now(),
+        data: {
+          content: transcriptData.transcript,
+          openai_item_id: transcriptData.item_id
+        }
+      });
     }
   }
 

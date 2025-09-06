@@ -10,7 +10,7 @@
 // Core Redis infrastructure
 export { VoiceRedisClient, voiceRedisClient } from './redis-client';
 export { SimpleCircuitBreaker, simpleCircuitBreaker } from './simple-circuit-breaker';
-export { VoiceEventBus, voiceEventBus } from './event-bus';
+export { VoiceEventBus, createVoiceEventBus } from './event-bus';
 export { SimpleTTL, simpleTTL } from './simple-ttl';
 
 // Event types for type safety

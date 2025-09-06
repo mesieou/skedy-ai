@@ -9,7 +9,7 @@
  */
 
 import { ChatSessionRepository } from '../../../shared/lib/database/repositories/chat-session-repository';
-import { voiceEventBus, type VoiceEvent, type CallEndedEvent } from '../redis/event-bus';
+import { type VoiceEvent, type CallEndedEvent, type VoiceEventBus } from '../redis/event-bus';
 import { ChatChannel, ChatSessionStatus, MessageSenderType } from '../../../shared/lib/database/types/chat-sessions';
 import type { CreateChatMessageData } from '../../../shared/lib/database/types/chat-sessions';
 import { DateUtils } from '../../../shared/utils/date-utils';
@@ -41,16 +41,27 @@ export interface ConversationFlushResult {
 
 export class ConversationPersistenceService {
   private chatSessionRepository: ChatSessionRepository;
+  private voiceEventBus: VoiceEventBus;
   private pendingVoiceSessions: Map<string, VoiceChatSession> = new Map(); // callId → session info
+  private eventListenersInitialized = false;
 
-  constructor() {
+  constructor(voiceEventBus: VoiceEventBus) {
+    this.voiceEventBus = voiceEventBus;
     this.chatSessionRepository = new ChatSessionRepository();
     // Don't setup event listeners in constructor - will be done by service container
   }
 
   // Initialize event listeners (called once by service container)
   initializeEventListeners(): void {
+    if (this.eventListenersInitialized) {
+      console.log(`⚠️ [ConversationPersistence] Event listeners already initialized - skipping duplicate setup`);
+      return;
+    }
+
+    console.log(`🔧 [ConversationPersistence] initializeEventListeners() called`);
+    console.log(`🔧 [ConversationPersistence] Stack trace:`, new Error().stack?.split('\n').slice(1, 6).join('\n'));
     this.setupEventListeners();
+    this.eventListenersInitialized = true;
   }
 
   // ============================================================================
@@ -58,16 +69,39 @@ export class ConversationPersistenceService {
   // ============================================================================
 
   private setupEventListeners(): void {
-    // Listen for call started to prepare session info
-    voiceEventBus.subscribe('voice:call:started', this.handleCallStarted.bind(this), 'ConversationPersistenceService');
+    // Enterprise pattern: One subscription per service with internal event filtering
+    console.log('💾 [ConversationPersistence] Setting up service-based event listener');
 
-    // Listen for user resolved to update session info
-    voiceEventBus.subscribe('voice:user:resolved', this.handleUserResolved.bind(this), 'ConversationPersistenceService');
+    const relevantEvents = ['voice:call:started', 'voice:user:resolved', 'voice:call:ended'];
+    this.voiceEventBus.subscribe('voice:events', this.handleAllEvents.bind(this), 'ConversationPersistenceService');
 
-    // Listen for call ended to flush complete conversation
-    voiceEventBus.subscribe('voice:call:ended', this.handleCallEnded.bind(this), 'ConversationPersistenceService');
+    console.log(`🏢 [ConversationPersistence] Subscribed to voice:events stream for events: [${relevantEvents.join(', ')}]`);
+  }
 
-    console.log('💾 [ConversationPersistence] Event listeners initialized (end-of-call only)');
+  private async handleAllEvents(event: VoiceEvent): Promise<void> {
+    console.log(`📨 [ConversationPersistence] Received event: ${event.type} - filtering for relevance`);
+
+    // Internal event routing (enterprise pattern)
+    switch (event.type) {
+      case 'voice:call:started':
+        console.log(`🎯 [ConversationPersistence] Processing relevant event: ${event.type}`);
+        await this.handleCallStarted(event);
+        break;
+
+      case 'voice:user:resolved':
+        console.log(`🎯 [ConversationPersistence] Processing relevant event: ${event.type}`);
+        await this.handleUserResolved(event);
+        break;
+
+      case 'voice:call:ended':
+        console.log(`🎯 [ConversationPersistence] Processing relevant event: ${event.type}`);
+        await this.handleCallEnded(event);
+        break;
+
+      default:
+        console.log(`⏭️ [ConversationPersistence] Ignoring irrelevant event: ${event.type}`);
+        break;
+    }
   }
 
   // ============================================================================
@@ -194,7 +228,7 @@ export class ConversationPersistenceService {
       console.log(`💾 [ConversationPersistence] Created chat session ${chatSession.id} with ${conversationHistory.messages.length} messages`);
 
       // 4. Emit persistence complete event
-      await voiceEventBus.publish({
+        await this.voiceEventBus.publish({
         type: 'voice:conversation:persisted',
         callId,
         timestamp: Date.now(),

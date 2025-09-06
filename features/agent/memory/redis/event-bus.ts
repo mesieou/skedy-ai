@@ -61,13 +61,25 @@ export interface CallEndedEvent extends VoiceEvent {
 // ============================================================================
 
 export class VoiceEventBus {
+  private static instance: VoiceEventBus | null = null;
   private subscriptions: Map<string, EventHandler[]> = new Map();
   private channelSubscriptions: Set<string> = new Set(); // Track which channels we've subscribed to
   private isConnected = false;
   private isInitialized = false;
+  private instanceId: string;
 
-  constructor() {
+  private constructor() {
+    this.instanceId = 'VoiceEventBus-Singleton';
+    console.log(`🏗️ [${this.instanceId}] Creating VoiceEventBus singleton instance`);
+    console.log(`🏗️ [${this.instanceId}] Stack trace:`, new Error().stack?.split('\n').slice(1, 5).join('\n'));
     // Don't setup subscriptions immediately - wait for explicit initialization
+  }
+
+  static getInstance(): VoiceEventBus {
+    if (!VoiceEventBus.instance) {
+      VoiceEventBus.instance = new VoiceEventBus();
+    }
+    return VoiceEventBus.instance;
   }
 
   async initialize(): Promise<void> {
@@ -93,7 +105,7 @@ export class VoiceEventBus {
 
   async publish(event: VoiceEvent): Promise<void> {
     try {
-      const channel = this.getChannelForEvent(event);
+      const channel = this.getChannelForEvent();
       const message = JSON.stringify(event);
 
       const subscriberCount = await voiceRedisClient.publish(channel, message);
@@ -110,27 +122,42 @@ export class VoiceEventBus {
   // ============================================================================
 
   async subscribe(eventType: string, handler: EventHandler, subscriberInfo?: string): Promise<void> {
+    const subscriber = subscriberInfo || 'Unknown';
+    console.log(`🔍 [${this.instanceId}] SUBSCRIPTION REQUEST: ${eventType} by ${subscriber}`);
+    console.log(`🔍 [${this.instanceId}] Subscription stack:`, new Error().stack?.split('\n').slice(1, 6).join('\n'));
+
     // Store handler for this event type
     if (!this.subscriptions.has(eventType)) {
       this.subscriptions.set(eventType, []);
+      console.log(`🆕 [${this.instanceId}] First handler for event type: ${eventType}`);
     }
 
-    const subscriber = subscriberInfo || 'Unknown';
     const currentHandlers = this.subscriptions.get(eventType)!;
     currentHandlers.push(handler);
 
     // Log how many handlers are now registered for this event
     const handlerCount = currentHandlers.length;
+    console.log(`📊 [${this.instanceId}] Handler count for ${eventType}: ${handlerCount}`);
 
     // Subscribe to Redis channel for this event type (only if not already subscribed)
-    const channel = this.getChannelForEventType(eventType);
+    const channel = this.getChannelForEventType();
+
+    console.log(`🔍 [${this.instanceId}] Checking channel subscription status for: ${channel}`);
+    console.log(`🔍 [${this.instanceId}] Current channelSubscriptions:`, Array.from(this.channelSubscriptions));
+    console.log(`🔍 [${this.instanceId}] channelSubscriptions.has('${channel}'): ${this.channelSubscriptions.has(channel)}`);
 
     if (!this.channelSubscriptions.has(channel)) {
-      await this.subscribeToChannel(channel);
+      // Fix race condition: Reserve the channel BEFORE async operation (enterprise pattern)
       this.channelSubscriptions.add(channel);
-      console.log(`📥 [EventBus] Subscribed to ${eventType} on channel ${channel} by ${subscriber} (${handlerCount} handler${handlerCount > 1 ? 's' : ''})`);
+      console.log(`🔒 [${this.instanceId}] Reserved channel '${channel}' to prevent race conditions`);
+      console.log(`🔍 [${this.instanceId}] Updated channelSubscriptions:`, Array.from(this.channelSubscriptions));
+
+      console.log(`🔌 [${this.instanceId}] Creating NEW Redis subscription for channel: ${channel}`);
+      await this.subscribeToChannel(channel);
+      console.log(`📥 [${this.instanceId}] Subscribed to ${eventType} on channel ${channel} by ${subscriber} (${handlerCount} handler${handlerCount > 1 ? 's' : ''})`);
     } else {
-      console.log(`📥 [EventBus] Added handler for ${eventType} (channel ${channel} already subscribed) by ${subscriber} (${handlerCount} handler${handlerCount > 1 ? 's' : ''} total)`);
+      console.log(`♻️ [${this.instanceId}] Using EXISTING Redis subscription for channel: ${channel}`);
+      console.log(`📥 [${this.instanceId}] Added handler for ${eventType} (channel ${channel} already subscribed) by ${subscriber} (${handlerCount} handler${handlerCount > 1 ? 's' : ''} total)`);
     }
   }
 
@@ -143,14 +170,63 @@ export class VoiceEventBus {
     console.log(`📥 [EventBus] Subscribed to call-specific events for ${callId}`);
   }
 
+  /**
+   * Subscribe a service to all its relevant events with a single Redis subscription
+   * This is the enterprise pattern used by big companies
+   */
+  async subscribeService(serviceName: string, eventTypes: string[], serviceHandler: (event: VoiceEvent) => Promise<void> | void): Promise<void> {
+    console.log(`🏢 [${this.instanceId}] Service-based subscription: ${serviceName} for events: [${eventTypes.join(', ')}]`);
+
+    // Create one Redis subscription for this service
+    const serviceChannel = `service:${serviceName}`;
+
+    // Store the service handler
+    if (!this.subscriptions.has(serviceChannel)) {
+      this.subscriptions.set(serviceChannel, []);
+    }
+    this.subscriptions.get(serviceChannel)!.push(serviceHandler);
+
+    // Create single Redis subscription for this service
+    if (!this.channelSubscriptions.has(serviceChannel)) {
+      await voiceRedisClient.subscribe(serviceChannel, (message) => {
+        console.log(`📬 [${this.instanceId}] Service message for ${serviceName}`);
+        this.handleServiceMessage(message, serviceName, eventTypes);
+      });
+      this.channelSubscriptions.add(serviceChannel);
+      console.log(`✅ [${this.instanceId}] Service ${serviceName} subscribed to ${serviceChannel}`);
+    }
+  }
+
+  private handleServiceMessage(message: string, serviceName: string, relevantEventTypes: string[]): void {
+    try {
+      const event: VoiceEvent = JSON.parse(message);
+
+      // Only process if this event type is relevant to this service
+      if (relevantEventTypes.includes(event.type)) {
+        console.log(`🎯 [${this.instanceId}] Routing ${event.type} to service ${serviceName}`);
+        const serviceHandlers = this.subscriptions.get(`service:${serviceName}`) || [];
+        serviceHandlers.forEach(handler => {
+          this.executeHandler(handler, event);
+        });
+      } else {
+        console.log(`⏭️ [${this.instanceId}] Skipping ${event.type} for service ${serviceName} (not relevant)`);
+      }
+    } catch (error) {
+      console.error(`❌ [${this.instanceId}] Failed to handle service message for ${serviceName}:`, error);
+    }
+  }
+
   // ============================================================================
   // INTERNAL METHODS
   // ============================================================================
 
   private async subscribeToChannel(channel: string): Promise<void> {
+    console.log(`🔌 [${this.instanceId}] Creating Redis subscription for channel: ${channel}`);
     await voiceRedisClient.subscribe(channel, (message) => {
+      console.log(`📬 [${this.instanceId}] Callback triggered for channel: ${channel}`);
       this.handleIncomingMessage(message);
     });
+    console.log(`✅ [${this.instanceId}] Redis subscription created for channel: ${channel}`);
   }
 
   private async setupSubscriptionHandlers(): Promise<void> {
@@ -161,22 +237,36 @@ export class VoiceEventBus {
   private handleIncomingMessage(message: string, specificHandler?: EventHandler): void {
     try {
       const event: VoiceEvent = JSON.parse(message);
-      console.log(`📨 [EventBus] Received event: ${event.type} for call ${event.callId}`);
+      console.log(`📨 [${this.instanceId}] Received event: ${event.type} for call ${event.callId}`);
 
       // Call specific handler if provided
       if (specificHandler) {
+        console.log(`🎯 [${this.instanceId}] Using specific handler for ${event.type}`);
         this.executeHandler(specificHandler, event);
         return;
       }
 
-      // Call registered handlers for this event type
-      const handlers = this.subscriptions.get(event.type) || [];
-      handlers.forEach(handler => {
-        this.executeHandler(handler, event);
-      });
+      // For the main voice:events stream, call ALL voice:events handlers (they filter internally)
+      const eventChannel = this.getChannelForEvent();
+      if (eventChannel === 'voice:events') {
+        const handlers = this.subscriptions.get('voice:events') || [];
+        console.log(`🎯 [${this.instanceId}] Found ${handlers.length} voice:events handler${handlers.length > 1 ? 's' : ''} for ${event.type}`);
+        handlers.forEach((handler, index) => {
+          console.log(`🎯 [${this.instanceId}] Executing voice:events handler ${index + 1}/${handlers.length} for ${event.type}`);
+          this.executeHandler(handler, event);
+        });
+      } else {
+        // For other channels, use event type matching
+        const handlers = this.subscriptions.get(event.type) || [];
+        console.log(`🎯 [${this.instanceId}] Found ${handlers.length} handler${handlers.length > 1 ? 's' : ''} for ${event.type}`);
+        handlers.forEach((handler, index) => {
+          console.log(`🎯 [${this.instanceId}] Executing handler ${index + 1}/${handlers.length} for ${event.type}`);
+          this.executeHandler(handler, event);
+        });
+      }
 
     } catch (error) {
-      console.error('❌ [EventBus] Failed to parse incoming message:', error);
+      console.error(`❌ [${this.instanceId}] Failed to parse incoming message:`, error);
     }
   }
 
@@ -193,22 +283,15 @@ export class VoiceEventBus {
     }
   }
 
-  private getChannelForEvent(event: VoiceEvent): string {
-    // Call-specific events go to call-specific channels
-    if (event.type.includes('call:') || event.type.includes('message:')) {
-      return `voice:call:${event.callId}`;
-    }
-
-    // Each event type gets its own channel (industry standard)
-    return event.type;
+  private getChannelForEvent(): string {
+    // ALL events go to the main voice events stream (Netflix/Kafka pattern)
+    // Services filter internally for what they need
+    return 'voice:events';
   }
 
-  private getChannelForEventType(eventType: string): string {
-    if (eventType.includes('call:') || eventType.includes('message:')) {
-      return 'voice:call:*'; // Pattern subscription
-    }
-    // Each event type gets its own channel (industry standard)
-    return eventType;
+  private getChannelForEventType(): string {
+    // ALL event types go to the main voice events stream (Netflix/Kafka pattern)
+    return 'voice:events';
   }
 
   // ============================================================================
@@ -230,5 +313,7 @@ export class VoiceEventBus {
   }
 }
 
-// Singleton instance - initialize explicitly when needed
-export const voiceEventBus = new VoiceEventBus();
+// Factory function for dependency injection
+export function createVoiceEventBus(): VoiceEventBus {
+  return VoiceEventBus.getInstance();
+}

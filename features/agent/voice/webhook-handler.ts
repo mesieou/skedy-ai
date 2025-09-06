@@ -20,8 +20,8 @@ import {
 } from './config';
 import { ToolsManager } from '../tools/tools-manager';
 import { UserCreationService } from '../tools/user-creation';
-import { CallContextManager, initializeAgentMemory, agentServiceContainer } from '../memory';
-import { voiceEventBus } from '../memory/redis/event-bus';
+import { initializeAgentMemory, agentServiceContainer, type CallContextManager } from '../memory';
+import { type VoiceEventBus } from '../memory/redis/event-bus';
 import { businessContextProvider } from '../../shared/lib/database/business-context-provider';
 import { PromptBuilder } from '../intelligence/prompt-builder';
 import type { QuoteFunctionArgs } from '../tools/types';
@@ -40,6 +40,7 @@ export class VoiceWebhookHandler {
   private webSocketCoordinator: WebSocketCoordinator;
   private userCreationService: UserCreationService;
   private callContextManager: CallContextManager;
+  private voiceEventBus: VoiceEventBus;
   private toolsManagerMap: Map<string, ToolsManager> = new Map(); // Business tools cache
 
   constructor(options: WebhookHandlerOptions = {}) {
@@ -49,12 +50,13 @@ export class VoiceWebhookHandler {
     this.signatureService = new SignatureService(this.config.webhookSecret);
     this.callService = new CallService(this.config.apiKey);
 
-    // Create per-request services (stateful)
-    this.callContextManager = new CallContextManager();
-    this.webSocketCoordinator = new WebSocketCoordinator(this.callContextManager);
-
     // Get shared services from container
+    this.voiceEventBus = agentServiceContainer.getVoiceEventBus();
     this.userCreationService = agentServiceContainer.getUserCreationService();
+
+    // Create per-request services (stateful) with dependency injection
+    this.callContextManager = agentServiceContainer.createCallContextManager();
+    this.webSocketCoordinator = new WebSocketCoordinator(this.callContextManager, this.voiceEventBus);
   }
 
   // ============================================================================
@@ -232,17 +234,8 @@ export class VoiceWebhookHandler {
   private async handleCallError(callId: string, error: Error, options: WebhookHandlerOptions): Promise<void> {
     console.error(`❌ [VoiceHandler] Call error ${callId}:`, error);
 
-    // Emit call ended event (triggers call state update via events)
-    try {
-      await voiceEventBus.publish({
-        type: 'voice:call:ended',
-        callId,
-        timestamp: Date.now(),
-        data: { reason: `error: ${error.message}` }
-      });
-    } catch (endError) {
-      console.error(`❌ [VoiceHandler] Failed to publish call ended event:`, endError);
-    }
+    // No event publication - CallContextManager owns call lifecycle events
+    // The CallContextManager will detect the error state and handle call ending
 
     if (options.onError) {
       options.onError(error, callId);
