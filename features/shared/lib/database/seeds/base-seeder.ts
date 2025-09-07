@@ -3,36 +3,56 @@ import type { BaseEntity } from '../types/base';
 import type { BaseRepository } from '../base-repository';
 
 export class BaseSeeder<T extends BaseEntity> {
+  protected createdIds: string[] = [];
+
   constructor(protected repository: BaseRepository<T>) {}
 
-  // Environment safety check
-  private checkTestEnvironment(): void {
+  // Basic production safety check (for creation)
+  private checkProductionEnvironment(): void {
     if (process.env.NODE_ENV === 'production') {
       throw new Error('Seeding not allowed in production environment');
     }
   }
 
+  // Strict test environment check (for cleanup only)
+  private checkTestEnvironment(): void {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Seeding not allowed in production environment');
+    }
+
+    // Additional protection: Check if we're actually in a Jest test runner
+    if (typeof (global as typeof globalThis & { expect?: unknown }).expect === 'undefined' || typeof jest === 'undefined') {
+      throw new Error('Cleanup operations only allowed within Jest test environment');
+    }
+  }
+
   // Create using repository
   async create(data: Omit<T, 'id' | 'created_at' | 'updated_at'>): Promise<T> {
-    this.checkTestEnvironment();
-    return await this.repository.create(data);
+    this.checkProductionEnvironment();
+    const record = await this.repository.create(data);
+    this.createdIds.push(record.id);
+    return record;
   }
 
   // Create with overrides (supports optional ID)
   async createWith(baseData: Omit<T, 'id' | 'created_at' | 'updated_at'>, overrides: Partial<Omit<T, 'created_at' | 'updated_at'>> = {}): Promise<T> {
-    this.checkTestEnvironment();
+    this.checkProductionEnvironment();
     const data = { ...baseData, ...overrides } as Omit<T, 'id' | 'created_at' | 'updated_at'>;
-    return await this.repository.create(data);
+    const record = await this.repository.create(data);
+    this.createdIds.push(record.id);
+    return record;
   }
 
-  // Cleanup all records using repository
+  // Cleanup only records created by this seeder instance
   async cleanup(): Promise<void> {
     this.checkTestEnvironment();
-    const records = await this.repository.findAll();
-    if (records.length > 0) {
-      // Use batch delete for better performance
-      const ids = records.map(record => record.id);
-      await this.repository.deleteMany(ids);
+
+    if (this.createdIds.length > 0) {
+      console.log(`🧹 [BaseSeeder] Cleaning up ${this.createdIds.length} records created by this test`);
+      await this.repository.deleteMany(this.createdIds);
+      this.createdIds = []; // Clear tracking array
+    } else {
+      console.log(`🧹 [BaseSeeder] No records to cleanup for this test`);
     }
   }
 
@@ -40,10 +60,12 @@ export class BaseSeeder<T extends BaseEntity> {
 
   // Create multiple records
   async createMultiple(items: Omit<T, 'id' | 'created_at' | 'updated_at'>[]): Promise<T[]> {
-    this.checkTestEnvironment();
+    this.checkProductionEnvironment();
     const results = [];
     for (const item of items) {
-      results.push(await this.repository.create(item));
+      const record = await this.repository.create(item);
+      this.createdIds.push(record.id);
+      results.push(record);
     }
     return results;
   }

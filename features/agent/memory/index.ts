@@ -13,7 +13,7 @@
 // ============================================================================
 export {
   voiceRedisClient,
-  voiceEventBus,
+  createVoiceEventBus,
   simpleCircuitBreaker,
   simpleTTL,
   initializeVoiceRedis,
@@ -24,7 +24,7 @@ export type {
   VoiceEvent,
   EventHandler,
   CallStartedEvent,
-  UserResolvedEvent,
+  UserCreatedEvent,
   MessageReceivedEvent,
   CallEndedEvent
 } from './redis';
@@ -73,8 +73,6 @@ export type { CallContext, MessageContext } from './call-context-manager';
  * Initialize complete memory system for voice agent
  */
 export async function initializeAgentMemory(): Promise<void> {
-  console.log('🧠 [Memory] Initializing agent memory system...');
-
   try {
     // Initialize Redis infrastructure
     const { initializeVoiceRedis } = await import('./redis');
@@ -83,8 +81,6 @@ export async function initializeAgentMemory(): Promise<void> {
     // Initialize service container (shared services)
     const { agentServiceContainer } = await import('./service-container');
     await agentServiceContainer.initialize();
-
-    console.log('✅ [Memory] Agent memory system initialized successfully');
 
   } catch (error) {
     console.error('❌ [Memory] Failed to initialize agent memory system:', error);
@@ -96,12 +92,9 @@ export async function initializeAgentMemory(): Promise<void> {
  * Shutdown memory system gracefully
  */
 export async function shutdownAgentMemory(): Promise<void> {
-  console.log('🛑 [Memory] Shutting down agent memory system...');
-
   try {
     const { shutdownVoiceRedis } = await import('./redis');
     await shutdownVoiceRedis();
-    console.log('✅ [Memory] Agent memory system shutdown complete');
 
   } catch (error) {
     console.error('❌ [Memory] Error during memory system shutdown:', error);

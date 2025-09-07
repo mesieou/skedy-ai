@@ -72,15 +72,23 @@ export class WebSocketService {
 
   private setupOpenHandler(ws: WebSocket, initialTools?: Array<Record<string, unknown>>): void {
     ws.on("open", () => {
-      console.log("✅ [WebSocket] Connected successfully");
+      console.log("✅ [WebSocket] Connected successfully to OpenAI Realtime API");
 
       // Set initial tools if provided
       if (initialTools && initialTools.length > 0) {
-        console.log(`📤 [WebSocket] Setting initial tools: [${initialTools.map(t => t.name).join(', ')}]`);
+        console.log(`🔧 [WebSocket] Setting initial OpenAI function schemas:`);
+        initialTools.forEach(tool => {
+          console.log(`   📋 Function: ${tool.name}`);
+          console.log(`   📝 Description: ${tool.description || 'No description'}`);
+        });
+        console.log('📤 [WebSocket] Complete initial tools payload sent to OpenAI:');
+        console.log(JSON.stringify(initialTools, null, 2));
+
         this.updateSessionTools(initialTools);
       }
 
       // Start conversation
+      console.log('🚀 [WebSocket] Starting conversation with OpenAI');
       this.sendMessage({ type: "response.create" });
     });
   }
@@ -146,6 +154,32 @@ export class WebSocketService {
 
   private handleMessage(parsed: OpenAIWebSocketMessage): void {
     const messageType = parsed.type;
+
+    // Skip logging verbose messages to reduce log noise
+    const skipLogging = messageType.includes('delta') ||
+                       messageType.includes('output_audio_buffer') ||
+                       messageType.includes('input_audio_buffer') ||
+                       messageType === 'response.audio_transcript.delta' ||
+                       messageType === 'conversation.item.input_audio_transcription.delta' ||
+                       messageType === 'response.output_audio_transcript.delta' ||
+                       messageType === 'response.done' ||
+                       messageType === 'response.output_item.done' ||
+                       messageType === 'response.created' ||
+                       messageType === 'response.output_item.added' ||
+                       messageType === 'conversation.item.added' ||
+                       messageType === 'response.content_part.added' ||
+                       messageType === 'response.output_audio.done' ||
+                       messageType === 'response.output_audio_transcript.done' ||
+                       messageType === 'response.content_part.done' ||
+                       messageType === 'conversation.item.done' ||
+                       messageType === 'conversation.item.input_audio_transcription.completed';
+
+    if (!skipLogging) {
+      // Log important OpenAI messages for tracking
+      console.log('📨 [WebSocket] OpenAI message received:');
+      console.log(`   🏷️  Type: ${messageType}`);
+      console.log(`   📋 Full payload:`, JSON.stringify(parsed, null, 2));
+    }
 
     switch (messageType) {
       // Session Management
@@ -326,16 +360,25 @@ export class WebSocketService {
   ): Promise<void> {
     const { name: functionName, arguments: argsString, call_id: functionCallId } = output;
 
-    try {
-      console.log(`🚀 [Function Call]: ${functionName}`);
-      console.log(`📋 [Call ID]: ${functionCallId}`);
+    console.log('🔧 [WebSocket] OpenAI function call detected:');
+    console.log(`   🎯 Function: ${functionName}`);
+    console.log(`   🆔 Call ID: ${functionCallId}`);
+    console.log(`   📋 Raw arguments: ${argsString}`);
 
+    try {
       const args = JSON.parse(argsString!) as Record<string, unknown>;
+      console.log(`   📊 Parsed arguments:`, JSON.stringify(args, null, 2));
 
       // Log function parameters in detail
       this.logFunctionParameters(functionName!, args);
 
+      console.log('⚡ [WebSocket] Executing function call...');
+      const startTime = Date.now();
       const result = await onFunctionCall(functionName!, args, functionCallId!);
+      const executionTime = Date.now() - startTime;
+
+      console.log(`✅ [WebSocket] Function call completed in ${executionTime}ms`);
+      console.log('📊 [WebSocket] Function result:', JSON.stringify(result, null, 2));
 
       // Log function result details
       this.logFunctionResult(functionName!, result);
@@ -345,6 +388,8 @@ export class WebSocketService {
     } catch (error) {
       console.error(`❌ [Function Error]: ${functionName} failed`);
       console.error(`   Error Details:`, error instanceof Error ? error.message : error);
+      console.error(`   This suggests malformed JSON from OpenAI or parsing issues`);
+      console.error(`   AI may be trying to call function with invalid arguments`);
 
       const errorResult = {
         success: false,
@@ -364,10 +409,14 @@ export class WebSocketService {
       }
     };
 
-    console.log(`📤 [Function Response]: Sending result for ${functionCallId}`);
+    console.log(`📤 [WebSocket] Sending function result to OpenAI:`);
+    console.log(`   🆔 Call ID: ${functionCallId}`);
+    console.log(`   📊 Result payload:`, JSON.stringify(conversationItem, null, 2));
+
     ws.send(JSON.stringify(conversationItem));
 
     // Trigger new response
+    console.log('🚀 [WebSocket] Triggering new response from OpenAI');
     ws.send(JSON.stringify({ type: "response.create" }));
   }
 
@@ -386,15 +435,26 @@ export class WebSocketService {
       event_id: `tools_update_${Date.now()}`
     };
 
-    console.log(`🔄 [Session Update]: Tools updated - [${tools.map(t => t.name).join(', ')}]`);
+    console.log(`🔄 [WebSocket] Updating OpenAI session tools:`);
+    console.log(`   📊 Tool count: ${tools.length}`);
+    tools.forEach(tool => {
+      console.log(`   🔧 Tool: ${tool.name} - ${tool.description || 'No description'}`);
+    });
+    console.log('📤 [WebSocket] Complete session update payload:');
+    console.log(JSON.stringify(sessionUpdate, null, 2));
+
     this.sendMessage(sessionUpdate);
   }
 
   sendMessage(message: Record<string, unknown>): void {
     if (this.activeWebSocket && this.activeWebSocket.readyState === WebSocket.OPEN) {
+      console.log('📤 [WebSocket] Sending message to OpenAI:');
+      console.log(`   🏷️  Type: ${message.type}`);
+      console.log(`   📋 Full payload:`, JSON.stringify(message, null, 2));
       this.activeWebSocket.send(JSON.stringify(message));
     } else {
       console.warn('⚠️ [WebSocket] Cannot send message - WebSocket not connected');
+      console.warn(`   📋 Attempted message:`, JSON.stringify(message, null, 2));
     }
   }
 

@@ -1,12 +1,13 @@
 /**
- * Unified Types for AI Agent Tools
+ * AI Agent Tool Types
  *
- * Consolidates all tool-related types for better maintainability
- * and type safety across the agent system
+ * Tool-specific types that extend or compose database types.
+ * Database entities are imported from shared/lib/database/types.
+ * This file contains ONLY tool-specific compositions and AI-related types.
  */
 
 import type { BusinessContext } from '../../shared/lib/database/types/business-context';
-import type { Service } from '../../shared/lib/database/types/service';
+import type { Service, QuoteRequestData, BookingCalculationResult } from '../../scheduling/lib/types/booking-domain';
 
 // Core requirement types
 export interface QuoteRequirement {
@@ -63,29 +64,33 @@ export interface QuoteContext {
   collectedInfo: Record<string, string | number | boolean | string[]>;
 }
 
-// Function arguments (unified interface for all functions)
-export interface QuoteFunctionArgs {
-  service_name?: string;
-  service_names?: string[];
-  quantity?: number;
-  job_scope?: string;
-  pickup_address?: string;
-  pickup_addresses?: string[];  // Plural array (new schema format)
-  dropoff_address?: string;
-  dropoff_addresses?: string[]; // Plural array (new schema format)
-  service_address?: string;
-  customer_addresses?: string[];
-  preferred_datetime?: string;
-  special_requirements?: string;
-  number_of_people?: number;
-  number_of_rooms?: number;
-  square_meters?: number;
-  number_of_vehicles?: number;
-}
+// ============================================================================
+// AI FUNCTION ARGUMENTS - Proper AI tool types
+// ============================================================================
 
-// Service selection arguments
+// Use domain types directly
+export type QuoteFunctionArgs = QuoteRequestData;
+
+// AI-specific function argument types
 export interface ServiceSelectionFunctionArgs {
   service_name: string;
+}
+
+export interface CheckDayAvailabilityFunctionArgs {
+  date: string; // YYYY-MM-DD format
+}
+
+export interface CreateUserFunctionArgs {
+  name: string;
+  phone_number: string;
+}
+
+export interface CreateBookingFunctionArgs {
+  quote_data: BookingCalculationResult & { service_name: string };
+  preferred_date: string; // YYYY-MM-DD format
+  preferred_time: string; // HH:MM format
+  user_id: string;
+  confirmation_message?: string;
 }
 
 // Tool configuration

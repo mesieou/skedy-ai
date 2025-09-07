@@ -1,13 +1,15 @@
 /**
- * Service Selection Tool
+ * Service Selection Tool (Agent Layer)
  *
- * Handles service selection for AI agent functions
- * Manages service validation and selection state
+ * Thin orchestrator for AI service selection interactions:
+ * - Agent-specific response formatting
+ * - Delegates domain logic to ServiceSelectionService
  */
 
 import type { BusinessContext } from '../../../shared/lib/database/types/business-context';
 import type { Service } from '../../../shared/lib/database/types/service';
 import type { FunctionCallResult } from '../types';
+import { BookingServiceSelector } from '../../../scheduling/lib/bookings/booking-service-selector';
 import { createToolError } from '../../../shared/utils/error-utils';
 
 export interface ServiceSelectionArgs {
@@ -22,51 +24,47 @@ export class ServiceSelectionTool {
   }
 
   /**
-   * Select a service for quote generation
+   * Select a service - thin orchestrator for AI interactions
    */
   selectService(args: ServiceSelectionArgs): FunctionCallResult {
-    const serviceName = args.service_name;
-    console.log(`🎯 Selecting service: ${serviceName}`);
 
-    // Find the service by name
-    const service = this.businessContext.services.find(s => s.name === serviceName);
+    // Delegate to domain service
+    const result = BookingServiceSelector.selectService({
+      service_name: args.service_name,
+      business_context: this.businessContext
+    });
 
-    if (!service) {
-      const availableServices = this.businessContext.services.map(s => s.name).join(', ');
-      return createToolError(
-        "Service not found",
-        `Service "${serviceName}" not available. Available services: ${availableServices}`
-      );
+    if (!result.success) {
+      return createToolError("Service not found", result.error || "Unknown error");
     }
 
-    console.log(`✅ Service selected: ${serviceName}`);
-
+    // Format AI-friendly response
     return {
       success: true,
-      message: `Selected "${serviceName}". You can now request a quote with the specific requirements.`,
+      message: `Selected "${args.service_name}". You can now request a quote with the specific requirements.`,
       data: {
-        selected_service: serviceName,
-        service_id: service.id,
-        requirements_preview: service.ai_function_requirements || [],
-        job_scope_options: service.ai_job_scope_options || [],
-        description: service.description,
-        how_it_works: service.how_it_works || ''
+        selected_service: args.service_name,
+        service_id: result.service!.id,
+        requirements_preview: result.requirements_preview || [],
+        job_scope_options: result.job_scope_options || [],
+        description: result.service!.description,
+        how_it_works: result.service!.how_it_works || ''
       }
     };
   }
 
   /**
-   * Get service by name
+   * Get service by name - delegates to domain service
    */
   getServiceByName(serviceName: string): Service | null {
-    return this.businessContext.services.find(s => s.name === serviceName) || null;
+    return BookingServiceSelector.getServiceByName(serviceName, this.businessContext);
   }
 
   /**
-   * Get all available services
+   * Get all available services - delegates to domain service
    */
   getAvailableServices(): Service[] {
-    return this.businessContext.services;
+    return BookingServiceSelector.getAvailableServices(this.businessContext);
   }
 
 }

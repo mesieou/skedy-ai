@@ -11,6 +11,7 @@
 import { voiceRedisClient } from '../redis/redis-client';
 import { simpleCircuitBreaker } from '../redis/simple-circuit-breaker';
 import type { Service } from '../../../shared/lib/database/types/service';
+import type { User } from '../../../shared/lib/database/types/user';
 import type { BookingCalculationInput, BookingCalculationResult } from '../../../scheduling/lib/types/booking-calculations';
 
 // ============================================================================
@@ -21,6 +22,7 @@ export interface CallState {
   callId: string;
   businessId: string;
   userId: string | null;
+  user: User | null;
   chatSessionId: string | null;
   phoneNumber: string;
 
@@ -53,6 +55,8 @@ export interface CallState {
 export interface CallStateUpdate {
   status?: CallState['status'];
   webSocketStatus?: CallState['webSocketStatus'];
+  userId?: string | null;
+  user?: User | null;
   selectedService?: Service | null;
   toolsAvailable?: string[];
   collectedBookingInput?: Partial<BookingCalculationInput>;
@@ -91,13 +95,13 @@ export class CallStateManager {
       collectedBookingInput: {},
       quoteGenerated: false,
       quoteData: null,
+      user: null, // Will be populated when user is created
       customerInfo: {
         phone: callData.phoneNumber
       }
     };
 
     await this.storeCallState(callState);
-    console.log(`📋 [CallState] Created call state for ${callData.callId}`);
 
     return callState;
   }
@@ -112,12 +116,10 @@ export class CallStateManager {
         if (!data) return null;
 
         const state = JSON.parse(data) as CallState;
-        console.log(`📋 [CallState] Retrieved from Redis: ${callId} (status: ${state.status})`);
         return state;
       },
       // Fallback operation (Postgres)
       async () => {
-        console.log(`📋 [CallState] Redis fallback: retrieving ${callId} from database`);
         // TODO: Implement database fallback when needed
         return null;
       }
@@ -138,12 +140,11 @@ export class CallStateManager {
     };
 
     await this.storeCallState(updatedState);
-    console.log(`📋 [CallState] Updated ${callId}:`, Object.keys(updates));
-
     return updatedState;
   }
 
-  async endCall(callId: string, reason: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async endCall(callId: string, _reason: string): Promise<void> {
     const updates: CallStateUpdate = {
       status: 'ended',
       webSocketStatus: 'disconnected',
@@ -155,7 +156,6 @@ export class CallStateManager {
     // Set TTL on all call keys
     await this.setCallTTL(callId);
 
-    console.log(`📋 [CallState] Call ended: ${callId} (reason: ${reason})`);
   }
 
   async deleteCallState(callId: string): Promise<void> {
@@ -164,14 +164,12 @@ export class CallStateManager {
     const deletePromises = keys.map(async (key) => {
       try {
         await voiceRedisClient.del(key);
-        console.log(`🗑️ [CallState] Deleted key: ${key}`);
       } catch (error) {
         console.error(`❌ [CallState] Failed to delete key ${key}:`, error);
       }
     });
 
     await Promise.allSettled(deletePromises);
-    console.log(`🗑️ [CallState] Deleted all keys for call: ${callId}`);
   }
 
   // ============================================================================
@@ -191,7 +189,6 @@ export class CallStateManager {
       collectedBookingInput: mergedBookingInput
     });
 
-    console.log(`📋 [CallState] Updated booking input for ${callId}:`, Object.keys(bookingInput));
   }
 
   async getBookingInput(callId: string): Promise<Partial<BookingCalculationInput> | null> {
@@ -205,7 +202,6 @@ export class CallStateManager {
       quoteData
     });
 
-    console.log(`💰 [CallState] Quote data stored for ${callId}`);
   }
 
   async updateCustomerInfo(callId: string, customerInfo: Partial<CallState['customerInfo']>): Promise<void> {
@@ -221,7 +217,6 @@ export class CallStateManager {
       customerInfo: mergedCustomerInfo
     });
 
-    console.log(`👤 [CallState] Updated customer info for ${callId}:`, Object.keys(customerInfo));
   }
 
   // ============================================================================
@@ -240,7 +235,6 @@ export class CallStateManager {
       },
       // Fallback operation
       async () => {
-        console.log(`📋 [CallState] Redis fallback: storing ${state.callId} in database`);
         // TODO: Implement database fallback when needed
       }
     );
@@ -253,7 +247,6 @@ export class CallStateManager {
     const ttlPromises = keys.map(async (key) => {
       try {
         await voiceRedisClient.expire(key, ttlSeconds);
-        console.log(`⏰ [CallState] TTL set for ${key} (${ttlSeconds}s)`);
       } catch (error) {
         console.error(`❌ [CallState] Failed to set TTL for ${key}:`, error);
       }

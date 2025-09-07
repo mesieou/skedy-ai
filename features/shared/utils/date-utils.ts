@@ -100,6 +100,107 @@ export class DateUtils {
   }
 
   /**
+   * Check if a date string is valid YYYY-MM-DD format
+   */
+  static isValidDateFormat(dateStr: string): boolean {
+    // Check format first
+    if (!dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      return false;
+    }
+
+    // Check if it's a valid date (e.g., not 2023-02-30)
+    const date = new Date(dateStr + 'T00:00:00.000Z');
+    return !isNaN(date.getTime()) && this.extractDateString(date.toISOString()) === dateStr;
+  }
+
+  /**
+   * Check if a time string is valid HH:MM format (24-hour)
+   */
+  static isValidTimeFormat(timeStr: string): boolean {
+    // Check format first
+    if (!timeStr.match(/^\d{2}:\d{2}$/)) {
+      return false;
+    }
+
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59;
+  }
+
+  /**
+   * Normalize phone number for consistency (remove formatting)
+   */
+  static normalizePhoneNumber(phoneNumber: string): string {
+    return phoneNumber.replace(/[\s\-\(\)]/g, '');
+  }
+
+  /**
+   * Format date for natural display using Australian conventions
+   */
+  static formatDateForDisplay(dateStr: string): string {
+    // Use DateUtils to create proper UTC timestamp
+    const utcTimestamp = this.createSlotTimestamp(dateStr, '00:00:00');
+
+    // Convert to Australian timezone
+    const { date: localDate } = this.convertUTCToTimezone(utcTimestamp, 'Australia/Melbourne');
+
+    // Create date object for formatting
+    const date = new Date(localDate + 'T00:00:00');
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      timeZone: 'Australia/Melbourne'
+    };
+
+    const formatted = date.toLocaleDateString('en-AU', options);
+
+    // Add ordinal suffix to day
+    const day = date.getDate();
+    const suffix = this.getOrdinalSuffix(day);
+
+    return formatted.replace(`${day}`, `${day}${suffix}`);
+  }
+
+  /**
+   * Format time for natural display using Australian conventions
+   */
+  static formatTimeForDisplay(timeStr: string): string {
+    // Create a UTC timestamp for the time
+    const today = this.extractDateString(this.nowUTC());
+    const utcTimestamp = this.createSlotTimestamp(today, timeStr + ':00');
+
+    // Convert to Australian timezone
+    const { time: localTime } = this.convertUTCToTimezone(utcTimestamp, 'Australia/Melbourne');
+
+    // Parse the local time and format for display
+    const [hours, minutes] = localTime.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours, minutes, 0, 0);
+
+    return date.toLocaleTimeString('en-AU', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'Australia/Melbourne'
+    });
+  }
+
+  /**
+   * Get ordinal suffix for day (1st, 2nd, 3rd, 4th, etc.)
+   */
+  private static getOrdinalSuffix(day: number): string {
+    if (day >= 11 && day <= 13) {
+      return 'th';
+    }
+    switch (day % 10) {
+      case 1: return 'st';
+      case 2: return 'nd';
+      case 3: return 'rd';
+      default: return 'th';
+    }
+  }
+
+  /**
    * Ensure date string is properly formatted as UTC ISO string
    */
   static ensureUTC(dateInput: string | Date): string {
@@ -242,8 +343,9 @@ export class DateUtils {
         hour: '2-digit',
         minute: '2-digit'
       }).format(date);
-      
-      return localTime === '00:00';
+
+      // Handle both "00:00" and "24:00" as midnight (JavaScript quirk)
+      return localTime === '00:00' || localTime === '24:00';
     } catch (error) {
       console.error(`Invalid timezone: ${timezone}`, error);
       return false;
@@ -262,14 +364,14 @@ export class DateUtils {
         month: '2-digit',
         day: '2-digit'
       }).format(date);
-      
+
       const localTime = new Intl.DateTimeFormat('en-CA', {
         timeZone: timezone,
         hour12: false,
         hour: '2-digit',
         minute: '2-digit'
       }).format(date);
-      
+
       return { date: localDate, time: localTime };
     } catch (error) {
       console.error(`Error converting UTC to timezone ${timezone}:`, error);
@@ -278,20 +380,47 @@ export class DateUtils {
   }
 
   /**
+   * Convert business local time to UTC ISO string
+   */
+  static convertBusinessTimeToUTC(dateStr: string, timeStr: string, timezone: string): string {
+    try {
+      // Create a date object in the business timezone
+      const localDateTime = `${dateStr}T${timeStr}`;
+
+      // Parse as local time in the specified timezone
+      const date = new Date(localDateTime);
+
+      // Get timezone offset for the specific date (handles DST)
+      const tempDate = new Date(localDateTime);
+      const utcTime = tempDate.getTime();
+      const localTime = new Date(tempDate.toLocaleString("en-US", { timeZone: timezone })).getTime();
+      const timezoneOffset = utcTime - localTime;
+
+      // Adjust for timezone offset
+      const utcDate = new Date(date.getTime() + timezoneOffset);
+
+      return utcDate.toISOString();
+    } catch (error) {
+      console.error(`Error converting business time to UTC: ${dateStr} ${timeStr} in ${timezone}`, error);
+      throw new Error(`Invalid date/time conversion: ${dateStr} ${timeStr}`);
+    }
+  }
+
+  /**
    * Get the next date that needs availability generated based on existing slots
    */
   static getNextAvailabilityDate(existingSlots: { [dateKey: string]: { [durationKey: string]: [string, number][] } }): string {
     const existingDates = Object.keys(existingSlots);
-    
+
     if (existingDates.length === 0) {
       // No existing slots, start from today
       return this.extractDateString(this.nowUTC());
     }
-    
+
     // Sort dates and get the latest one
     const sortedDates = existingDates.sort();
     const latestDate = sortedDates[sortedDates.length - 1];
-    
+
     // Return the day after the latest date
     const nextDay = this.addDaysUTC(`${latestDate}T00:00:00.000Z`, 1);
     return this.extractDateString(nextDay);

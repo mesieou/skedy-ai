@@ -11,6 +11,7 @@ import WebSocket from 'ws';
 import { WebSocketService } from './websocket-service';
 import { type VoiceEvent, type VoiceEventBus } from '../memory/redis/event-bus';
 import { CallContextManager } from '../memory/call-context-manager';
+import { ToolsManager } from '../tools/tools-manager';
 
 // ============================================================================
 // TYPES
@@ -24,7 +25,6 @@ export interface WebSocketCoordinatorOptions {
   onClose?: (code: number, reason: string) => void;
 }
 
-
 // ============================================================================
 // WEBSOCKET COORDINATOR (MVP)
 // ============================================================================
@@ -33,17 +33,18 @@ export class WebSocketCoordinator {
   private webSocketService: WebSocketService;
   private callContextManager: CallContextManager;
   private voiceEventBus: VoiceEventBus;
+  private toolsManager: ToolsManager;
   private activeWebSocket: WebSocket | null = null;
   private static instanceCount = 0;
   private instanceId: string;
 
-  constructor(callContextManager: CallContextManager, voiceEventBus: VoiceEventBus) {
+  constructor(callContextManager: CallContextManager, voiceEventBus: VoiceEventBus, toolsManager: ToolsManager) {
     WebSocketCoordinator.instanceCount++;
     this.instanceId = `WebSocketCoordinator-${WebSocketCoordinator.instanceCount}`;
-    console.log(`🏗️ [${this.instanceId}] Creating new WebSocketCoordinator instance (total: ${WebSocketCoordinator.instanceCount})`);
     this.webSocketService = new WebSocketService();
     this.callContextManager = callContextManager;
     this.voiceEventBus = voiceEventBus;
+    this.toolsManager = toolsManager;
     this.setupEventListeners();
   }
 
@@ -52,9 +53,6 @@ export class WebSocketCoordinator {
   // ============================================================================
 
   async startCallSession(options: WebSocketCoordinatorOptions): Promise<void> {
-    const { callId } = options;
-    console.log(`🔌 [WebSocketCoordinator] Starting session for call ${callId}`);
-
     // Attempt connection
     await this.attemptConnection(options);
   }
@@ -63,7 +61,6 @@ export class WebSocketCoordinator {
     const { callId, apiKey, initialTools, onError } = options;
 
     try {
-      console.log(`🔌 [WebSocketCoordinator] Attempting connection for ${callId}`);
 
       // Create WebSocket connection
       const ws = await this.webSocketService.connect({
@@ -74,15 +71,31 @@ export class WebSocketCoordinator {
         onMessage: () => {}, // Messages handled by WebSocketService
         onError: (error) => this.handleWebSocketError(callId, error),
         onClose: (code, reason) => this.handleWebSocketClose(callId, code, reason, options),
-        onFunctionCall: async (functionName, args, functionCallId) => {
-          // Forward to webhook handler via events
-          await this.voiceEventBus.publish({
-            type: 'voice:function:called',
-            callId,
-            timestamp: Date.now(),
-            data: { functionName, args, functionCallId }
-          });
-          return { success: true, message: 'Function call forwarded' };
+        onFunctionCall: async (functionName, args) => {
+          // Direct execution - simple and consistent with codebase patterns
+          console.log('🎯 [WebSocketCoordinator] Function call received, executing directly...');
+
+          try {
+            const startTime = Date.now();
+            const result = await this.toolsManager.executeFunction(functionName, args, callId);
+            const executionTime = Date.now() - startTime;
+
+            // Handle dynamic schema updates after service selection
+            if (functionName === 'select_service' && result.success) {
+              console.log('🔄 [WebSocketCoordinator] Service selected - updating AI with dynamic quote schema...');
+              await this.updateSessionToolsAfterServiceSelection();
+            }
+
+            console.log(`✅ [WebSocketCoordinator] Function completed in ${executionTime}ms`);
+            return result;
+          } catch (error) {
+            console.error('❌ [WebSocketCoordinator] Function execution failed:', error);
+            return {
+              success: false,
+              error: error instanceof Error ? error.message : 'Unknown error',
+              message: 'Function execution failed'
+            };
+          }
         }
       });
 
@@ -96,7 +109,6 @@ export class WebSocketCoordinator {
         data: { reconnection: false }
       });
 
-      console.log(`✅ [WebSocketCoordinator] Connected successfully for ${callId}`);
 
     } catch (error) {
       console.error(`❌ [WebSocketCoordinator] Connection failed for ${callId}:`, error);
@@ -127,12 +139,10 @@ export class WebSocketCoordinator {
     });
 
     // Always clean up on error - no reconnection for MVP
-    console.log(`🧹 [WebSocketCoordinator] WebSocket error - cleaning up resources for ${callId}`);
     this.cleanup(callId);
   }
 
   private async handleWebSocketClose(callId: string, code: number, reason: string, options: WebSocketCoordinatorOptions): Promise<void> {
-    console.log(`🔌 [WebSocketCoordinator] WebSocket closed for ${callId} - Code: ${code}, Reason: ${reason}`);
 
     // Emit disconnection event
     await this.voiceEventBus.publish({
@@ -143,7 +153,6 @@ export class WebSocketCoordinator {
     });
 
     // Always clean up - no reconnection for MVP
-    console.log(`🧹 [WebSocketCoordinator] WebSocket closed - cleaning up resources for ${callId}`);
     this.cleanup(callId);
 
     if (options.onClose) {
@@ -158,43 +167,34 @@ export class WebSocketCoordinator {
 
   private setupEventListeners(): void {
     // Enterprise pattern: One subscription per service with internal event filtering
-    console.log(`🔧 [${this.instanceId}] Setting up service-based event listener`);
-
-    const relevantEvents = ['voice:call:ended'];
     this.voiceEventBus.subscribe('voice:events', this.handleAllEvents.bind(this), `WebSocketCoordinator-${this.instanceId}`);
-
-    console.log(`🏢 [${this.instanceId}] Subscribed to voice:events stream for events: [${relevantEvents.join(', ')}]`);
   }
 
   private async handleAllEvents(event: VoiceEvent): Promise<void> {
-    console.log(`📨 [${this.instanceId}] Received event: ${event.type} - filtering for relevance`);
 
     // Internal event routing (enterprise pattern)
     switch (event.type) {
       case 'voice:call:ended':
-        console.log(`🎯 [${this.instanceId}] Processing relevant event: ${event.type}`);
         await this.handleCallEnded(event);
         break;
 
       default:
-        console.log(`⏭️ [${this.instanceId}] Ignoring irrelevant event: ${event.type}`);
         break;
     }
   }
 
   private async handleCallEnded(event: VoiceEvent): Promise<void> {
     this.cleanup(event.callId);
-    console.log(`🏁 [WebSocketCoordinator] Call ended for ${event.callId} - cleaning up WebSocket resources`);
   }
 
-  private cleanup(callId: string): void {
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private cleanup(_callId: string): void {
     // Close WebSocket if still active
     if (this.activeWebSocket && this.activeWebSocket.readyState === WebSocket.OPEN) {
       this.activeWebSocket.close();
       this.activeWebSocket = null;
     }
-
-    console.log(`🧹 [WebSocketCoordinator] Cleaned up resources for ${callId}`);
   }
 
   async forceDisconnect(callId: string): Promise<void> {
@@ -203,5 +203,42 @@ export class WebSocketCoordinator {
       this.activeWebSocket = null;
     }
     this.cleanup(callId);
+  }
+
+  async updateSessionTools(tools: Array<Record<string, unknown>>): Promise<void> {
+    console.log('🔄 [WebSocketCoordinator] Updating session tools...');
+    this.webSocketService.updateSessionTools(tools);
+  }
+
+  private async updateSessionToolsAfterServiceSelection(): Promise<void> {
+    try {
+      console.log('🔄 [WebSocketCoordinator] Updating OpenAI session with dynamic schemas...');
+
+      // Get static tools + dynamic quote schema for selected service
+      const staticSchemas = this.toolsManager.getStaticToolsForAI();
+      const dynamicQuoteSchema = this.toolsManager.getQuoteSchemaForSelectedService();
+
+      console.log(`   📊 Static schemas: ${staticSchemas.length}`);
+      console.log(`   🎯 Dynamic quote schema: ${dynamicQuoteSchema ? 'GENERATED' : 'NOT AVAILABLE'}`);
+
+      if (dynamicQuoteSchema) {
+        const allSchemas = [...staticSchemas, dynamicQuoteSchema];
+
+        console.log('🔧 [WebSocketCoordinator] Complete schema set for OpenAI:');
+        allSchemas.forEach(schema => {
+          console.log(`   📋 Function: ${schema.name} - ${schema.description}`);
+        });
+
+        console.log('📤 [WebSocketCoordinator] Updating WebSocket with new tool schemas...');
+        await this.updateSessionTools(allSchemas as unknown as Array<Record<string, unknown>>);
+
+        console.log(`✅ [WebSocketCoordinator] Dynamic quote schema successfully added for selected service`);
+      } else {
+        console.log('⚠️ [WebSocketCoordinator] No dynamic quote schema available - keeping static schemas only');
+      }
+
+    } catch (error) {
+      console.error('❌ [WebSocketCoordinator] Failed to update session tools:', error);
+    }
   }
 }

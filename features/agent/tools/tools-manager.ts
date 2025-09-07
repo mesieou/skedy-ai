@@ -1,31 +1,58 @@
 /**
  * Tools Manager
  *
- * Complete AI tools system - generates schemas and executes functions
- * Single responsibility: Manage all AI function calling for a business
+ * Thin orchestrator for AI function calling.
+ * Single responsibility: Route function calls to appropriate domain services.
+ * Does NOT manage state, business logic, or database operations.
  */
 
 import type { BusinessContext } from '../../shared/lib/database/types/business-context';
 import type { Business } from '../../shared/lib/database/types/business';
 import type { Service } from '../../shared/lib/database/types/service';
-import type { FunctionCallResult, QuoteFunctionArgs, ServiceSelectionFunctionArgs, ToolSchema } from './types';
+import type { CallContextManager } from '../memory/call-context-manager';
+import type {
+  FunctionCallResult,
+  QuoteFunctionArgs,
+  ServiceSelectionFunctionArgs,
+  CheckDayAvailabilityFunctionArgs,
+  CreateUserFunctionArgs,
+  CreateBookingFunctionArgs,
+  ToolSchema
+} from './types';
 import { QuoteTool } from './scheduling/quote';
 import { ServiceSelectionTool } from './scheduling/service-selection';
+import { UserManagementTool } from './scheduling/user-management';
+import { BookingManagementTool } from './scheduling/booking-management';
+import { AvailabilityCheckTool } from './scheduling/availability-check';
 import { SchemaManager } from './schema-generator';
 import { createToolError } from '../../shared/utils/error-utils';
 
 export class ToolsManager {
-  private businessContext: BusinessContext;
-  private business: Business;
-  private quoteTool: QuoteTool;
-  private serviceSelectionTool: ServiceSelectionTool;
-  private selectedService: Service | null = null; // State management for selected service
+  private readonly businessContext: BusinessContext;
+  private readonly business: Business;
+  private readonly callContextManager: CallContextManager;
 
-  constructor(businessContext: BusinessContext, business: Business) {
+  // Domain service tools (stateless)
+  private readonly quoteTool: QuoteTool;
+  private readonly serviceSelectionTool: ServiceSelectionTool;
+  private readonly userManagementTool: UserManagementTool;
+  private readonly bookingManagementTool: BookingManagementTool;
+  private readonly availabilityCheckTool: AvailabilityCheckTool;
+
+  // State for dynamic schema generation (ONLY for selected service)
+  private selectedService: Service | null = null;
+
+  constructor(businessContext: BusinessContext, business: Business, callContextManager: CallContextManager) {
     this.businessContext = businessContext;
     this.business = business;
+    this.callContextManager = callContextManager;
+
+    // Initialize domain tools with proper dependencies
     this.quoteTool = new QuoteTool(businessContext, business);
     this.serviceSelectionTool = new ServiceSelectionTool(businessContext);
+    this.userManagementTool = new UserManagementTool(callContextManager);
+    this.bookingManagementTool = new BookingManagementTool();
+    this.availabilityCheckTool = new AvailabilityCheckTool(business);
   }
 
   /**
@@ -37,44 +64,72 @@ export class ToolsManager {
   }
 
   /**
-   * Execute a function call from the AI
+   * Execute a function call from the AI - thin orchestration layer
    */
-  async executeFunction(functionName: string, args: QuoteFunctionArgs | ServiceSelectionFunctionArgs): Promise<FunctionCallResult> {
-    console.log(`🔧 Executing function: ${functionName}`);
+  async executeFunction(
+    functionName: string,
+    args: QuoteFunctionArgs | ServiceSelectionFunctionArgs | CheckDayAvailabilityFunctionArgs | CreateUserFunctionArgs | CreateBookingFunctionArgs,
+    callId?: string
+  ): Promise<FunctionCallResult> {
 
+    console.log('🤖 [ToolsManager] OpenAI function call received:');
+    console.log(`   🎯 Function: ${functionName}`);
+    console.log(`   📋 Arguments:`, JSON.stringify(args, null, 2));
+
+    const startTime = Date.now();
+
+    // Simple delegation to domain tools - track service selection for dynamic schema
     switch (functionName) {
       case 'select_service':
-        const selectionArgs = args as ServiceSelectionFunctionArgs;
-        const result = this.serviceSelectionTool.selectService(selectionArgs);
+        console.log('   🔄 Executing service selection...');
+        const selectionResult = this.serviceSelectionTool.selectService(args as ServiceSelectionFunctionArgs);
 
-        // If service selection was successful, store the selected service
-        if (result.success && selectionArgs.service_name) {
-          this.selectedService = this.serviceSelectionTool.getServiceByName(selectionArgs.service_name);
+        // Track selected service for dynamic quote schema generation
+        if (selectionResult.success) {
+          this.selectedService = this.serviceSelectionTool.getServiceByName((args as ServiceSelectionFunctionArgs).service_name);
+          console.log(`   ✅ Service selected: ${this.selectedService?.name}`);
+          console.log(`   📋 Service requirements: [${this.selectedService?.ai_function_requirements?.join(', ') || 'none'}]`);
         }
-
-        return result;
+        this.logFunctionResult('select_service', selectionResult, startTime);
+        return selectionResult;
 
       case 'get_quote':
-        // Check if service is selected first
-        if (!this.selectedService) {
-          return createToolError(
-            "No service selected",
-            "Please select a service first before requesting a quote."
-          );
-        }
-        return this.quoteTool.getQuoteForSelectedService(this.selectedService, args as QuoteFunctionArgs);
+        console.log('   💰 Executing quote calculation...');
+        const quoteResult = await this.quoteTool.getQuoteForSelectedService(args as QuoteFunctionArgs);
+        this.logFunctionResult('get_quote', quoteResult, startTime);
+        return quoteResult;
 
-      // Future functions:
-      // case 'check_availability':
-      //   return this.availabilityTool.checkAvailability(args);
-      // case 'make_booking':
-      //   return this.bookingTool.makeBooking(args);
+      case 'check_day_availability':
+        console.log('   📅 Checking availability...');
+        const availabilityResult = await this.availabilityCheckTool.checkDayAvailability(args as CheckDayAvailabilityFunctionArgs);
+        this.logFunctionResult('check_day_availability', availabilityResult, startTime);
+        return availabilityResult;
+
+      case 'check_user_exists':
+        console.log('   👤 Checking if user exists...');
+        const userExistsResult = await this.userManagementTool.checkUserExists((args as { phone_number: string }).phone_number, this.business.id);
+        this.logFunctionResult('check_user_exists', userExistsResult, startTime);
+        return userExistsResult;
+
+      case 'create_user':
+        console.log('   👤 Creating user...');
+        const userResult = await this.userManagementTool.createUser(args as CreateUserFunctionArgs, this.business.id, callId);
+        this.logFunctionResult('create_user', userResult, startTime);
+        return userResult;
+
+      case 'create_booking':
+        console.log('   📝 Creating booking...');
+        const bookingResult = await this.bookingManagementTool.createBooking(args as CreateBookingFunctionArgs, this.business);
+        this.logFunctionResult('create_booking', bookingResult, startTime);
+        return bookingResult;
 
       default:
-        return createToolError(
+        const errorResult = createToolError(
           "Unknown function",
           `Sorry, I don't know how to handle: ${functionName}`
         );
+        this.logFunctionResult(functionName, errorResult, startTime);
+        return errorResult;
     }
   }
 
@@ -92,26 +147,30 @@ export class ToolsManager {
     return this.getAvailableFunctions().includes(functionName);
   }
 
-
-  /**
-   * Get the currently selected service
-   */
-  getSelectedService(): Service | null {
-    return this.selectedService;
-  }
-
   /**
    * Generate dynamic quote schema for the selected service
+   * This is dynamic because it depends on service's ai_function_requirements and ai_job_scope_options
    */
   getQuoteSchemaForSelectedService(): ToolSchema | null {
-    if (!this.selectedService) {
+    // We need to track selected service for dynamic quote schema generation
+    // This is the ONLY dynamic schema - all others are static
+    const selectedService = this.getSelectedServiceFromContext();
+
+    if (!selectedService) {
       return null;
     }
 
     return SchemaManager.generateServiceSpecificQuoteSchema(
-      this.selectedService,
+      selectedService,
       this.businessContext.businessInfo
     );
+  }
+
+  /**
+   * Get selected service (for dynamic quote schema)
+   */
+  private getSelectedServiceFromContext(): Service | null {
+    return this.selectedService;
   }
 
   /**
@@ -121,4 +180,29 @@ export class ToolsManager {
     this.selectedService = null;
     console.log('🧹 Cleared selected service');
   }
+
+  /**
+   * Log function execution results for OpenAI interaction tracking
+   */
+  private logFunctionResult(functionName: string, result: FunctionCallResult, startTime: number): void {
+    const executionTime = Date.now() - startTime;
+
+    console.log(`🏁 [ToolsManager] Function execution completed:`);
+    console.log(`   🎯 Function: ${functionName}`);
+    console.log(`   ⏱️  Execution time: ${executionTime}ms`);
+    console.log(`   ${result.success ? '✅' : '❌'} Result: ${result.success ? 'SUCCESS' : 'FAILED'}`);
+    console.log(`   💬 Message: ${result.message}`);
+
+    if (result.data) {
+      console.log(`   📊 Data returned:`, JSON.stringify(result.data, null, 2));
+    }
+
+    if (!result.success && result.error) {
+      console.log(`   ⚠️  Error details: ${result.error}`);
+    }
+
+    console.log('📤 [ToolsManager] Complete function result payload for OpenAI:');
+    console.log(JSON.stringify(result, null, 2));
+  }
+
 }

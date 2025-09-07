@@ -27,12 +27,13 @@ export interface ChatMessage extends BaseEntity {
   session_id: string;
   content: string;
   sender_type: MessageSenderType;
+  phone_number: string; // Phone number - always required (voice calls, SMS, WhatsApp)
 }
 
 // Chat session interface
 export interface ChatSession extends BaseEntity {
   channel: ChatChannel;
-  user_id: string;
+  user_id: string | null; // Nullable for anonymous voice calls
   business_id: string;
   status: ChatSessionStatus;
   ended_at?: string | null;
@@ -40,8 +41,4 @@ export interface ChatSession extends BaseEntity {
 }
 
 // Create/Update types
-export type CreateChatMessageData = Omit<ChatMessage, 'id' | 'created_at' | 'updated_at' | 'session_id'>;
-
-
-
-
+export type CreateChatMessageData = Omit<ChatMessage, 'id' | 'created_at' | 'session_id'>;

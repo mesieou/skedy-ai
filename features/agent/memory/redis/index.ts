@@ -18,7 +18,7 @@ export type {
   VoiceEvent,
   EventHandler,
   CallStartedEvent,
-  UserResolvedEvent,
+  UserCreatedEvent,
   MessageReceivedEvent,
   CallEndedEvent
 } from './event-bus';

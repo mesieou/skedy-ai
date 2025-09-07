@@ -25,6 +25,7 @@ import type {
 import { GoogleDistanceApiService } from "../services/google-distance-api";
 import type { DistanceApiRequest } from "../types/google-distance-api";
 import { DistanceUnits } from "../types/google-distance-api";
+import { DateUtils } from "../../../shared/utils/date-utils";
 
 export class BookingCalculator {
   private googleDistanceApi: GoogleDistanceApiService;
@@ -70,10 +71,13 @@ export class BookingCalculator {
         total_estimate_amount,
         input.business
       );
-      total_estimate_amount +=
-        business_fees.gst_amount +
-        business_fees.platform_fee +
-        business_fees.payment_processing_fee;
+
+      // Ensure fees are numbers, not null/undefined (prevents NaN)
+      const gstAmount = business_fees.gst_amount || 0;
+      const platformFee = business_fees.platform_fee || 0;
+      const processingFee = business_fees.payment_processing_fee || 0;
+
+      total_estimate_amount += gstAmount + platformFee + processingFee;
 
       // Step 5: Apply minimum charge
       const minimum_charge_applied =
@@ -703,5 +707,27 @@ export class BookingCalculator {
         )
       )
       .reduce((total, segment) => total + segment.duration_mins, 0);
+  }
+
+  // ============================================================================
+  // BOOKING TIMESTAMP UTILITIES
+  // ============================================================================
+
+  /**
+   * Calculate booking timestamps in UTC from date, time, and duration
+   */
+  static calculateBookingTimestamps(
+    dateStr: string,
+    timeStr: string,
+    durationMinutes: number,
+    businessTimezone: string
+  ): { start_at: string; end_at: string } {
+    // Convert local business time to UTC (timeStr is in business timezone)
+    const start_at = DateUtils.convertBusinessTimeToUTC(dateStr, timeStr + ':00', businessTimezone);
+
+    // Calculate end timestamp using DateUtils
+    const end_at = DateUtils.calculateEndTimestamp(start_at, durationMinutes);
+
+    return { start_at, end_at };
   }
 }

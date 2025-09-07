@@ -24,7 +24,8 @@ export interface VoiceChatSession {
   callId: string;
   userId: string;
   businessId: string;
-  phoneNumber: string;
+  phoneNumber: string; // Caller's phone
+  businessPhoneNumber: string; // Business phone for agent messages
   createdAt: string;
 }
 
@@ -54,12 +55,9 @@ export class ConversationPersistenceService {
   // Initialize event listeners (called once by service container)
   initializeEventListeners(): void {
     if (this.eventListenersInitialized) {
-      console.log(`⚠️ [ConversationPersistence] Event listeners already initialized - skipping duplicate setup`);
       return;
     }
 
-    console.log(`🔧 [ConversationPersistence] initializeEventListeners() called`);
-    console.log(`🔧 [ConversationPersistence] Stack trace:`, new Error().stack?.split('\n').slice(1, 6).join('\n'));
     this.setupEventListeners();
     this.eventListenersInitialized = true;
   }
@@ -70,36 +68,23 @@ export class ConversationPersistenceService {
 
   private setupEventListeners(): void {
     // Enterprise pattern: One subscription per service with internal event filtering
-    console.log('💾 [ConversationPersistence] Setting up service-based event listener');
 
-    const relevantEvents = ['voice:call:started', 'voice:user:resolved', 'voice:call:ended'];
     this.voiceEventBus.subscribe('voice:events', this.handleAllEvents.bind(this), 'ConversationPersistenceService');
 
-    console.log(`🏢 [ConversationPersistence] Subscribed to voice:events stream for events: [${relevantEvents.join(', ')}]`);
   }
 
   private async handleAllEvents(event: VoiceEvent): Promise<void> {
-    console.log(`📨 [ConversationPersistence] Received event: ${event.type} - filtering for relevance`);
-
     // Internal event routing (enterprise pattern)
     switch (event.type) {
       case 'voice:call:started':
-        console.log(`🎯 [ConversationPersistence] Processing relevant event: ${event.type}`);
         await this.handleCallStarted(event);
         break;
-
-      case 'voice:user:resolved':
-        console.log(`🎯 [ConversationPersistence] Processing relevant event: ${event.type}`);
-        await this.handleUserResolved(event);
-        break;
-
       case 'voice:call:ended':
-        console.log(`🎯 [ConversationPersistence] Processing relevant event: ${event.type}`);
         await this.handleCallEnded(event);
         break;
 
       default:
-        console.log(`⏭️ [ConversationPersistence] Ignoring irrelevant event: ${event.type}`);
+        // Ignore irrelevant events
         break;
     }
   }
@@ -109,9 +94,10 @@ export class ConversationPersistenceService {
   // ============================================================================
 
   private async handleCallStarted(event: VoiceEvent): Promise<void> {
-    const { phoneNumber, businessId } = event.data as {
+    const { phoneNumber, businessId, businessPhoneNumber } = event.data as {
       phoneNumber: string;
       businessId: string;
+      businessPhoneNumber: string;
     };
 
     // Store session info (don't create DB record yet)
@@ -121,48 +107,24 @@ export class ConversationPersistenceService {
       userId: '', // Will be set when user is resolved, empty until then
       businessId,
       phoneNumber,
+      businessPhoneNumber,
       createdAt: DateUtils.nowUTC()
     };
 
     this.pendingVoiceSessions.set(event.callId, voiceSession);
-    console.log(`📋 [ConversationPersistence] Prepared session info for call ${event.callId}`);
   }
 
-  private async handleUserResolved(event: VoiceEvent): Promise<void> {
-    const { user } = event.data as { user: Record<string, unknown> | null };
-    const voiceSession = this.pendingVoiceSessions.get(event.callId);
-
-    if (!voiceSession) {
-      console.warn(`⚠️ [ConversationPersistence] No pending session for user resolution: ${event.callId}`);
-      return;
-    }
-
-
-    // Update user ID for final persistence - must be a valid user ID
-    const userId = user?.id as string;
-    if (!userId) {
-      console.error(`❌ [ConversationPersistence] No valid user ID provided for ${event.callId}. User data:`, user);
-      return;
-    }
-
-    voiceSession.userId = userId;
-    this.pendingVoiceSessions.set(event.callId, voiceSession);
-
-    console.log(`👤 [ConversationPersistence] User resolved for ${event.callId}: ${voiceSession.userId}`);
-  }
 
   private async handleCallEnded(event: VoiceEvent): Promise<void> {
     const callEndedEvent = event as CallEndedEvent;
     const { reason, duration } = callEndedEvent.data;
     const callId = event.callId;
 
-    console.log(`🏁 [ConversationPersistence] Call ended ${callId} - flushing complete conversation to Postgres`);
 
     try {
       const result = await this.flushCompleteConversation(callId, reason, duration);
 
       if (result.success) {
-        console.log(`✅ [ConversationPersistence] Successfully persisted ${result.messageCount} messages for ${callId}`);
       } else {
         console.error(`❌ [ConversationPersistence] Failed to persist conversation: ${result.error}`);
       }
@@ -188,12 +150,7 @@ export class ConversationPersistenceService {
       };
     }
 
-    if (!pendingSession.userId) {
-      return {
-        success: false,
-        error: `No valid user ID for call ${callId} - cannot create chat session`
-      };
-    }
+    // Allow anonymous chat sessions (userId can be null)
 
     try {
       // 1. Get complete conversation from Redis
@@ -201,14 +158,13 @@ export class ConversationPersistenceService {
       const conversationHistory = await conversationManager.getConversationHistory(callId);
 
       if (!conversationHistory || conversationHistory.messages.length === 0) {
-        console.log(`💾 [ConversationPersistence] No conversation to persist for ${callId}`);
         return { success: true, messageCount: 0 };
       }
 
-      // 2. Create chat session first (empty messages)
+      // 2. Create chat session first (empty messages) - userId can be null for anonymous calls
       const chatSession = await this.chatSessionRepository.create({
         channel: ChatChannel.PHONE,
-        user_id: pendingSession.userId,
+        user_id: pendingSession.userId || null, // Allow null for anonymous calls
         business_id: pendingSession.businessId,
         status: ChatSessionStatus.ENDED, // Already ended
         ended_at: DateUtils.nowUTC(),
@@ -217,15 +173,20 @@ export class ConversationPersistenceService {
 
       // 3. Add all messages to the session (batch operation)
       for (const message of conversationHistory.messages) {
+        const senderType = this.mapRoleToSenderType(message.role);
+        const phoneNumber = senderType === MessageSenderType.USER
+          ? pendingSession.phoneNumber  // User messages from caller's phone
+          : pendingSession.businessPhoneNumber; // Agent/system messages from business phone
+
         const chatMessageData: CreateChatMessageData = {
           content: message.content,
-          sender_type: this.mapRoleToSenderType(message.role)
+          sender_type: senderType,
+          phone_number: phoneNumber
         };
 
         await this.chatSessionRepository.addMessage(chatSession.id, chatMessageData);
       }
 
-      console.log(`💾 [ConversationPersistence] Created chat session ${chatSession.id} with ${conversationHistory.messages.length} messages`);
 
       // 4. Emit persistence complete event
         await this.voiceEventBus.publish({
@@ -286,7 +247,6 @@ export class ConversationPersistenceService {
   }
 
   async manualFlushCall(callId: string, reason: string = 'manual_flush'): Promise<ConversationFlushResult> {
-    console.log(`🔧 [ConversationPersistence] Manual flush requested for ${callId}`);
     return await this.flushCompleteConversation(callId, reason, 0);
   }
 
@@ -300,6 +260,5 @@ export class ConversationPersistenceService {
 
   async cleanupPendingSession(callId: string): Promise<void> {
     this.pendingVoiceSessions.delete(callId);
-    console.log(`🧹 [ConversationPersistence] Cleaned up pending session for ${callId}`);
   }
 }

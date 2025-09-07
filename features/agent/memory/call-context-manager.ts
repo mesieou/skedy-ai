@@ -58,7 +58,6 @@ export class CallContextManager {
   constructor(voiceEventBus: VoiceEventBus) {
     CallContextManager.instanceCount++;
     this.instanceId = `CallContextManager-${CallContextManager.instanceCount}`;
-    console.log(`🏗️ [${this.instanceId}] Creating new CallContextManager instance (total: ${CallContextManager.instanceCount})`);
 
     // Inject event bus dependency
     this.voiceEventBus = voiceEventBus;
@@ -82,10 +81,10 @@ export class CallContextManager {
     businessId: string;
     userId: string | null;
     phoneNumber: string;
+    businessPhoneNumber: string;
     user: User | null;
     business: Business;
   }): Promise<CallContext> {
-    console.log(`🎯 [Context] Initializing call context for ${callData.callId}`);
 
     // Create call state in Redis
     const callState = await this.callStateManager.createCallState({
@@ -103,6 +102,7 @@ export class CallContextManager {
       data: {
         phoneNumber: callData.phoneNumber,
         businessId: callData.businessId,
+        businessPhoneNumber: callData.businessPhoneNumber,
         twilioAccountSid: 'extracted_from_webhook',
         user: callData.user,
         isReturningCustomer: callData.user !== null
@@ -115,7 +115,6 @@ export class CallContextManager {
       callState
     };
 
-    console.log(`✅ [Context] Call context initialized for ${callData.callId}`);
     return callContext;
   }
 
@@ -123,13 +122,18 @@ export class CallContextManager {
     const updatedState = await this.callStateManager.updateCallState(callId, updates);
 
     if (updatedState) {
-      // Emit state change event
-      await this.voiceEventBus.publish({
-        type: 'voice:call:state_changed',
-        callId,
-        timestamp: Date.now(),
-        data: { updates, newState: updatedState }
-      });
+      // Only publish events for meaningful state changes (not lastActivity updates)
+      const meaningfulUpdates = { ...updates };
+      delete meaningfulUpdates.lastActivity;
+
+      if (Object.keys(meaningfulUpdates).length > 0) {
+        await this.voiceEventBus.publish({
+          type: 'voice:call:state_changed',
+          callId,
+          timestamp: Date.now(),
+          data: { updates: meaningfulUpdates, newState: updatedState }
+        });
+      }
     }
 
     return updatedState;
@@ -144,10 +148,13 @@ export class CallContextManager {
     const message = this.realTimeConversationManager.createUserMessage(content, openai_item_id);
     const storedMessage = await this.realTimeConversationManager.addMessage(callId, message);
 
+    // Log user message with phone number
+    const callState = await this.callStateManager.getCallState(callId);
+    if (callState) {
+    }
+
     // Update call activity
     await this.updateCallState(callId, { lastActivity: Date.now() });
-
-    // No republishing - this method is called by event handlers that already received the event
 
     return storedMessage;
   }
@@ -156,10 +163,10 @@ export class CallContextManager {
     const message = this.realTimeConversationManager.createAssistantMessage(content, openai_item_id);
     const storedMessage = await this.realTimeConversationManager.addMessage(callId, message);
 
+    // Log agent message
+
     // Update call activity
     await this.updateCallState(callId, { lastActivity: Date.now() });
-
-    // No republishing - this method is called by event handlers that already received the event
 
     return storedMessage;
   }
@@ -202,6 +209,19 @@ export class CallContextManager {
     });
   }
 
+  /**
+   * Update user context when user is created (publishes event)
+   */
+  async updateUserContext(callId: string, user: User): Promise<void> {
+    await this.callStateManager.updateCallState(callId, {
+      userId: user.id,
+      user: user,
+      lastActivity: Date.now()
+    });
+
+    console.log(`✅ [CallContextManager] User context updated: ${user.first_name} (${callId})`);
+  }
+
   async setQuoteData(callId: string, quoteData: BookingCalculationResult): Promise<void> {
     await this.callStateManager.setQuoteData(callId, quoteData);
 
@@ -234,12 +254,10 @@ export class CallContextManager {
     // Add system message about service selection
     await this.addSystemMessage(callId, `Service selected: ${service.name}`);
 
-    console.log(`🎯 [Context] Service selected for ${callId}: ${service.name}`);
   }
 
   async updateAvailableTools(callId: string, tools: string[]): Promise<void> {
     await this.updateCallState(callId, { toolsAvailable: tools });
-    console.log(`🔧 [Context] Updated tools for ${callId}:`, tools);
   }
 
   // ============================================================================
@@ -277,7 +295,6 @@ export class CallContextManager {
       await this.updateCallState(callId, { lastActivity: Date.now() });
     }
 
-    console.log(`📋 [CallContext] Chat session linked to call ${callId}: ${chatSessionId}`);
   }
 
   // ============================================================================
@@ -303,8 +320,6 @@ export class CallContextManager {
         data: { reason }
       });
 
-      console.log(`🏁 [CallContext] Ending call ${callId} (reason: ${reason})`);
-      console.log(`✅ [CallContext] Call ended and TTL set for ${callId}`);
     } catch (error) {
       console.error(`❌ [CallContext] Failed to end call ${callId}:`, error);
     }
@@ -316,57 +331,44 @@ export class CallContextManager {
 
   private setupEventListeners(): void {
     // Enterprise pattern: One subscription per service with internal event filtering
-    console.log(`🔧 [${this.instanceId}] Setting up service-based event listener`);
-
-    const relevantEvents = ['voice:websocket:connected', 'voice:websocket:disconnected', 'voice:call:ended', 'voice:message:user', 'voice:message:assistant', 'voice:message:system'];
     this.voiceEventBus.subscribe('voice:events', this.handleAllEvents.bind(this), `CallContextManager-${this.instanceId}`);
-
-    console.log(`🏢 [${this.instanceId}] Subscribed to voice:events stream for events: [${relevantEvents.join(', ')}]`);
   }
 
   private async handleAllEvents(event: VoiceEvent): Promise<void> {
-    console.log(`📨 [${this.instanceId}] Received event: ${event.type} - filtering for relevance`);
-
     // Internal event routing (enterprise pattern)
     switch (event.type) {
       case 'voice:websocket:connected':
-        console.log(`🎯 [${this.instanceId}] Processing relevant event: ${event.type}`);
         await this.handleWebSocketConnected(event);
         break;
 
       case 'voice:websocket:disconnected':
-        console.log(`🎯 [${this.instanceId}] Processing relevant event: ${event.type}`);
         await this.handleWebSocketDisconnected(event);
         break;
 
       case 'voice:call:ended':
-        console.log(`🎯 [${this.instanceId}] Processing relevant event: ${event.type}`);
         await this.handleCallEndedEvent(event);
         break;
 
       case 'voice:message:user':
-        console.log(`🎯 [${this.instanceId}] Processing relevant event: ${event.type}`);
         await this.handleUserMessageEvent(event);
         break;
 
       case 'voice:message:assistant':
-        console.log(`🎯 [${this.instanceId}] Processing relevant event: ${event.type}`);
         await this.handleAssistantMessageEvent(event);
         break;
 
       case 'voice:message:system':
-        console.log(`🎯 [${this.instanceId}] Processing relevant event: ${event.type}`);
         await this.handleSystemMessageEvent(event);
         break;
 
+
       default:
-        console.log(`⏭️ [${this.instanceId}] Ignoring irrelevant event: ${event.type}`);
+        // Ignore irrelevant events
         break;
     }
   }
 
   private async handleWebSocketConnected(event: VoiceEvent): Promise<void> {
-    console.log(`🔌 [${this.instanceId}] Handling WebSocket connected event for call ${event.callId}`);
     await this.updateCallState(event.callId, {
       webSocketStatus: 'connected',
       lastActivity: Date.now()
@@ -374,18 +376,13 @@ export class CallContextManager {
   }
 
   private async handleWebSocketDisconnected(event: VoiceEvent): Promise<void> {
-    console.log(`🔌 [${this.instanceId}] Handling WebSocket disconnected event for call ${event.callId}`);
-
     // End the call since WebSocket disconnection means call is over
-    // endCall() will update the call state including WebSocket status
     const disconnectData = event.data as { code?: number; reason?: string };
     const reason = `websocket_close: ${disconnectData.code || 'unknown'}`;
     await this.endCall(event.callId, reason);
   }
 
   private async handleCallEndedEvent(event: VoiceEvent): Promise<void> {
-    console.log(`🏁 [${this.instanceId}] Handling call ended event for call ${event.callId}`);
-
     // Update call state to ended (this replaces the direct endCall method)
     await this.updateCallState(event.callId, {
       status: 'ended',
@@ -394,29 +391,35 @@ export class CallContextManager {
 
     // Set TTL for cleanup (1 hour)
     await simpleTTL.setEndedCallTTL(event.callId);
-
-    console.log(`✅ [${this.instanceId}] Call ended and TTL set for ${event.callId}`);
   }
 
   private async handleUserMessageEvent(event: VoiceEvent): Promise<void> {
     const { content, openai_item_id } = event.data as { content: string; openai_item_id?: string };
-    console.log(`💬 [${this.instanceId}] Storing user message for call ${event.callId}: "${content}"`);
-
     await this.addUserMessage(event.callId, content, openai_item_id);
   }
 
   private async handleAssistantMessageEvent(event: VoiceEvent): Promise<void> {
     const { content, openai_item_id } = event.data as { content: string; openai_item_id?: string };
-    console.log(`💬 [${this.instanceId}] Storing assistant message for call ${event.callId}: "${content}"`);
-
     await this.addAssistantMessage(event.callId, content, openai_item_id);
   }
 
   private async handleSystemMessageEvent(event: VoiceEvent): Promise<void> {
     const { content } = event.data as { content: string };
-    console.log(`💬 [${this.instanceId}] Storing system message for call ${event.callId}: "${content}"`);
-
     await this.addSystemMessage(event.callId, content);
+  }
+
+
+  /**
+   * Get current user for a call (event-driven approach)
+   */
+  async getCurrentUser(callId: string): Promise<User | null> {
+    try {
+      const callState = await this.callStateManager.getCallState(callId);
+      return callState?.user || null;
+    } catch (error) {
+      console.error(`❌ [${this.instanceId}] Failed to get current user for call ${callId}:`, error);
+      return null;
+    }
   }
 
   // ============================================================================

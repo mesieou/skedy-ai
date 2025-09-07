@@ -11,18 +11,11 @@
 import type { BusinessContext } from '../../../shared/lib/database/types/business-context';
 import type { Service } from '../../../shared/lib/database/types/service';
 import type { Business } from '../../../shared/lib/database/types/business';
-import type { Address } from '../../../shared/lib/database/types/addresses';
-import { AddressType } from '../../../shared/lib/database/types/addresses';
 
 import type { FunctionCallResult, QuoteFunctionArgs } from '../types';
 import { BookingCalculator } from '../../../scheduling/lib/bookings/booking-calculator';
-import type {
-  BookingCalculationInput,
-  BookingCalculationResult,
-  BookingAddress,
-  ServiceWithQuantity
-} from '../../../scheduling/lib/types/booking-calculations';
-import { AddressRole } from '../../../scheduling/lib/types/booking-calculations';
+import { QuoteInputBuilder } from '../../../scheduling/lib/bookings/quote-input-builder';
+import type { BookingCalculationResult } from '../../../scheduling/lib/types/booking-calculations';
 import { createToolError } from '../../../shared/utils/error-utils';
 
 // ============================================================================
@@ -45,14 +38,32 @@ export class QuoteTool {
   // ============================================================================
 
   /**
-   * Generate quote for selected service
+   * Generate quote - handles service selection internally if needed
    */
-  async getQuoteForSelectedService(service: Service, args: QuoteFunctionArgs): Promise<FunctionCallResult> {
-    try {
-      console.log(`💰 Calculating quote for selected service: ${service.name}`);
-      console.log(`📋 Quote args:`, args);
+  async getQuoteForSelectedService(args: QuoteFunctionArgs): Promise<FunctionCallResult> {
+    // If service_name is provided, find the service first
+    let service: Service | null = null;
 
-      const bookingInput = this.buildBookingInput(args, service);
+    if (args.service_name) {
+      service = this.businessContext.services.find(s => s.name === args.service_name) || null;
+      if (!service) {
+        return createToolError(
+          "Service not found",
+          `Service "${args.service_name}" is not available.`
+        );
+      }
+    } else {
+      return createToolError(
+        "No service specified",
+        "Please specify a service_name in the quote request."
+      );
+    }
+
+    try {
+      // Log requirement collection progress
+      this.logRequirementProgress(args, service);
+
+      const bookingInput = QuoteInputBuilder.buildBookingInput(args, service, this.businessContext);
       const quote = await this.bookingCalculator.calculateBooking(bookingInput, args.job_scope);
 
       this.logQuoteBreakdown(quote, service.name);
@@ -65,111 +76,6 @@ export class QuoteTool {
     }
   }
 
-  // ============================================================================
-  // BOOKING INPUT PROCESSING
-  // ============================================================================
-
-  private buildBookingInput(args: QuoteFunctionArgs, service: Service): BookingCalculationInput {
-    const addresses = this.buildAddressList(args, service);
-    const serviceWithQuantity = this.buildServiceWithQuantity(service, args, addresses);
-
-    return {
-      services: [serviceWithQuantity],
-      business: this.business,
-      addresses
-    };
-  }
-
-  private buildServiceWithQuantity(service: Service, args: QuoteFunctionArgs, addresses: BookingAddress[]): ServiceWithQuantity {
-    const quantity = args.quantity || args.number_of_people || args.number_of_rooms || args.number_of_vehicles || 1;
-    const serviceAddresses = addresses.filter(addr => addr.service_id === service.id);
-
-    return {
-      service,
-      quantity,
-      serviceAddresses
-    };
-  }
-  // ============================================================================
-  // ADDRESS PROCESSING
-  // ============================================================================
-
-  private buildAddressList(args: QuoteFunctionArgs, service: Service): BookingAddress[] {
-    const addresses: BookingAddress[] = [];
-    let sequenceOrder = 0;
-
-    // Add business base address
-    addresses.push(this.createBusinessBaseAddress(sequenceOrder++));
-
-    // Add customer addresses
-    addresses.push(...this.createCustomerAddresses(args, service, sequenceOrder));
-
-    return addresses;
-  }
-
-  private createBusinessBaseAddress(sequenceOrder: number): BookingAddress {
-    return {
-      id: 'business_base',
-      address: this.parseAddressString(this.businessContext.businessInfo.address),
-      role: AddressRole.BUSINESS_BASE,
-      sequence_order: sequenceOrder
-    };
-  }
-
-  private createCustomerAddresses(args: QuoteFunctionArgs, service: Service, startingSequence: number): BookingAddress[] {
-    const addresses: BookingAddress[] = [];
-    let sequenceOrder = startingSequence;
-
-    // Process pickup addresses
-    if (args.pickup_addresses && Array.isArray(args.pickup_addresses)) {
-      addresses.push(...this.createAddressesFromArray(args.pickup_addresses, AddressRole.PICKUP, service.id, sequenceOrder));
-      sequenceOrder += args.pickup_addresses.length;
-    } else if (args.pickup_address) {
-      addresses.push(this.createSingleAddress(args.pickup_address, AddressRole.PICKUP, service.id, sequenceOrder++));
-    }
-
-    // Process dropoff addresses
-    if (args.dropoff_addresses && Array.isArray(args.dropoff_addresses)) {
-      addresses.push(...this.createAddressesFromArray(args.dropoff_addresses, AddressRole.DROPOFF, service.id, sequenceOrder));
-      sequenceOrder += args.dropoff_addresses.length;
-    } else if (args.dropoff_address) {
-      addresses.push(this.createSingleAddress(args.dropoff_address, AddressRole.DROPOFF, service.id, sequenceOrder++));
-    }
-
-    // Process service address
-    if (args.service_address) {
-      addresses.push(this.createSingleAddress(args.service_address, AddressRole.SERVICE, service.id, sequenceOrder));
-    }
-
-    return addresses;
-  }
-
-  private createAddressesFromArray(addressStrings: string[], role: AddressRole, serviceId: string, startingSequence: number): BookingAddress[] {
-    console.log(`📍 Processing ${addressStrings.length} ${role} addresses:`, addressStrings);
-
-    return addressStrings.map((addressString, index) => {
-      const parsedAddress = this.parseAddressString(addressString);
-      console.log(`📍 Parsed ${role} address ${index}:`, parsedAddress);
-
-      return {
-        id: `${role}_${index}`,
-        address: parsedAddress,
-        role,
-        sequence_order: startingSequence + index,
-        service_id: serviceId
-      };
-    });
-  }
-
-  private createSingleAddress(addressString: string, role: AddressRole, serviceId: string, sequenceOrder: number): BookingAddress {
-    return {
-      id: role,
-      address: this.parseAddressString(addressString),
-      role,
-      sequence_order: sequenceOrder,
-      service_id: serviceId
-    };
-  }
 
   // ============================================================================
   // RESPONSE FORMATTING
@@ -246,6 +152,20 @@ export class QuoteTool {
   // LOGGING & DEBUGGING
   // ============================================================================
 
+  private logRequirementProgress(args: QuoteFunctionArgs, service: Service): void {
+    const requirements = service.ai_function_requirements || [];
+    const collected = requirements.map(req => ({
+      name: req,
+      value: (args as Record<string, unknown>)[req],
+      status: Boolean((args as Record<string, unknown>)[req])
+    }));
+
+
+    const collectedCount = collected.filter(r => r.status).length;
+    if (collectedCount === requirements.length) {
+    }
+  }
+
   private logQuoteBreakdown(quote: BookingCalculationResult, serviceName: string): void {
     console.log(`💰 Quote breakdown for ${serviceName}:`, {
       total_amount: quote.total_estimate_amount,
@@ -269,24 +189,4 @@ export class QuoteTool {
     });
   }
 
-  // ============================================================================
-  // ADDRESS PARSING UTILITIES
-  // ============================================================================
-
-  private parseAddressString(addressString: string): Address {
-    const parts = addressString.split(',').map(p => p.trim());
-    return {
-      id: 'temp-' + Math.random().toString(36).substring(7),
-      service_id: 'temp',
-      type: AddressType.CUSTOMER,
-      address_line_1: parts[0] || addressString,
-      address_line_2: null,
-      city: parts[1] || 'Melbourne',
-      state: parts[2] || 'VIC',
-      postcode: parts[3] || '3000',
-      country: 'Australia',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-  }
 }

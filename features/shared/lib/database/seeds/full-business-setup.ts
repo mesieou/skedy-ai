@@ -72,20 +72,29 @@ export class FullBusinessSetupSeeder {
       const business = await this.businessSeeder.createUniqueRemovalistBusiness();
       console.log(`✅ Business created: ${business.name} (ID: ${business.id})`);
 
-      // Step 2: Create Users
+      // Step 2: Create Users based on business.number_of_providers
       console.log('👥 Creating users...');
 
-      // Admin/Provider user (can manage business + provide services)
+      const providers: User[] = [];
+
+      // Always create admin/provider as the first provider
       const adminProvider = await this.userSeeder.createUniqueAdminProviderUser(business.id);
       console.log(`✅ Admin/Provider created: ${adminProvider.email} (ID: ${adminProvider.id})`);
+      providers.push(adminProvider);
 
-      // Regular Provider user (provides services only)
-      const provider = await this.userSeeder.createUniqueProviderUser(business.id);
-      console.log(`✅ Provider created: ${provider.email} (ID: ${provider.id})`);
+      let provider: User | null = null;
+      if (business.number_of_providers >= 2) {
+        // Create additional regular provider if needed
+        provider = await this.userSeeder.createUniqueProviderUser(business.id);
+        console.log(`✅ Provider created: ${provider.email} (ID: ${provider.id})`);
+        providers.push(provider);
+      }
 
       // Customer user (books services)
       const customer = await this.userSeeder.createUniqueCustomerUser(business.id);
       console.log(`✅ Customer created: ${customer.email} (ID: ${customer.id})`);
+
+      console.log(`✅ Created ${providers.length} providers as specified by business.number_of_providers`);
 
       // Step 3: Create Services (using existing service data)
       console.log('🛠️ Creating services...');
@@ -98,34 +107,33 @@ export class FullBusinessSetupSeeder {
 
       // Step 4: Create Calendar Settings for Providers
       console.log('📅 Creating calendar settings...');
+      const calendarSettings: CalendarSettings[] = [];
 
-      // Weekday calendar for admin/provider
-      const adminCalendarData = {
-        ...weekdayCalendarSettingsData,
-        user_id: adminProvider.id // Replace placeholder with actual user ID
-      };
-      const adminCalendarSettings = await this.calendarSettingsSeeder.createCalendarSettingsWith(adminCalendarData);
-      console.log(`✅ Admin calendar settings created (ID: ${adminCalendarSettings.id})`);
+      // Create calendar settings for each provider
+      for (let i = 0; i < providers.length; i++) {
+        const providerUser = providers[i];
+        const calendarData = i === 0 ? weekdayCalendarSettingsData : weekendCalendarSettingsData;
 
-      // Weekend calendar for regular provider
-      const providerCalendarData = {
-        ...weekendCalendarSettingsData,
-        user_id: provider.id // Replace placeholder with actual user ID
-      };
-      const providerCalendarSettings = await this.calendarSettingsSeeder.createCalendarSettingsWith(providerCalendarData);
-      console.log(`✅ Provider calendar settings created (ID: ${providerCalendarSettings.id})`);
+        const calendarSettingsData = {
+          ...calendarData,
+          user_id: providerUser.id
+        };
+
+        const settings = await this.calendarSettingsSeeder.createCalendarSettingsWith(calendarSettingsData);
+        calendarSettings.push(settings);
+        console.log(`✅ Calendar settings created for provider ${i + 1} (ID: ${settings.id})`);
+      }
 
       // Step 5: Generate Availability Slots (using existing logic from test)
       console.log('🕐 Generating availability slots...');
       const tomorrowDate = DateUtils.addDaysUTC(DateUtils.nowUTC(), 1);
-      const providers = [adminProvider, provider];
-      const calendarSettings = [adminCalendarSettings, providerCalendarSettings];
 
       const availabilitySlots = await this.availabilitySlotsRepository.generateInitialBusinessAvailability(
         business.id,
         tomorrowDate,
         providers,
         calendarSettings,
+        business.time_zone,
         30 // 30 days of availability
       );
       console.log(`✅ Availability slots generated (ID: ${availabilitySlots.id})`);
@@ -133,11 +141,11 @@ export class FullBusinessSetupSeeder {
       // Return complete setup
       const setup: FullBusinessSetup = {
         business,
-        adminProvider,
-        provider,
+        adminProvider: adminProvider!,
+        provider: provider || adminProvider, // Use adminProvider as fallback if only 1 provider
         customer,
         services: [service],
-        calendarSettings: [adminCalendarSettings, providerCalendarSettings],
+        calendarSettings,
         availabilitySlots
       };
 
@@ -145,7 +153,7 @@ export class FullBusinessSetupSeeder {
       console.log('📋 Setup Summary:');
       console.log(`   Business: ${business.name} (${business.phone_number})`);
       console.log(`   Admin/Provider: ${adminProvider.email}`);
-      console.log(`   Provider: ${provider.email}`);
+      if (provider) console.log(`   Provider: ${provider.email}`);
       console.log(`   Customer: ${customer.email}`);
       console.log(`   Services: ${setup.services.length}`);
       console.log(`   Calendar Settings: ${setup.calendarSettings.length}`);

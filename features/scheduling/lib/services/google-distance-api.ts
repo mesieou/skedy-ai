@@ -33,10 +33,6 @@ export class GoogleDistanceApiService implements IDistanceApiService {
 
     this.config = Object.freeze({ apiKey: key, baseUrl: API_BASE_URL, useMockData });
 
-    console.log(`🔑 [GoogleDistanceApiService] API Key available: ${!!key}`);
-    console.log(`🧪 [GoogleDistanceApiService] Using mock data: ${this.config.useMockData}`);
-    console.log(`🌍 [GoogleDistanceApiService] Force real API: ${forceReal}`);
-
     if (this.config.useMockData && process.env.NODE_ENV !== 'test') {
       console.warn('[GoogleDistanceApiService] Using mock data - no API key configured');
     }

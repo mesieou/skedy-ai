@@ -23,7 +23,7 @@ export function createUniqueRemovalistBusinessData(): CreateBusinessData {
     payment_processing_fee_percentage: 2.9,
     booking_platform_fee_percentage: 2.0,
     currency_code: "AUD",
-    number_of_providers: 1,
+    number_of_providers: 2,
     subscription_type: SubscriptionType.FREE,
     payment_methods: [PaymentMethod.CREDIT_CARD, PaymentMethod.BANK_TRANSFER, PaymentMethod.CASH],
     preferred_payment_method: PaymentMethod.CASH,
@@ -110,6 +110,3 @@ export function createUniqueMassageBusinessData(): CreateBusinessData {
     minimum_charge: 80.0
   };
 }
-
-
-

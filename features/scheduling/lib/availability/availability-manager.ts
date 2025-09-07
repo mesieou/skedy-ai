@@ -67,7 +67,8 @@ export class AvailabilityManager {
       allSlots[dateKey] = await generateAvailabilitySlotsForDate(
         providers,
         calendarSettings,
-        currentDate
+        currentDate,
+        this.business.time_zone
       );
     }
 
@@ -75,6 +76,179 @@ export class AvailabilityManager {
       ...this.availabilitySlots,
       slots: allSlots
     };
+  }
+
+  /**
+   * Check availability for a specific date and return 30-minute slots
+   * Returns formatted availability data suitable for AI receptionist responses
+   */
+  checkDayAvailability(dateStr: string): {
+    success: boolean;
+    date: string;
+    availableSlots: Array<{ time: string; providerCount: number }>;
+    formattedMessage: string;
+    error?: string;
+  } {
+    try {
+      console.log(`[AvailabilityManager.checkDayAvailability] Checking availability for date: ${dateStr}`);
+
+      // Validate date format using DateUtils
+      if (!DateUtils.isValidDateFormat(dateStr)) {
+        return {
+          success: false,
+          date: dateStr,
+          availableSlots: [],
+          formattedMessage: "",
+          error: "Invalid date format. Please use YYYY-MM-DD format."
+        };
+      }
+
+      // Get slots for the requested date
+      const daySlots = this.availabilitySlots.slots[dateStr];
+
+      if (!daySlots) {
+        return {
+          success: false,
+          date: dateStr,
+          availableSlots: [],
+          formattedMessage: `Sorry, we don't have availability data for ${this.formatDateForDisplay(dateStr)}.`,
+          error: "No availability data for this date"
+        };
+      }
+
+      // Get 60-minute slots for AI responses (most common booking duration)
+      const sixtyMinSlots = daySlots["60"] || [];
+
+      if (sixtyMinSlots.length === 0) {
+        return {
+          success: true,
+          date: dateStr,
+          availableSlots: [],
+          formattedMessage: `Unfortunately, we're fully booked on ${this.formatDateForDisplay(dateStr)}.`
+        };
+      }
+
+      // Convert to structured format (slots are already in UTC, convert to business timezone for display)
+      const availableSlots = sixtyMinSlots.map(([time, providerCount]) => {
+        // Convert UTC time to business timezone for customer display
+        const utcTimestamp = DateUtils.createSlotTimestamp(dateStr, time + ':00');
+        const { time: businessTime } = DateUtils.convertUTCToTimezone(utcTimestamp, this.business.time_zone);
+
+        return {
+          time: businessTime.substring(0, 5), // "17:00" format (business timezone)
+          providerCount
+        };
+      });
+
+      // Create natural receptionist message
+      const formattedMessage = this.formatAvailabilityMessage(dateStr, availableSlots);
+
+      return {
+        success: true,
+        date: dateStr,
+        availableSlots,
+        formattedMessage
+      };
+
+    } catch (error) {
+      console.error(`[AvailabilityManager.checkDayAvailability] Error checking availability:`, error);
+      return {
+        success: false,
+        date: dateStr,
+        availableSlots: [],
+        formattedMessage: "Sorry, I couldn't check availability right now. Please try again.",
+        error: error instanceof Error ? error.message : "Unknown error"
+      };
+    }
+  }
+
+  /**
+   * Format availability message in natural receptionist language
+   */
+  private formatAvailabilityMessage(dateStr: string, slots: Array<{ time: string; providerCount: number }>): string {
+    const displayDate = this.formatDateForDisplay(dateStr);
+
+    if (slots.length === 0) {
+      return `Unfortunately, we're fully booked on ${displayDate}.`;
+    }
+
+    if (slots.length === 1) {
+      const slot = slots[0];
+      return `On ${displayDate}, I have ${slot.time} available.`;
+    }
+
+    if (slots.length === 2) {
+      const [first, second] = slots;
+      return `On ${displayDate}, I have ${first.time} and ${second.time} available.`;
+    }
+
+    // More than 2 slots - show time range
+    const firstTime = slots[0].time;
+    const lastTime = slots[slots.length - 1].time;
+    const firstFormatted = this.formatTimeForDisplay(firstTime);
+    const lastFormatted = this.formatTimeForDisplay(lastTime);
+
+    return `On ${displayDate}, I have availability from ${firstFormatted} to ${lastFormatted}.`;
+  }
+
+  /**
+   * Format date for natural display (e.g., "Monday, 15th January")
+   */
+  private formatDateForDisplay(dateStr: string): string {
+    // Use DateUtils to create proper UTC timestamp
+    const utcTimestamp = DateUtils.createSlotTimestamp(dateStr, '00:00:00');
+
+    // Convert to business timezone using DateUtils
+    const { date: localDate } = DateUtils.convertUTCToTimezone(utcTimestamp, this.business.time_zone);
+
+    // Create date object for formatting
+    const date = new Date(localDate + 'T00:00:00');
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      timeZone: this.business.time_zone
+    };
+
+    const formatted = date.toLocaleDateString('en-AU', options);
+
+    // Add ordinal suffix to day
+    const day = date.getDate();
+    const suffix = this.getOrdinalSuffix(day);
+
+    return formatted.replace(`${day}`, `${day}${suffix}`);
+  }
+
+  /**
+   * Format time for natural display (e.g., "10:30 AM", "1:00 PM", "1:30 PM")
+   */
+  private formatTimeForDisplay(timeStr: string): string {
+    // timeStr is already in Melbourne timezone (17:00), so just format it for display
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours, minutes, 0, 0);
+
+    return date.toLocaleTimeString('en-AU', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: this.business.time_zone
+    });
+  }
+
+  /**
+   * Get ordinal suffix for day (1st, 2nd, 3rd, 4th, etc.)
+   */
+  private getOrdinalSuffix(day: number): string {
+    if (day >= 11 && day <= 13) {
+      return 'th';
+    }
+    switch (day % 10) {
+      case 1: return 'st';
+      case 2: return 'nd';
+      case 3: return 'rd';
+      default: return 'th';
+    }
   }
 
   /**

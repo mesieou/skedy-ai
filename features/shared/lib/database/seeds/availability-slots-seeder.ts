@@ -12,8 +12,10 @@ export class AvailabilitySlotsSeeder extends BaseSeeder<AvailabilitySlots> {
   }
 
   // Generate availability slots with real data
-  async generateAvailabilitySlots(businessId: string, providers: User[], calendarSettings: CalendarSettings[], fromDate: string = DateUtils.addDaysUTC(DateUtils.nowUTC(), 1), days: number = 30): Promise<AvailabilitySlots> {
+  async generateAvailabilitySlots(businessId: string, providers: User[], calendarSettings: CalendarSettings[], businessTimezone: string, fromDate: string = DateUtils.addDaysUTC(DateUtils.nowUTC(), 1), days: number = 30): Promise<AvailabilitySlots> {
     const repository = this.repository as AvailabilitySlotsRepository;
-    return await repository.generateInitialBusinessAvailability(businessId, fromDate, providers, calendarSettings, days);
+    const availabilitySlots = await repository.generateInitialBusinessAvailability(businessId, fromDate, providers, calendarSettings, businessTimezone, days);
+    this.createdIds.push(availabilitySlots.id); // Track created availability slots
+    return availabilitySlots;
   }
 }

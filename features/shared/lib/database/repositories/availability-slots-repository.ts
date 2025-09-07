@@ -10,11 +10,11 @@ export class AvailabilitySlotsRepository extends BaseRepository<AvailabilitySlot
     super('availability_slots');
   }
 
-  async generateInitialBusinessAvailability(businessId: string, fromDate: string, providers: User[], calendarSettings: CalendarSettings[], days: number = 30): Promise<AvailabilitySlots> {
+  async generateInitialBusinessAvailability(businessId: string, fromDate: string, providers: User[], calendarSettings: CalendarSettings[], businessTimezone: string, days: number = 30): Promise<AvailabilitySlots> {
     const emptySlots: AvailabilitySlots = { slots: {}, business_id: businessId } as AvailabilitySlots;
-    const business: Business = { id: businessId } as Business;
+    const business: Business = { id: businessId, time_zone: businessTimezone } as Business;
     const manager = new AvailabilityManager(emptySlots, business);
-    
+
     // Pass UTC string directly to the manager
     const availabilitySlots = await manager.generateInitialBusinessAvailability(providers, calendarSettings, fromDate, days);
     return this.create(availabilitySlots);

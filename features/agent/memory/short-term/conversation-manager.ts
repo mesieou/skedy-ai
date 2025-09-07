@@ -69,7 +69,7 @@ export class RealTimeConversationManager {
         };
 
         await voiceRedisClient.set(key, JSON.stringify(updatedHistory));
-        console.log(`💬 [RealTimeConversation] Added ${message.role} message to ${callId} (total: ${finalMessages.length})`);
+        // Removed verbose logging to reduce log noise
       },
       // Fallback operation
       async () => {

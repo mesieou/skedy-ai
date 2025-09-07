@@ -11,7 +11,6 @@
 import { ConversationPersistenceService } from './long-term/conversation-persistence';
 import { CallStateManager } from './short-term/call-state-manager';
 import { RealTimeConversationManager } from './short-term/conversation-manager';
-import { UserCreationService } from '../tools/user-creation';
 import { VoiceEventBus, createVoiceEventBus } from './redis/event-bus';
 import { CallContextManager } from './call-context-manager';
 
@@ -20,7 +19,6 @@ export class AgentServiceContainer {
 
   // Shared services (stateless, handle multiple calls)
   private conversationPersistenceService: ConversationPersistenceService | null = null;
-  private userCreationService: UserCreationService | null = null;
   private voiceEventBus: VoiceEventBus | null = null;
 
   private isInitialized = false;
@@ -40,11 +38,8 @@ export class AgentServiceContainer {
    */
   async initialize(): Promise<void> {
     if (this.isInitialized) {
-      console.log('📦 [ServiceContainer] Already initialized');
       return;
     }
-
-    console.log('📦 [ServiceContainer] Initializing agent services...');
 
     // Create event bus first (singleton)
     this.voiceEventBus = createVoiceEventBus();
@@ -52,14 +47,11 @@ export class AgentServiceContainer {
 
     // Create shared services with event bus injection
     this.conversationPersistenceService = new ConversationPersistenceService(this.voiceEventBus);
-    this.userCreationService = new UserCreationService(this.voiceEventBus);
 
     // Initialize event listeners for shared services (ONCE only)
     this.conversationPersistenceService.initializeEventListeners();
-    this.userCreationService.initializeEventListeners();
 
     this.isInitialized = true;
-    console.log('✅ [ServiceContainer] Agent services initialized');
   }
 
   /**
@@ -72,12 +64,6 @@ export class AgentServiceContainer {
     return this.conversationPersistenceService;
   }
 
-  getUserCreationService(): UserCreationService {
-    if (!this.userCreationService) {
-      throw new Error('ServiceContainer not initialized. Call initialize() first.');
-    }
-    return this.userCreationService;
-  }
 
   getVoiceEventBus(): VoiceEventBus {
     if (!this.voiceEventBus) {
@@ -116,10 +102,8 @@ export class AgentServiceContainer {
    */
   reset(): void {
     this.conversationPersistenceService = null;
-    this.userCreationService = null;
     this.isInitialized = false;
     AgentServiceContainer.instance = null;
-    console.log('🧪 [ServiceContainer] Reset for testing');
   }
 }
 

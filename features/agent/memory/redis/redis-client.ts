@@ -72,7 +72,6 @@ export class VoiceRedisClient {
 
   private setupEventHandlers(): void {
     this.client.on('connect', () => {
-      console.log('✅ [Redis] Voice client connected');
     });
 
     this.client.on('ready', () => {
@@ -86,18 +85,15 @@ export class VoiceRedisClient {
     });
 
     this.client.on('close', () => {
-      console.log('🔌 [Redis] Voice client disconnected');
       this.isConnected = false;
       this.isConnecting = false;
     });
 
     // Pub/Sub specific handlers
     this.pubClient.on('connect', () => {
-      console.log('✅ [Redis] Pub client connected');
     });
 
     this.subClient.on('connect', () => {
-      console.log('✅ [Redis] Sub client connected');
     });
   }
 
@@ -158,14 +154,11 @@ export class VoiceRedisClient {
     // Add callback to channel
     if (!this.subscribedChannels.has(channel)) {
       this.subscribedChannels.set(channel, []);
-      console.log(`🔌 [RedisClient] First subscription to channel: ${channel}`);
       await this.subClient.subscribe(channel);
-      console.log(`✅ [RedisClient] Redis subscription created for channel: ${channel}`);
     }
 
     const currentCallbacks = this.subscribedChannels.get(channel)!;
     currentCallbacks.push(callback);
-    console.log(`📝 [RedisClient] Added callback to channel: ${channel} (total callbacks: ${currentCallbacks.length})`);
   }
 
   async psubscribe(pattern: string, callback: (channel: string, message: string) => void): Promise<void> {
@@ -189,17 +182,13 @@ export class VoiceRedisClient {
     this.subClient.on('message', (channel: string, message: string) => {
       const callbacks = this.subscribedChannels.get(channel);
       if (callbacks) {
-        console.log(`📬 [RedisClient] Message received on channel: ${channel}, dispatching to ${callbacks.length} callback${callbacks.length > 1 ? 's' : ''}`);
-        callbacks.forEach((callback, index) => {
+        callbacks.forEach((callback) => {
           try {
-            console.log(`🔄 [RedisClient] Executing callback ${index + 1}/${callbacks.length} for channel: ${channel}`);
             callback(message);
           } catch (error) {
-            console.error(`❌ [Redis] Error in channel callback ${index + 1} for ${channel}:`, error);
+            console.error(`❌ [Redis] Error in channel callback for ${channel}:`, error);
           }
         });
-      } else {
-        console.log(`⚠️ [RedisClient] No callbacks found for channel: ${channel}`);
       }
     });
 
@@ -207,10 +196,8 @@ export class VoiceRedisClient {
     this.subClient.on('pmessage', (pattern: string, channel: string, message: string) => {
       const callbacks = this.subscribedPatterns.get(pattern);
       if (callbacks) {
-        console.log(`📬 [RedisClient] Pattern message received on pattern: ${pattern}, channel: ${channel}, dispatching to ${callbacks.length} callback${callbacks.length > 1 ? 's' : ''}`);
         callbacks.forEach((callback, index) => {
           try {
-            console.log(`🔄 [RedisClient] Executing pattern callback ${index + 1}/${callbacks.length} for pattern: ${pattern}`);
             callback(channel, message);
           } catch (error) {
             console.error(`❌ [Redis] Error in pattern callback ${index + 1} for ${pattern}:`, error);
@@ -232,12 +219,10 @@ export class VoiceRedisClient {
     try {
       // Check if already connected or connecting using our state tracking
       if (this.isConnected) {
-        console.log('✅ [Redis] Already connected');
         return;
       }
 
       if (this.isConnecting) {
-        console.log('⏳ [Redis] Connection already in progress');
         return;
       }
 
@@ -262,7 +247,6 @@ export class VoiceRedisClient {
         await Promise.all(connectionPromises);
       }
 
-      console.log('✅ [Redis] All voice clients connected successfully');
     } catch (error) {
       this.isConnecting = false;
       console.error('❌ [Redis] Connection failed:', error);
@@ -276,7 +260,6 @@ export class VoiceRedisClient {
       this.pubClient.disconnect(),
       this.subClient.disconnect()
     ]);
-    console.log('🔌 [Redis] All voice clients disconnected');
   }
 
   async ping(): Promise<string> {

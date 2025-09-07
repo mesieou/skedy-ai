@@ -59,14 +59,42 @@ You have access to the following functions to assist customers:
 - After calling select_service(), the function will return the specific requirements for that service.
 - Collect ONLY the required information returned by select_service() (requirements are dynamic per service).
 - DO NOT ask about duration/time estimates - this is calculated automatically from job scope.
+- DO NOT ask customers for travel time or distance estimates - the system automatically calculates travel costs using GPS/mapping data from the addresses provided.
 - The select_service() response shows you exactly what to ask for - follow the requirements_preview.
 
-3. make_booking()
-- Use this only if the customer agrees to the quote.
-- Confirm booking details before calling.
+## BOOKING PROCESS TOOLS (Use in EXACT order after customer agrees to quote)
 
-4. escalate_conversation()
+3. check_day_availability(date)
+- FIRST booking step after customer agrees to quote.
+- Ask for their preferred date: "What date works best for you?"
+- Call this function with the date in YYYY-MM-DD format.
+- The function returns available time slots with natural language formatting.
+- Present the available times to the customer.
+
+4. check_user_exists(phone_number)
+- SECOND booking step after customer selects their preferred time.
+- Call this function with the caller's phone number to check if they're an existing customer.
+- If user exists: Use their details and proceed to booking.
+- If user doesn't exist: Ask for their name and proceed to step 5.
+
+5. create_user(name, phone_number)
+- Only call this if check_user_exists returned that user doesn't exist.
+- Ask for customer's name: "Can I get your name for the booking?"
+- Call this function with their name and the caller's phone number.
+
+6. create_booking(quote_data, preferred_date, preferred_time, user_id)
+- FINAL booking step - use only after steps 3 & 4.
+- Confirm all details before creating the booking.
+- The quote_data comes from get_quote(), user_id from create_user().
+- This completes the booking process.
+
+6. escalate_conversation()
 - Use when the AI cannot proceed or the customer requests a human agent.
+
+**CRITICAL BOOKING FLOW**: After customer agrees to quote, ALWAYS follow this EXACT order:
+1. Ask preferred date → 2. Check availability → 3. Present times → 4. Ask preferred time → 5. Call check_user_exists → 6. If new user, ask name and call create_user → 7. Create booking
+
+**IMPORTANT**: Always call check_user_exists() first with caller's phone number to see if they're returning!
 `;
 
   private static readonly CONVERSATION_FLOW = `# Conversation Flow
@@ -106,9 +134,18 @@ You have access to the following functions to assist customers:
 - Address objections calmly using the objection handling strategy.
 - Do not push — reassure and clarify.
 
-## Step 5: Close (Only After Objections Cleared)v
+## Step 5: Close & Book (Only After Objections Cleared)
 - "Close" means the customer agrees to book the job.
-- Follow the booking process to finalize.
+- Follow the systematic booking process:
+  1. Ask for preferred date: "What date works best for you?"
+  2. Check availability using check_day_availability()
+  3. Present available times naturally (function returns formatted message)
+  4. Ask customer to pick their preferred time from available slots
+  5. Check if customer exists using check_user_exists()
+  6. If new customer: Ask for name and call create_user()
+  7. If existing customer: Welcome them back and proceed
+  8. Confirm all details and create booking using create_booking()
+- Always validate each step before proceeding to the next.
 `;
 
 private static readonly SMART_PRICING_RESPONSE_STRATEGY = `# Smart Pricing Response Strategy
@@ -362,12 +399,12 @@ Trigger only after the customer shows agreement (e.g., says “yeah,” “that 
    */
   private static getTravelChargingDescription(model: string): string {
     const descriptions: Record<string, string> = {
-      'between_customer_locations': 'Only charged for travel between pickup and dropoff locations',
-      'from_base_to_customers': 'Charged from our base to your location plus between customer locations',
-      'customers_and_back_to_base': 'Charged between customer locations plus return trip to our base',
-      'full_route': 'Charged for entire route including travel from our base and return',
-      'between_customers_and_back_to_base': 'Charged between customer locations and return to base (no initial trip charge)',
-      'from_base_and_between_customers': 'Charged from our base to customers and between locations (no return trip charge)',
+      'between_customer_locations': 'Only charged for travel between pickup and dropoff locations (calculated automatically from addresses)',
+      'from_base_to_customers': 'Charged from our base to your location plus between customer locations (calculated automatically from addresses)',
+      'customers_and_back_to_base': 'Charged between customer locations plus return trip to our base (calculated automatically from addresses)',
+      'full_route': 'Charged for entire route including travel from our base and return (calculated automatically from addresses)',
+      'between_customers_and_back_to_base': 'Charged between customer locations and return to base (calculated automatically from addresses)',
+      'from_base_and_between_customers': 'Charged from our base to customers and between locations (calculated automatically from addresses)',
     };
     return descriptions[model] || model;
   }
