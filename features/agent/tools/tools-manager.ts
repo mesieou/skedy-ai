@@ -48,7 +48,7 @@ export class ToolsManager {
     this.callContextManager = callContextManager;
 
     // Initialize domain tools with proper dependencies
-    this.quoteTool = new QuoteTool(businessContext, business);
+    this.quoteTool = new QuoteTool(businessContext, business, callContextManager);
     this.serviceSelectionTool = new ServiceSelectionTool(businessContext);
     this.userManagementTool = new UserManagementTool(callContextManager);
     this.bookingManagementTool = new BookingManagementTool();
@@ -82,20 +82,27 @@ export class ToolsManager {
     switch (functionName) {
       case 'select_service':
         console.log('   🔄 Executing service selection...');
-        const selectionResult = this.serviceSelectionTool.selectService(args as ServiceSelectionFunctionArgs);
+        const selectionResult = this.serviceSelectionTool.processServiceSelectionForAI(args as ServiceSelectionFunctionArgs);
 
-        // Track selected service for dynamic quote schema generation
-        if (selectionResult.success) {
-          this.selectedService = this.serviceSelectionTool.getServiceByName((args as ServiceSelectionFunctionArgs).service_name);
-          console.log(`   ✅ Service selected: ${this.selectedService?.name}`);
-          console.log(`   📋 Service requirements: [${this.selectedService?.ai_function_requirements?.join(', ') || 'none'}]`);
+        // Store selected service in call context for other tools to access
+        if (selectionResult.success && callId) {
+          const service = this.serviceSelectionTool.findServiceByName((args as ServiceSelectionFunctionArgs).service_name);
+          if (service) {
+            await this.callContextManager.setSelectedService(callId, service);
+            this.selectedService = service; // Keep local copy for schema generation
+            console.log(`   ✅ Service selected: ${service.name}`);
+            console.log(`   📋 Service requirements: [${service.ai_function_requirements?.join(', ') || 'none'}]`);
+          }
         }
         this.logFunctionResult('select_service', selectionResult, startTime);
         return selectionResult;
 
       case 'get_quote':
         console.log('   💰 Executing quote calculation...');
-        const quoteResult = await this.quoteTool.getQuoteForSelectedService(args as QuoteFunctionArgs);
+        if (!callId) {
+          return createToolError("Missing call context", "Quote calculation requires call context.");
+        }
+        const quoteResult = await this.quoteTool.getQuoteForSelectedService(args as QuoteFunctionArgs, callId);
         this.logFunctionResult('get_quote', quoteResult, startTime);
         return quoteResult;
 

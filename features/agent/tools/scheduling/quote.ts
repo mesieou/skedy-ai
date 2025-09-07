@@ -11,6 +11,7 @@
 import type { BusinessContext } from '../../../shared/lib/database/types/business-context';
 import type { Service } from '../../../shared/lib/database/types/service';
 import type { Business } from '../../../shared/lib/database/types/business';
+import type { CallContextManager } from '../../memory/call-context-manager';
 
 import type { FunctionCallResult, QuoteFunctionArgs } from '../types';
 import { BookingCalculator } from '../../../scheduling/lib/bookings/booking-calculator';
@@ -26,11 +27,13 @@ export class QuoteTool {
   private readonly businessContext: BusinessContext;
   private readonly business: Business;
   private readonly bookingCalculator: BookingCalculator;
+  private readonly callContextManager: CallContextManager;
 
-  constructor(businessContext: BusinessContext, business: Business) {
+  constructor(businessContext: BusinessContext, business: Business, callContextManager: CallContextManager) {
     this.businessContext = businessContext;
     this.business = business;
     this.bookingCalculator = new BookingCalculator();
+    this.callContextManager = callContextManager;
   }
 
   // ============================================================================
@@ -38,24 +41,16 @@ export class QuoteTool {
   // ============================================================================
 
   /**
-   * Generate quote - handles service selection internally if needed
+   * Generate quote for the currently selected service
    */
-  async getQuoteForSelectedService(args: QuoteFunctionArgs): Promise<FunctionCallResult> {
-    // If service_name is provided, find the service first
-    let service: Service | null = null;
+  async getQuoteForSelectedService(args: QuoteFunctionArgs, callId: string): Promise<FunctionCallResult> {
+    // Get the selected service from call context (set by select_service call)
+    const service = await this.callContextManager.getSelectedService(callId);
 
-    if (args.service_name) {
-      service = this.businessContext.services.find(s => s.name === args.service_name) || null;
-      if (!service) {
-        return createToolError(
-          "Service not found",
-          `Service "${args.service_name}" is not available.`
-        );
-      }
-    } else {
+    if (!service) {
       return createToolError(
-        "No service specified",
-        "Please specify a service_name in the quote request."
+        "No service selected",
+        "Please select a service first using select_service() before requesting a quote."
       );
     }
 

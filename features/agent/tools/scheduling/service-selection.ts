@@ -24,9 +24,9 @@ export class ServiceSelectionTool {
   }
 
   /**
-   * Select a service - thin orchestrator for AI interactions
+   * Process AI service selection request - validates and returns formatted response
    */
-  selectService(args: ServiceSelectionArgs): FunctionCallResult {
+  processServiceSelectionForAI(args: ServiceSelectionArgs): FunctionCallResult {
 
     // Delegate to domain service
     const result = BookingServiceSelector.selectService({
@@ -54,9 +54,9 @@ export class ServiceSelectionTool {
   }
 
   /**
-   * Get service by name - delegates to domain service
+   * Find service entity by name - pure data lookup
    */
-  getServiceByName(serviceName: string): Service | null {
+  findServiceByName(serviceName: string): Service | null {
     return BookingServiceSelector.getServiceByName(serviceName, this.businessContext);
   }
 

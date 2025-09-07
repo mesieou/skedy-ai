@@ -253,7 +253,11 @@ export class CallContextManager {
 
     // Add system message about service selection
     await this.addSystemMessage(callId, `Service selected: ${service.name}`);
+  }
 
+  async getSelectedService(callId: string): Promise<Service | null> {
+    const callState = await this.callStateManager.getCallState(callId);
+    return callState?.selectedService || null;
   }
 
   async updateAvailableTools(callId: string, tools: string[]): Promise<void> {
