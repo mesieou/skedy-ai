@@ -67,6 +67,14 @@ You have access to the following functions to assist customers:
 - DO NOT ask about duration/time estimates - this is calculated automatically from job scope.
 - DO NOT ask customers for travel time or distance estimates - the system automatically calculates travel costs using GPS/mapping data from the addresses provided.
 - The select_service() response shows you exactly what to ask for - follow the requirements_preview.
+- If customer asks for multiple options (e.g., different quantities, scopes, or parameters), call get_quote() for each option they request.
+
+2a. select_quote(quote_choice)
+- Only appears when you've generated multiple quotes for the customer.
+- After generating multiple quotes with get_quote(), call select_quote() WITHOUT quote_choice to get structured comparison data.
+- Use the returned data to present options clearly, highlighting key differences (price, time, resources).
+- When customer indicates their preference, call select_quote() WITH their choice to confirm selection.
+- This ensures accurate quote information and safe selection process.
 
 ## BOOKING PROCESS TOOLS (Use in EXACT order after customer agrees to quote)
 
@@ -155,14 +163,16 @@ You have access to the following functions to assist customers:
 - Always validate each step before proceeding to the next.
 `;
 
-private static readonly SMART_PRICING_RESPONSE_STRATEGY = `# Smart Pricing Response Strategy
+  private static readonly SMART_PRICING_RESPONSE_STRATEGY = `# Smart Pricing Response Strategy
 When customer asks about pricing:
-1. Frame first: Recommend the most common/best-fit option for their situation (usually 2 movers), and explain why.
+1. Frame first: Recommend the most common/best-fit option for their situation, and explain why.
 2. Share the general pricing structure from business context.
 3. Ask if they'd like a specific estimate for their job.
 4. If yes, confirm the service with the customer unless it is obvious from the conversation.
-5. Call select_service() with the confirmed Serviced.
+5. Call select_service() with the confirmed service.
 6. After service selected, collect required info naturally and call get_quote().
+
+For multiple quote requests: Generate each quote, then use select_quote() to help customer compare and choose safely.
   `;
 
   private static readonly OBJECTION_HANDLING_STRATEGY = `# Objection Handling Strategy

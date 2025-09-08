@@ -13,6 +13,16 @@ export { SimpleCircuitBreaker, simpleCircuitBreaker } from './simple-circuit-bre
 export { VoiceEventBus, createVoiceEventBus } from './event-bus';
 export { SimpleTTL, simpleTTL } from './simple-ttl';
 
+// Export Redis stats for monitoring
+export const getRedisStats = async () => {
+  const { voiceRedisClient } = await import('./redis-client');
+  return voiceRedisClient.getOperationStats();
+};
+export const resetRedisStats = async () => {
+  const { voiceRedisClient } = await import('./redis-client');
+  return voiceRedisClient.resetOperationStats();
+};
+
 // Event types for type safety
 export type {
   VoiceEvent,

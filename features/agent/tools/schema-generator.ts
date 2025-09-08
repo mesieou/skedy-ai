@@ -129,6 +129,7 @@ export class SchemaManager {
     } as ToolSchema;
   }
 
+
   /**
    * Generate create booking schema (static)
    */
@@ -161,6 +162,44 @@ export class SchemaManager {
         additionalProperties: false
       }
     } as ToolSchema;
+  }
+
+  /**
+   * Generate quote-related schemas (quote + selection if multiple quotes)
+   */
+  static generateQuoteAndSelectionSchemas(
+    service: Service,
+    businessInfo: BusinessContext['businessInfo'],
+    quoteCount: number = 0
+  ): ToolSchema[] {
+    const schemas: ToolSchema[] = [];
+
+    // Always add the quote schema when a service is selected
+    schemas.push(this.generateServiceSpecificQuoteSchema(service, businessInfo));
+
+    // Only add quote selection if there are multiple quotes (more than 1)
+    if (quoteCount > 1) {
+      console.log(`🔧 [SchemaManager] Adding select_quote schema (${quoteCount} quotes available)`);
+
+      schemas.push({
+        type: "function",
+        name: "select_quote",
+        description: "Handle quote selection. Call without quote_choice to get all quotes for comparison, or with quote_choice to select a specific quote.",
+        parameters: {
+          type: "object",
+          properties: {
+            quote_choice: {
+              type: "string",
+              description: "Optional. Customer's choice description (e.g., 'the cheaper option', 'first option'). If not provided, returns all quotes for comparison."
+            }
+          },
+          required: [],
+          additionalProperties: false
+        }
+      } as ToolSchema);
+    }
+
+    return schemas;
   }
 
   /**

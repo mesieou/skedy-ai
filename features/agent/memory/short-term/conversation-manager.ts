@@ -2,10 +2,9 @@
  * Real-Time Conversation Manager
  *
  * Manages conversation messages in Redis with:
- * - Last 100-200 messages per call (capped for performance)
  * - Fast message retrieval for AI conversation context
  * - OpenAI message format compatibility
- * - Automatic message trimming
+ * - Full conversation history preservation
  */
 
 import { voiceRedisClient } from '../redis/redis-client';
@@ -36,8 +35,7 @@ export interface ConversationHistory {
 
 export class RealTimeConversationManager {
   private readonly keyPrefix = 'voice:call';
-  private readonly maxMessages = parseInt(process.env.VOICE_MAX_MESSAGES || '200');
-  private readonly trimThreshold = parseInt(process.env.VOICE_TRIM_THRESHOLD || '250');
+
 
   // ============================================================================
   // MESSAGE OPERATIONS
@@ -50,33 +48,8 @@ export class RealTimeConversationManager {
       timestamp: Date.now()
     };
 
-    await simpleCircuitBreaker.execute(
-      // Redis operation
-      async () => {
-        const key = this.getMessagesKey(callId);
-        const conversationHistory = await this.getConversationHistory(callId);
-
-        const updatedMessages = [...(conversationHistory?.messages || []), fullMessage];
-
-        // Trim messages if we exceed threshold
-        const finalMessages = await this.trimMessagesIfNeeded(updatedMessages);
-
-        const updatedHistory: ConversationHistory = {
-          callId,
-          messages: finalMessages,
-          messageCount: finalMessages.length,
-          lastMessageAt: fullMessage.timestamp
-        };
-
-        await voiceRedisClient.set(key, JSON.stringify(updatedHistory));
-        // Removed verbose logging to reduce log noise
-      },
-      // Fallback operation
-      async () => {
-        console.log(`💬 [RealTime] Redis fallback: storing message for ${callId} in database`);
-        // TODO: Implement database fallback when needed
-      }
-    );
+    // FIXED: Use Redis list append instead of rewriting entire conversation
+    await this.appendMessageToList(callId, fullMessage);
 
     return fullMessage;
   }
@@ -85,11 +58,23 @@ export class RealTimeConversationManager {
     return await simpleCircuitBreaker.execute(
       // Redis operation
       async () => {
-        const conversationHistory = await this.getConversationHistory(callId);
-        if (!conversationHistory) return [];
+        const messagesKey = `${this.keyPrefix}:${callId}:messages`;
 
-        const messages = conversationHistory.messages.slice(-limit);
-        console.log(`💬 [RealTimeConversation] Retrieved ${messages.length} recent messages for ${callId}`);
+        // FIXED: Get messages from Redis list (much faster than JSON parsing entire conversation)
+        const messageStrings = await voiceRedisClient.lrange(messagesKey, 0, limit - 1);
+
+        const messages: ConversationMessage[] = messageStrings
+          .map(msgStr => {
+            try {
+              return JSON.parse(msgStr) as ConversationMessage;
+            } catch {
+              return null;
+            }
+          })
+          .filter((msg): msg is ConversationMessage => msg !== null)
+          .reverse(); // Reverse because Redis list is newest-first
+
+        console.log(`💬 [RealTimeConversation] Retrieved ${messages.length} recent messages for ${callId} from list`);
         return messages;
       },
       // Fallback operation
@@ -102,15 +87,27 @@ export class RealTimeConversationManager {
   }
 
   async getMessageCount(callId: string): Promise<number> {
-    const conversationHistory = await this.getConversationHistory(callId);
-    return conversationHistory?.messageCount || 0;
+    const messagesKey = `${this.keyPrefix}:${callId}:messages`;
+    try {
+      return await voiceRedisClient.llen(messagesKey);
+    } catch (error) {
+      console.error(`❌ [RealTimeConversation] Failed to get message count for ${callId}:`, error);
+      return 0;
+    }
   }
 
   async getLastMessage(callId: string): Promise<ConversationMessage | null> {
-    const conversationHistory = await this.getConversationHistory(callId);
-    if (!conversationHistory || conversationHistory.messages.length === 0) return null;
+    const messagesKey = `${this.keyPrefix}:${callId}:messages`;
+    try {
+      // Get the most recent message (index 0 in Redis list)
+      const messageStrings = await voiceRedisClient.lrange(messagesKey, 0, 0);
+      if (messageStrings.length === 0) return null;
 
-    return conversationHistory.messages[conversationHistory.messages.length - 1];
+      return JSON.parse(messageStrings[0]) as ConversationMessage;
+    } catch (error) {
+      console.error(`❌ [RealTimeConversation] Failed to get last message for ${callId}:`, error);
+      return null;
+    }
   }
 
   // ============================================================================
@@ -138,9 +135,41 @@ export class RealTimeConversationManager {
     hasAssistantMessages: boolean;
     duration: number;
   }> {
-    const conversationHistory = await this.getConversationHistory(callId);
+    const messagesKey = `${this.keyPrefix}:${callId}:messages`;
+    const metaKey = `${this.keyPrefix}:${callId}:meta`;
 
-    if (!conversationHistory) {
+    try {
+      const messageCount = await voiceRedisClient.llen(messagesKey);
+      if (messageCount === 0) {
+        return {
+          messageCount: 0,
+          lastActivity: 0,
+          hasUserMessages: false,
+          hasAssistantMessages: false,
+          duration: 0
+        };
+      }
+
+      // Get metadata for last activity
+      const metaData = await voiceRedisClient.get(metaKey);
+      const meta = metaData ? JSON.parse(metaData) : null;
+
+      // Get all messages to analyze roles and duration
+      const allMessages = await this.getRecentMessages(callId, messageCount);
+      const userMessages = allMessages.filter(m => m.role === 'user');
+      const assistantMessages = allMessages.filter(m => m.role === 'assistant');
+      const firstMessage = allMessages[0];
+      const duration = firstMessage ? Date.now() - firstMessage.timestamp : 0;
+
+      return {
+        messageCount,
+        lastActivity: meta?.lastMessageAt || 0,
+        hasUserMessages: userMessages.length > 0,
+        hasAssistantMessages: assistantMessages.length > 0,
+        duration
+      };
+    } catch (error) {
+      console.error(`❌ [RealTimeConversation] Failed to get conversation summary for ${callId}:`, error);
       return {
         messageCount: 0,
         lastActivity: 0,
@@ -149,19 +178,6 @@ export class RealTimeConversationManager {
         duration: 0
       };
     }
-
-    const userMessages = conversationHistory.messages.filter(m => m.role === 'user');
-    const assistantMessages = conversationHistory.messages.filter(m => m.role === 'assistant');
-    const firstMessage = conversationHistory.messages[0];
-    const duration = firstMessage ? Date.now() - firstMessage.timestamp : 0;
-
-    return {
-      messageCount: conversationHistory.messageCount,
-      lastActivity: conversationHistory.lastMessageAt,
-      hasUserMessages: userMessages.length > 0,
-      hasAssistantMessages: assistantMessages.length > 0,
-      duration
-    };
   }
 
   // ============================================================================
@@ -195,16 +211,30 @@ export class RealTimeConversationManager {
   // INTERNAL METHODS
   // ============================================================================
 
-  private async trimMessagesIfNeeded(messages: ConversationMessage[]): Promise<ConversationMessage[]> {
-    if (messages.length <= this.trimThreshold) {
-      return messages;
-    }
+  private async appendMessageToList(callId: string, message: ConversationMessage): Promise<void> {
+    await simpleCircuitBreaker.execute(
+      async () => {
+        const messagesKey = `${this.keyPrefix}:${callId}:messages`;
+        const metaKey = `${this.keyPrefix}:${callId}:meta`;
 
-    // Keep the most recent maxMessages
-    const trimmed = messages.slice(-this.maxMessages);
-    console.log(`✂️ [RealTime] Trimmed messages: ${messages.length} → ${trimmed.length}`);
+        // FIXED: Append to Redis list (O(1)) instead of rewriting entire conversation (O(n))
+        await voiceRedisClient.lpush(messagesKey, JSON.stringify(message));
 
-    return trimmed;
+        // Update metadata with latest info
+        const meta = {
+          callId,
+          lastMessageAt: message.timestamp,
+          lastUpdated: Date.now()
+        };
+        await voiceRedisClient.set(metaKey, JSON.stringify(meta));
+
+        console.log(`💾 [RealTime] Appended message to list for ${callId}`);
+      },
+      async () => {
+        console.log(`💬 [RealTime] Redis fallback: storing message for ${callId} in database`);
+        // TODO: Database fallback
+      }
+    );
   }
 
   private generateMessageId(callId: string): string {

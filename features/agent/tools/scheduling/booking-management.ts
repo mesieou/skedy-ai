@@ -57,21 +57,15 @@ export class BookingManagementTool {
         return createToolError("Missing call context", "Booking creation requires call context.");
       }
 
-      console.log(`🔍 [BookingTool] Retrieving quote result from Redis for callId: ${callId}`);
-      const quoteResult = await this.callContextManager.getQuoteResultData(callId);
-      console.log(`🔍 [BookingTool] Quote result from Redis:`, quoteResult ? `AUD ${quoteResult.total_estimate_amount}` : 'NOT FOUND');
+      console.log(`🔍 [BookingTool] Retrieving selected quote from Redis for callId: ${callId}`);
+      const selectedQuote = await this.callContextManager.getSelectedQuoteData(callId);
 
-      if (!quoteResult) {
-        return createToolError("Quote result not found", "Please get a quote first before creating a booking.");
+      if (!selectedQuote) {
+        return createToolError("No quote selected", "Please get a quote first before creating a booking.");
       }
 
-      // Step 3: Get quote request info from Redis context
-      const quoteRequest = await this.callContextManager.getQuoteRequestData(callId);
-      console.log(`🔍 [BookingTool] Quote request from Redis:`, quoteRequest ? 'FOUND' : 'NOT FOUND');
-
-      if (!quoteRequest) {
-        return createToolError("Quote request not found", "Please get a quote first to establish booking context.");
-      }
+      const { quoteRequestData: quoteRequest, quoteResultData: quoteResult } = selectedQuote;
+      console.log(`🔍 [BookingTool] Selected quote: AUD ${quoteResult.total_estimate_amount} with ${quoteRequest.services[0]?.quantity || 1} movers`);
 
       // Step 4: Fetch the user from database
       const user = await this.userRepository.findOne({ id: args.user_id, business_id: business.id });
@@ -167,8 +161,4 @@ export class BookingManagementTool {
                ` You'll receive a confirmation shortly!`
     };
   }
-
-
-
-
 }

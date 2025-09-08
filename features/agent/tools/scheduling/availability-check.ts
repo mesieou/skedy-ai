@@ -32,8 +32,8 @@ export class AvailabilityCheckTool {
   async checkDayAvailability(args: CheckDayAvailabilityFunctionArgs, callId: string): Promise<FunctionCallResult> {
     try {
       // Get actual quote duration from call context (includes travel time)
-      const quoteResult = await this.callContextManager.getQuoteResultData(callId);
-      const serviceDuration = quoteResult?.total_estimate_time_in_minutes;
+      const selectedQuote = await this.callContextManager.getSelectedQuoteData(callId);
+      const serviceDuration = selectedQuote?.quoteResultData.total_estimate_time_in_minutes;
 
       console.log(`📅 [AvailabilityCheck] Using quote duration: ${serviceDuration || 'default'} minutes`);
 

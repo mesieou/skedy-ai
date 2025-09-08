@@ -33,6 +33,16 @@ export class VoiceRedisClient {
   private subscribedPatterns: Map<string, ((channel: string, message: string) => void)[]> = new Map(); // Track pattern callbacks
   private eventHandlersSetup = false;
 
+  // Operation monitoring and logging
+  private operationCount = 0;
+  private writeCount = 0;
+  private readCount = 0;
+  private sessionStartTime = Date.now();
+  private lastResetTime = Date.now();
+  private readonly WRITE_LIMIT_PER_MINUTE = 100; // Reasonable limit
+  private readonly RESET_INTERVAL = 60 * 1000; // 1 minute
+  private readonly LOG_OPERATIONS = true; // Enable detailed operation logging
+
   constructor() {
     this.config = this.getRedisConfig();
     this.client = this.createRedisConnection('main');
@@ -98,10 +108,53 @@ export class VoiceRedisClient {
   }
 
   // ============================================================================
+  // OPERATION LOGGING & MONITORING
+  // ============================================================================
+
+  private logOperation(operation: string, key: string, isWrite: boolean = false): void {
+    this.operationCount++;
+    if (isWrite) {
+      this.writeCount++;
+    } else {
+      this.readCount++;
+    }
+
+    if (this.LOG_OPERATIONS) {
+      const sessionTime = Math.round((Date.now() - this.sessionStartTime) / 1000);
+      const opType = isWrite ? '✏️ WRITE' : '📖 READ';
+      console.log(`🔍 [Redis] ${opType} #${this.operationCount} (${sessionTime}s): ${operation}(${key.split(':').pop()})`);
+    }
+
+    // Log summary every 10 operations
+    if (this.operationCount % 10 === 0) {
+      const sessionTime = Math.round((Date.now() - this.sessionStartTime) / 1000);
+      console.log(`📊 [Redis] Session Summary (${sessionTime}s): ${this.operationCount} ops (${this.writeCount} writes, ${this.readCount} reads)`);
+    }
+  }
+
+  public getOperationStats(): { total: number; writes: number; reads: number; sessionDuration: number } {
+    return {
+      total: this.operationCount,
+      writes: this.writeCount,
+      reads: this.readCount,
+      sessionDuration: Math.round((Date.now() - this.sessionStartTime) / 1000)
+    };
+  }
+
+  public resetOperationStats(): void {
+    this.operationCount = 0;
+    this.writeCount = 0;
+    this.readCount = 0;
+    this.sessionStartTime = Date.now();
+    console.log('🔄 [Redis] Operation stats reset');
+  }
+
+  // ============================================================================
   // MAIN CLIENT OPERATIONS
   // ============================================================================
 
   async get(key: string): Promise<string | null> {
+    this.logOperation('GET', key, false);
     return await simpleCircuitBreaker.execute(
       () => this.client.get(key),
       () => Promise.resolve(null) // Fallback: return null if Redis fails
@@ -109,6 +162,7 @@ export class VoiceRedisClient {
   }
 
   async set(key: string, value: string, ttlSeconds?: number): Promise<'OK'> {
+    this.logOperation('SET', key, true);
     if (ttlSeconds) {
       return await this.client.setex(key, ttlSeconds, value);
     }
@@ -116,6 +170,7 @@ export class VoiceRedisClient {
   }
 
   async del(key: string): Promise<number> {
+    this.logOperation('DEL', key, true);
     return await this.client.del(key);
   }
 
@@ -137,6 +192,25 @@ export class VoiceRedisClient {
 
   async hgetall(key: string): Promise<Record<string, string>> {
     return await this.client.hgetall(key);
+  }
+
+  // ============================================================================
+  // LIST OPERATIONS (for efficient conversation storage)
+  // ============================================================================
+
+  async lpush(key: string, value: string): Promise<number> {
+    this.logOperation('LPUSH', key, true);
+    return await this.client.lpush(key, value);
+  }
+
+  async lrange(key: string, start: number, stop: number): Promise<string[]> {
+    this.logOperation('LRANGE', key, false);
+    return await this.client.lrange(key, start, stop);
+  }
+
+  async llen(key: string): Promise<number> {
+    this.logOperation('LLEN', key, false);
+    return await this.client.llen(key);
   }
 
   // ============================================================================

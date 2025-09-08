@@ -153,13 +153,16 @@ export class ConversationPersistenceService {
     // Allow anonymous chat sessions (userId can be null)
 
     try {
-      // 1. Get complete conversation from Redis
+      // 1. Get complete conversation from Redis (using new list-based approach)
       const conversationManager = new RealTimeConversationManager();
-      const conversationHistory = await conversationManager.getConversationHistory(callId);
+      const messageCount = await conversationManager.getMessageCount(callId);
 
-      if (!conversationHistory || conversationHistory.messages.length === 0) {
+      if (messageCount === 0) {
         return { success: true, messageCount: 0 };
       }
+
+      // Get all messages from the Redis list
+      const messages = await conversationManager.getRecentMessages(callId, messageCount);
 
       // 2. Create chat session first (empty messages) - userId can be null for anonymous calls
       const chatSession = await this.chatSessionRepository.create({
@@ -172,7 +175,7 @@ export class ConversationPersistenceService {
       });
 
       // 3. Add all messages to the session (batch operation)
-      for (const message of conversationHistory.messages) {
+      for (const message of messages) {
         const senderType = this.mapRoleToSenderType(message.role);
         const phoneNumber = senderType === MessageSenderType.USER
           ? pendingSession.phoneNumber  // User messages from caller's phone
@@ -194,17 +197,17 @@ export class ConversationPersistenceService {
         callId,
         timestamp: Date.now(),
         data: {
-          chatSessionId: chatSession.id,
-          messageCount: conversationHistory.messages.length,
-          duration,
-          endReason
+        chatSessionId: chatSession.id,
+        messageCount: messages.length,
+        duration,
+        endReason
         }
       });
 
       return {
         success: true,
         chatSessionId: chatSession.id,
-        messageCount: conversationHistory.messages.length
+        messageCount: messages.length
       };
 
     } catch (error) {

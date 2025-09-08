@@ -211,40 +211,63 @@ export class CallContextManager {
     console.log(`✅ [CallContextManager] User context updated: ${user.first_name} (${callId})`);
   }
 
-  async setQuoteResultData(callId: string, quoteResult: QuoteResultInfo): Promise<void> {
-    console.log(`🔍 [CallContext] STORING quote result: AUD ${quoteResult.total_estimate_amount} for callId: ${callId}`);
-    await this.callStateManager.setQuoteData(callId, quoteResult);
-    console.log(`🔍 [CallContext] Quote result STORED successfully`);
+  async storeQuote(callId: string, quoteRequest: QuoteRequestInfo, quoteResult: QuoteResultInfo): Promise<string> {
+    // Generate quote ID based on key parameters for easy identification
+    const quoteId = this.generateQuoteId(quoteRequest, quoteResult);
 
-    // Verify storage immediately
-    const verification = await this.getQuoteResultData(callId);
-    console.log(`🔍 [CallContext] Verification - quote retrieved: ${verification ? `AUD ${verification.total_estimate_amount}` : 'null'}`);
+    console.log(`🔍 [CallContext] STORING quote: ${quoteId} (AUD ${quoteResult.total_estimate_amount}) for callId: ${callId}`);
+    await this.callStateManager.storeQuote(callId, quoteId, quoteRequest, quoteResult);
+    console.log(`🔍 [CallContext] Quote STORED: ${quoteId} (no auto-selection - customer must choose)`);
 
     // Add system message about quote generation
-    await this.addSystemMessage(callId, `Quote generated: AUD ${quoteResult.total_estimate_amount}`);
+    await this.addSystemMessage(callId, `Quote generated: ${quoteId} - AUD ${quoteResult.total_estimate_amount}`);
 
     // Emit quote generated event
     await this.voiceEventBus.publish({
       type: 'voice:quote:generated',
       callId,
       timestamp: Date.now(),
-      data: { quoteData: quoteResult }
+      data: { quoteId, quoteResult }
     });
+
+    return quoteId;
   }
 
-  /**
-   * Store quote request info in call context
-   */
-  async setQuoteRequestData(callId: string, quoteRequest: QuoteRequestInfo): Promise<void> {
-    await this.callStateManager.setQuoteRequestData(callId, quoteRequest);
+  async getSelectedQuoteData(callId: string): Promise<{
+    quoteRequestData: QuoteRequestInfo;
+    quoteResultData: QuoteResultInfo;
+  } | null> {
+    const selectedQuote = await this.callStateManager.getSelectedQuote(callId);
+    console.log(`🔍 [CallContext] Retrieved selected quote: ${selectedQuote ? `AUD ${selectedQuote.quoteResultData.total_estimate_amount}` : 'NONE SELECTED'}`);
+    return selectedQuote;
   }
 
-  /**
-   * Get quote request data from call context
-   */
-  async getQuoteRequestData(callId: string): Promise<QuoteRequestInfo | null> {
-    const callState = await this.callStateManager.getCallState(callId);
-    return callState?.quoteRequestData as QuoteRequestInfo || null;
+  async getAllQuotes(callId: string): Promise<Array<{
+    quoteId: string;
+    quoteRequestData: QuoteRequestInfo;
+    quoteResultData: QuoteResultInfo;
+    timestamp: number;
+  }>> {
+    const quotes = await this.callStateManager.getAllQuotes(callId);
+    return Object.entries(quotes).map(([quoteId, quote]) => ({
+      quoteId,
+      ...quote
+    }));
+  }
+
+  async selectQuote(callId: string, quoteId: string): Promise<void> {
+    console.log(`🔍 [CallContext] SELECTING quote: ${quoteId} for callId: ${callId}`);
+    await this.callStateManager.selectQuote(callId, quoteId);
+
+    // Add system message about quote selection
+    await this.addSystemMessage(callId, `Quote selected: ${quoteId}`);
+  }
+
+  private generateQuoteId(quoteRequest: QuoteRequestInfo, quoteResult: QuoteResultInfo): string {
+    const amount = Math.round(quoteResult.total_estimate_amount);
+    const timestamp = Date.now().toString().slice(-6); // Last 6 digits for uniqueness
+    const randomSuffix = Math.random().toString(36).slice(-3); // Extra uniqueness
+    return `quote-${amount}-${timestamp}-${randomSuffix}`;
   }
 
   // ============================================================================
@@ -253,18 +276,14 @@ export class CallContextManager {
 
   async setSelectedService(callId: string, service: Service): Promise<void> {
     console.log(`🔍 [CallContext] STORING service: ${service.name} for callId: ${callId}`);
+
+    // Single Redis operation - no system message to avoid extra overhead
     await this.updateCallState(callId, {
       selectedService: service,
       toolsAvailable: ['select_service', 'get_quote'] // Quote becomes available
     });
+
     console.log(`🔍 [CallContext] Service STORED successfully`);
-
-    // Verify storage immediately
-    const verification = await this.getSelectedService(callId);
-    console.log(`🔍 [CallContext] Verification - service retrieved: ${verification ? verification.name : 'null'}`);
-
-    // Add system message about service selection
-    await this.addSystemMessage(callId, `Service selected: ${service.name}`);
   }
 
   async getSelectedService(callId: string): Promise<Service | null> {
@@ -272,13 +291,6 @@ export class CallContextManager {
     return callState?.selectedService || null;
   }
 
-  /**
-   * Get quote data from call context
-   */
-  async getQuoteResultData(callId: string): Promise<QuoteResultInfo | null> {
-    const callState = await this.callStateManager.getCallState(callId);
-    return callState?.quoteResultData || null;
-  }
 
   async updateAvailableTools(callId: string, tools: string[]): Promise<void> {
     await this.updateCallState(callId, { toolsAvailable: tools });
@@ -335,6 +347,15 @@ export class CallContextManager {
 
       // Set TTL for cleanup (1 hour)
       await simpleTTL.setEndedCallTTL(callId);
+
+      // Log Redis operation stats for this session
+      const { voiceRedisClient } = await import('./redis/redis-client');
+      const stats = voiceRedisClient.getOperationStats();
+      console.log(`📊 [Redis] FINAL SESSION STATS for ${callId}:`);
+      console.log(`   Total Operations: ${stats.total}`);
+      console.log(`   Writes: ${stats.writes} | Reads: ${stats.reads}`);
+      console.log(`   Session Duration: ${stats.sessionDuration}s`);
+      console.log(`   Ops/Second: ${(stats.total / Math.max(stats.sessionDuration, 1)).toFixed(2)}`);
 
       // Emit call ended event
       await this.voiceEventBus.publish({

@@ -50,14 +50,19 @@ export class BookingsRepository extends BaseRepository<Booking> {
       const calculationResult: QuoteResultInfo = quoteResultData ||
         await this.bookingCalculator.calculateBooking(quoteRequestData);
 
-      // Step 3: Create booking with calculated data
+      // Step 3: Create booking with calculated data (only fields that exist in Booking interface)
       const bookingData: CreateBookingData = {
         user_id,
         business_id: quoteRequestData.business.id,
         status: BookingStatus.PENDING,
         start_at,
         end_at: DateUtils.addMinutesUTC(start_at, calculationResult.total_estimate_time_in_minutes),
-        ...calculationResult // Spread the calculation result directly
+        total_estimate_amount: calculationResult.total_estimate_amount,
+        total_estimate_time_in_minutes: calculationResult.total_estimate_time_in_minutes,
+        deposit_amount: calculationResult.deposit_amount,
+        remaining_balance: calculationResult.remaining_balance,
+        deposit_paid: calculationResult.deposit_paid,
+        price_breakdown: calculationResult.price_breakdown
       };
 
       // Step 4: Create the booking in database
@@ -82,8 +87,13 @@ export class BookingsRepository extends BaseRepository<Booking> {
    */
   private async createAddresses(addresses: BookingAddress[]): Promise<void> {
     for (const bookingAddress of addresses) {
+      // Ensure service_id is always provided
+      if (!bookingAddress.service_id) {
+        throw new Error(`Address creation requires service_id: ${JSON.stringify(bookingAddress)}`);
+      }
+
       await this.addressesRepository.create({
-        service_id: bookingAddress.service_id || '',
+        service_id: bookingAddress.service_id,
         type: bookingAddress.address.type,
         address_line_1: bookingAddress.address.address_line_1,
         address_line_2: bookingAddress.address.address_line_2,
@@ -102,8 +112,8 @@ export class BookingsRepository extends BaseRepository<Booking> {
     for (const serviceItem of services) {
       await this.bookingServiceRepository.create({
         booking_id: bookingId,
-        service_id: serviceItem.service.id,
-        quantity: serviceItem.quantity
+        service_id: serviceItem.service.id
+        // TODO: Add quantity field to database schema - currently missing from booking_services table
       });
     }
   }
@@ -138,7 +148,7 @@ export class BookingsRepository extends BaseRepository<Booking> {
       }
     } catch (error) {
       console.error(`[BookingsRepository] Failed to update availability after booking: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      // Don't throw error to avoid breaking booking creation - availability update is non-critical
+      // Don't throw error to avoid breaking booking creation -çc availability update is non-critical
     }
   }
 }

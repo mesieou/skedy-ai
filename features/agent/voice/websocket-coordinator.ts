@@ -37,6 +37,7 @@ export class WebSocketCoordinator {
   private activeWebSocket: WebSocket | null = null;
   private static instanceCount = 0;
   private instanceId: string;
+  private callId: string = '';
 
   constructor(callContextManager: CallContextManager, voiceEventBus: VoiceEventBus, toolsManager: ToolsManager) {
     WebSocketCoordinator.instanceCount++;
@@ -53,6 +54,9 @@ export class WebSocketCoordinator {
   // ============================================================================
 
   async startCallSession(options: WebSocketCoordinatorOptions): Promise<void> {
+    // Store callId for later use in schema updates
+    this.callId = options.callId;
+
     // Attempt connection
     await this.attemptConnection(options);
   }
@@ -81,7 +85,19 @@ export class WebSocketCoordinator {
               const schemaUpdateStartTime = Date.now();
               await this.updateSessionToolsAfterServiceSelection();
               const schemaUpdateTime = Date.now() - schemaUpdateStartTime;
-              console.log(`🔄 [WebSocketCoordinator] Schema update took: ${schemaUpdateTime}ms`);
+              console.log(`🔄 [WebSocketCoordinator] Service selection schema update took: ${schemaUpdateTime}ms`);
+            }
+
+            // Handle dynamic schema updates after quote generation (to add quote selection if multiple quotes)
+            if (functionName === 'get_quote' && result.success) {
+              console.log('🔄 [WebSocketCoordinator] Checking quote count for schema updates...');
+              const schemaUpdateStartTime = Date.now();
+
+              // Check if we need to add quote selection schema (2+ quotes)
+              await this.updateSessionToolsAfterQuoteGeneration();
+
+              const schemaUpdateTime = Date.now() - schemaUpdateStartTime;
+              console.log(`🔄 [WebSocketCoordinator] Quote-based schema check took: ${schemaUpdateTime}ms`);
             }
 
             return result;
@@ -208,18 +224,32 @@ export class WebSocketCoordinator {
 
   private async updateSessionToolsAfterServiceSelection(): Promise<void> {
     try {
-      // Get static tools + dynamic quote schema for selected service
-      const staticSchemas = this.toolsManager.getStaticToolsForAI();
-      const dynamicQuoteSchema = this.toolsManager.getQuoteSchemaForSelectedService();
+      // Get updated schemas from ToolsManager (proper separation of concerns)
+      const updatedSchemas = this.toolsManager.getSchemasAfterServiceSelection();
 
-      if (dynamicQuoteSchema) {
-        const allSchemas = [...staticSchemas, dynamicQuoteSchema];
-        await this.updateSessionTools(allSchemas as unknown as Array<Record<string, unknown>>);
-        console.log(`✅ [WebSocketCoordinator] Added dynamic quote schema`);
+      if (updatedSchemas && updatedSchemas.length > 0) {
+        await this.updateSessionTools(updatedSchemas as unknown as Array<Record<string, unknown>>);
+        console.log(`✅ [WebSocketCoordinator] Updated schemas after service selection`);
       }
 
     } catch (error) {
-      console.error('❌ [WebSocketCoordinator] Failed to update session tools:', error);
+      console.error('❌ [WebSocketCoordinator] Failed to update session tools after service selection:', error);
     }
   }
+
+  private async updateSessionToolsAfterQuoteGeneration(): Promise<void> {
+    try {
+      // Get updated schemas from ToolsManager (consistent pattern)
+      const updatedSchemas = await this.toolsManager.getSchemasAfterQuoteGeneration(this.callId);
+
+      if (updatedSchemas && updatedSchemas.length > 0) {
+        await this.updateSessionTools(updatedSchemas as unknown as Array<Record<string, unknown>>);
+        console.log(`✅ [WebSocketCoordinator] Updated schemas after quote generation`);
+      }
+
+    } catch (error) {
+      console.error('❌ [WebSocketCoordinator] Failed to update session tools after quote generation:', error);
+    }
+  }
+
 }

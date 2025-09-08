@@ -52,14 +52,15 @@ export class QuoteInputTransformer {
   static buildQuoteRequest(
     args: QuoteInputData,
     service: Service,
-    businessContext: BusinessContext
+    businessContext: BusinessContext,
+    business: Business
   ): QuoteRequestInfo {
     const addresses = this.buildAddressList(args, service, businessContext);
     const serviceWithQuantity = this.buildServiceWithQuantity(service, args, addresses);
 
     return {
       services: [serviceWithQuantity],
-      business: businessContext.businessInfo as unknown as Business, // Type assertion for business conversion
+      business: business, // Use the complete business entity with proper id
       addresses
     };
   }
@@ -94,7 +95,7 @@ export class QuoteInputTransformer {
     let sequenceOrder = 0;
 
     // Add business base address
-    addresses.push(this.createBusinessBaseAddress(sequenceOrder++, businessContext));
+    addresses.push(this.createBusinessBaseAddress(sequenceOrder++, businessContext, service.id));
 
     // Add customer addresses
     addresses.push(...this.createCustomerAddresses(args, service, sequenceOrder));
@@ -107,13 +108,15 @@ export class QuoteInputTransformer {
    */
   private static createBusinessBaseAddress(
     sequenceOrder: number,
-    businessContext: BusinessContext
+    businessContext: BusinessContext,
+    serviceId: string
   ): BookingAddress {
     return {
       id: 'business_base',
       address: AddressUtils.parseAddressString(businessContext.businessInfo.address),
       role: AddressRole.BUSINESS_BASE,
-      sequence_order: sequenceOrder
+      sequence_order: sequenceOrder,
+      service_id: serviceId
     };
   }
 

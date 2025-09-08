@@ -46,6 +46,15 @@ export class QuoteTool {
   async getQuoteForSelectedService(args: QuoteFunctionArgs, callId: string): Promise<FunctionCallResult> {
     // Get the selected service from call context (set by select_service call)
     console.log(`🔍 [QuoteTool] Looking for selected service in call context for callId: ${callId}`);
+
+    // Debug: Check the full call context
+    const fullContext = await this.callContextManager.getCallContext(callId);
+    console.log(`🔍 [QuoteTool] Full call context available:`, fullContext ? 'yes' : 'no');
+    if (fullContext) {
+      console.log(`🔍 [QuoteTool] Call state keys:`, Object.keys(fullContext.callState));
+      console.log(`🔍 [QuoteTool] Selected service in state:`, fullContext.callState.selectedService ? 'present' : 'missing');
+    }
+
     const service = await this.callContextManager.getSelectedService(callId);
     console.log(`🔍 [QuoteTool] Selected service found:`, service ? `${service.name} (${service.id})` : 'null');
 
@@ -60,16 +69,15 @@ export class QuoteTool {
       // Log requirement collection progress
       this.logRequirementProgress(args, service);
 
-      const quoteRequest = QuoteInputTransformer.buildQuoteRequest(args, service, this.businessContext);
+      const quoteRequest = QuoteInputTransformer.buildQuoteRequest(args, service, this.businessContext, this.business);
       const quoteResult = await this.bookingCalculator.calculateBooking(quoteRequest, args.job_scope);
 
       this.logQuoteBreakdown(quoteResult, service.name);
 
-      // Store quote result and request info in call context
-      await this.callContextManager.setQuoteResultData(callId, quoteResult);
-      await this.callContextManager.setQuoteRequestData(callId, quoteRequest);
+      // Store quote with unique ID for tracking multiple quotes
+      const quoteId = await this.callContextManager.storeQuote(callId, quoteRequest, quoteResult);
 
-      return this.formatQuoteResponse(quoteResult, service, quoteRequest);
+      return this.formatQuoteResponse(quoteResult, service, quoteRequest, quoteId);
 
     } catch (error) {
       console.error('❌ Quote calculation failed:', error);
@@ -82,12 +90,14 @@ export class QuoteTool {
   // RESPONSE FORMATTING
   // ============================================================================
 
-  private formatQuoteResponse(quote: QuoteResultInfo, service: Service, quoteRequest: QuoteRequestInfo): FunctionCallResult {
-    return {
-      success: true,
-      data: {
-        // Core booking information (matches Booking interface)
-        service_name: service.name,
+  private formatQuoteResponse(quote: QuoteResultInfo, service: Service, quoteRequest: QuoteRequestInfo, quoteId: string): FunctionCallResult {
+      return {
+        success: true,
+        data: {
+          // Quote identification
+          quote_id: quoteId,
+          // Core booking information (matches Booking interface)
+          service_name: service.name,
         total_estimate_amount: quote.total_estimate_amount,
         total_estimate_time_in_minutes: quote.total_estimate_time_in_minutes,
         deposit_amount: quote.deposit_amount,

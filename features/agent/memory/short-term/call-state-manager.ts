@@ -39,10 +39,14 @@ export interface CallState {
   selectedService: Service | null;
   toolsAvailable: string[]; // Current available function names
 
-  // Booking data collection (using existing database interfaces)
-  quoteRequestData: Partial<QuoteRequestInfo>;
+  // Quote tracking (supports multiple quotes per call)
+  quotes: Record<string, {
+    quoteRequestData: QuoteRequestInfo;
+    quoteResultData: QuoteResultInfo;
+    timestamp: number;
+  }>;
+  selectedQuoteId: string | null;
   quoteGenerated: boolean;
-  quoteResultData: QuoteResultInfo | null;
 
   // Customer info for booking creation
   customerInfo: {
@@ -59,9 +63,9 @@ export interface CallStateUpdate {
   user?: User | null;
   selectedService?: Service | null;
   toolsAvailable?: string[];
-  quoteRequestData?: Partial<QuoteRequestInfo>;
+  quotes?: CallState['quotes'];
+  selectedQuoteId?: string | null;
   quoteGenerated?: boolean;
-  quoteResultData?: QuoteResultInfo;
   customerInfo?: Partial<CallState['customerInfo']>;
   lastActivity?: number;
 }
@@ -92,9 +96,9 @@ export class CallStateManager {
       webSocketStatus: 'connecting',
       selectedService: null,
       toolsAvailable: ['select_service'],
-      quoteRequestData: {},
+      quotes: {},
+      selectedQuoteId: null,
       quoteGenerated: false,
-      quoteResultData: null,
       user: null, // Will be populated when user is created
       customerInfo: {
         phone: callData.phoneNumber
@@ -176,31 +180,60 @@ export class CallStateManager {
   // BOOKING DATA MANAGEMENT
   // ============================================================================
 
-  async setQuoteRequestData(callId: string, quoteRequest: Partial<QuoteRequestInfo>): Promise<void> {
+  async storeQuote(
+    callId: string,
+    quoteId: string,
+    quoteRequest: QuoteRequestInfo,
+    quoteResult: QuoteResultInfo
+  ): Promise<void> {
     const currentState = await this.getCallState(callId);
     if (!currentState) return;
 
-    const mergedQuoteRequest = {
-      ...currentState.quoteRequestData,
-      ...quoteRequest
+    const updatedQuotes = {
+      ...currentState.quotes,
+      [quoteId]: {
+        quoteRequestData: quoteRequest,
+        quoteResultData: quoteResult,
+        timestamp: Date.now()
+      }
     };
 
     await this.updateCallState(callId, {
-      quoteRequestData: mergedQuoteRequest
+      quotes: updatedQuotes,
+      selectedQuoteId: null, // No auto-selection - customer must choose
+      quoteGenerated: true
     });
-
   }
 
-  async getQuoteRequestData(callId: string): Promise<Partial<QuoteRequestInfo> | null> {
+  async getSelectedQuote(callId: string): Promise<{
+    quoteRequestData: QuoteRequestInfo;
+    quoteResultData: QuoteResultInfo;
+  } | null> {
     const state = await this.getCallState(callId);
-    return state?.quoteRequestData || null;
+    if (!state?.selectedQuoteId || !state.quotes[state.selectedQuoteId]) {
+      return null;
+    }
+
+    const selectedQuote = state.quotes[state.selectedQuoteId];
+    return {
+      quoteRequestData: selectedQuote.quoteRequestData,
+      quoteResultData: selectedQuote.quoteResultData
+    };
   }
 
-  async setQuoteData(callId: string, quoteResult: QuoteResultInfo): Promise<void> {
+  async selectQuote(callId: string, quoteId: string): Promise<void> {
     await this.updateCallState(callId, {
-      quoteGenerated: true,
-      quoteResultData: quoteResult
+      selectedQuoteId: quoteId
     });
+  }
+
+  async getAllQuotes(callId: string): Promise<Record<string, {
+    quoteRequestData: QuoteRequestInfo;
+    quoteResultData: QuoteResultInfo;
+    timestamp: number;
+  }>> {
+    const state = await this.getCallState(callId);
+    return state?.quotes || {};
   }
 
   async updateCustomerInfo(callId: string, customerInfo: Partial<CallState['customerInfo']>): Promise<void> {

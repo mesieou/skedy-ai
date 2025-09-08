@@ -19,11 +19,13 @@ import type {
   CreateBookingFunctionArgs,
   ToolSchema
 } from './types';
+import type { SelectQuoteFunctionArgs } from './scheduling/quote-selection';
 import { QuoteTool } from './scheduling/quote';
 import { ServiceSelectionTool } from './scheduling/service-selection';
 import { UserManagementTool } from './scheduling/user-management';
 import { BookingManagementTool } from './scheduling/booking-management';
 import { AvailabilityCheckTool } from './scheduling/availability-check';
+import { QuoteSelectionTool } from './scheduling/quote-selection';
 import { SchemaManager } from './schema-generator';
 import { createToolError } from '../../shared/utils/error-utils';
 
@@ -38,6 +40,7 @@ export class ToolsManager {
   private readonly userManagementTool: UserManagementTool;
   private readonly bookingManagementTool: BookingManagementTool;
   private readonly availabilityCheckTool: AvailabilityCheckTool;
+  private readonly quoteSelectionTool: QuoteSelectionTool;
 
   // State for dynamic schema generation (ONLY for selected service)
   private selectedService: Service | null = null;
@@ -53,6 +56,7 @@ export class ToolsManager {
     this.userManagementTool = new UserManagementTool(callContextManager);
     this.bookingManagementTool = new BookingManagementTool(callContextManager);
     this.availabilityCheckTool = new AvailabilityCheckTool(business, callContextManager);
+    this.quoteSelectionTool = new QuoteSelectionTool(callContextManager);
   }
 
   /**
@@ -127,6 +131,17 @@ export class ToolsManager {
         this.logFunctionResult('create_booking', bookingResult, startTime);
         return bookingResult;
 
+      case 'select_quote':
+        if (!callId) {
+          const errorResult = createToolError("Missing call context", "Quote selection requires call context");
+          this.logFunctionResult('select_quote', errorResult, startTime);
+          return errorResult;
+        }
+        const quoteSelectionResult = await this.quoteSelectionTool.selectQuote(args as SelectQuoteFunctionArgs, callId);
+        this.logFunctionResult('select_quote', quoteSelectionResult, startTime);
+        return quoteSelectionResult;
+
+
       default:
         const errorResult = createToolError(
           "Unknown function",
@@ -168,6 +183,44 @@ export class ToolsManager {
       selectedService,
       this.businessContext.businessInfo
     );
+  }
+
+  /**
+   * Get schemas after service selection (static + quote schema only)
+   */
+  getSchemasAfterServiceSelection(): ToolSchema[] | null {
+    const staticSchemas = this.getStaticToolsForAI();
+    const dynamicQuoteSchema = this.getQuoteSchemaForSelectedService();
+
+    if (dynamicQuoteSchema) {
+      return [...staticSchemas, dynamicQuoteSchema];
+    }
+
+    return null;
+  }
+
+  /**
+   * Get schemas after quote generation - delegates to SchemaManager
+   */
+  async getSchemasAfterQuoteGeneration(callId: string): Promise<ToolSchema[] | null> {
+    // Get quote count and delegate to SchemaManager
+    const quotes = await this.callContextManager.getAllQuotes(callId);
+    const quoteCount = quotes.length;
+
+    // Only update if we now have multiple quotes (2+)
+    if (quoteCount > 1) {
+      // Service must be selected if we got here (quotes exist)
+      const selectedService = this.getSelectedServiceFromContext()!;
+      const staticSchemas = this.getStaticToolsForAI();
+      const dynamicSchemas = SchemaManager.generateQuoteAndSelectionSchemas(
+        selectedService,
+        this.businessContext.businessInfo,
+        quoteCount
+      );
+      return [...staticSchemas, ...dynamicSchemas];
+    }
+
+    return null;
   }
 
   /**
