@@ -72,21 +72,18 @@ export class WebSocketCoordinator {
         onError: (error) => this.handleWebSocketError(callId, error),
         onClose: (code, reason) => this.handleWebSocketClose(callId, code, reason, options),
         onFunctionCall: async (functionName, args) => {
-          // Direct execution - simple and consistent with codebase patterns
-          console.log('🎯 [WebSocketCoordinator] Function call received, executing directly...');
-
           try {
-            const startTime = Date.now();
             const result = await this.toolsManager.executeFunction(functionName, args, callId);
-            const executionTime = Date.now() - startTime;
 
             // Handle dynamic schema updates after service selection
             if (functionName === 'select_service' && result.success) {
-              console.log('🔄 [WebSocketCoordinator] Service selected - updating AI with dynamic quote schema...');
+              console.log('🔄 [WebSocketCoordinator] Updating AI with dynamic quote schema...');
+              const schemaUpdateStartTime = Date.now();
               await this.updateSessionToolsAfterServiceSelection();
+              const schemaUpdateTime = Date.now() - schemaUpdateStartTime;
+              console.log(`🔄 [WebSocketCoordinator] Schema update took: ${schemaUpdateTime}ms`);
             }
 
-            console.log(`✅ [WebSocketCoordinator] Function completed in ${executionTime}ms`);
             return result;
           } catch (error) {
             console.error('❌ [WebSocketCoordinator] Function execution failed:', error);
@@ -206,35 +203,19 @@ export class WebSocketCoordinator {
   }
 
   async updateSessionTools(tools: Array<Record<string, unknown>>): Promise<void> {
-    console.log('🔄 [WebSocketCoordinator] Updating session tools...');
     this.webSocketService.updateSessionTools(tools);
   }
 
   private async updateSessionToolsAfterServiceSelection(): Promise<void> {
     try {
-      console.log('🔄 [WebSocketCoordinator] Updating OpenAI session with dynamic schemas...');
-
       // Get static tools + dynamic quote schema for selected service
       const staticSchemas = this.toolsManager.getStaticToolsForAI();
       const dynamicQuoteSchema = this.toolsManager.getQuoteSchemaForSelectedService();
 
-      console.log(`   📊 Static schemas: ${staticSchemas.length}`);
-      console.log(`   🎯 Dynamic quote schema: ${dynamicQuoteSchema ? 'GENERATED' : 'NOT AVAILABLE'}`);
-
       if (dynamicQuoteSchema) {
         const allSchemas = [...staticSchemas, dynamicQuoteSchema];
-
-        console.log('🔧 [WebSocketCoordinator] Complete schema set for OpenAI:');
-        allSchemas.forEach(schema => {
-          console.log(`   📋 Function: ${schema.name} - ${schema.description}`);
-        });
-
-        console.log('📤 [WebSocketCoordinator] Updating WebSocket with new tool schemas...');
         await this.updateSessionTools(allSchemas as unknown as Array<Record<string, unknown>>);
-
-        console.log(`✅ [WebSocketCoordinator] Dynamic quote schema successfully added for selected service`);
-      } else {
-        console.log('⚠️ [WebSocketCoordinator] No dynamic quote schema available - keeping static schemas only');
+        console.log(`✅ [WebSocketCoordinator] Added dynamic quote schema`);
       }
 
     } catch (error) {

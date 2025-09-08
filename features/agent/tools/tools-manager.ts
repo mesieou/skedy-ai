@@ -51,8 +51,8 @@ export class ToolsManager {
     this.quoteTool = new QuoteTool(businessContext, business, callContextManager);
     this.serviceSelectionTool = new ServiceSelectionTool(businessContext);
     this.userManagementTool = new UserManagementTool(callContextManager);
-    this.bookingManagementTool = new BookingManagementTool();
-    this.availabilityCheckTool = new AvailabilityCheckTool(business);
+    this.bookingManagementTool = new BookingManagementTool(callContextManager);
+    this.availabilityCheckTool = new AvailabilityCheckTool(business, callContextManager);
   }
 
   /**
@@ -72,33 +72,31 @@ export class ToolsManager {
     callId?: string
   ): Promise<FunctionCallResult> {
 
-    console.log('🤖 [ToolsManager] OpenAI function call received:');
-    console.log(`   🎯 Function: ${functionName}`);
-    console.log(`   📋 Arguments:`, JSON.stringify(args, null, 2));
-
     const startTime = Date.now();
 
     // Simple delegation to domain tools - track service selection for dynamic schema
     switch (functionName) {
       case 'select_service':
-        console.log('   🔄 Executing service selection...');
         const selectionResult = this.serviceSelectionTool.processServiceSelectionForAI(args as ServiceSelectionFunctionArgs);
 
         // Store selected service in call context for other tools to access
         if (selectionResult.success && callId) {
           const service = this.serviceSelectionTool.findServiceByName((args as ServiceSelectionFunctionArgs).service_name);
           if (service) {
+            console.log(`🔄 [ToolsManager] Storing service in context: ${service.name}`);
+            const contextStartTime = Date.now();
             await this.callContextManager.setSelectedService(callId, service);
+            const contextTime = Date.now() - contextStartTime;
+            console.log(`🔄 [ToolsManager] Context storage took: ${contextTime}ms`);
+
             this.selectedService = service; // Keep local copy for schema generation
-            console.log(`   ✅ Service selected: ${service.name}`);
-            console.log(`   📋 Service requirements: [${service.ai_function_requirements?.join(', ') || 'none'}]`);
+            console.log(`🔄 [ToolsManager] Service selected: ${service.name}`);
           }
         }
         this.logFunctionResult('select_service', selectionResult, startTime);
         return selectionResult;
 
       case 'get_quote':
-        console.log('   💰 Executing quote calculation...');
         if (!callId) {
           return createToolError("Missing call context", "Quote calculation requires call context.");
         }
@@ -107,26 +105,25 @@ export class ToolsManager {
         return quoteResult;
 
       case 'check_day_availability':
-        console.log('   📅 Checking availability...');
-        const availabilityResult = await this.availabilityCheckTool.checkDayAvailability(args as CheckDayAvailabilityFunctionArgs);
+        if (!callId) {
+          return createToolError("Missing call context", "Availability check requires call context.");
+        }
+        const availabilityResult = await this.availabilityCheckTool.checkDayAvailability(args as CheckDayAvailabilityFunctionArgs, callId);
         this.logFunctionResult('check_day_availability', availabilityResult, startTime);
         return availabilityResult;
 
       case 'check_user_exists':
-        console.log('   👤 Checking if user exists...');
         const userExistsResult = await this.userManagementTool.checkUserExists((args as { phone_number: string }).phone_number, this.business.id);
         this.logFunctionResult('check_user_exists', userExistsResult, startTime);
         return userExistsResult;
 
       case 'create_user':
-        console.log('   👤 Creating user...');
         const userResult = await this.userManagementTool.createUser(args as CreateUserFunctionArgs, this.business.id, callId);
         this.logFunctionResult('create_user', userResult, startTime);
         return userResult;
 
       case 'create_booking':
-        console.log('   📝 Creating booking...');
-        const bookingResult = await this.bookingManagementTool.createBooking(args as CreateBookingFunctionArgs, this.business);
+        const bookingResult = await this.bookingManagementTool.createBooking(args as CreateBookingFunctionArgs, this.business, callId);
         this.logFunctionResult('create_booking', bookingResult, startTime);
         return bookingResult;
 
@@ -193,23 +190,8 @@ export class ToolsManager {
    */
   private logFunctionResult(functionName: string, result: FunctionCallResult, startTime: number): void {
     const executionTime = Date.now() - startTime;
-
-    console.log(`🏁 [ToolsManager] Function execution completed:`);
-    console.log(`   🎯 Function: ${functionName}`);
-    console.log(`   ⏱️  Execution time: ${executionTime}ms`);
-    console.log(`   ${result.success ? '✅' : '❌'} Result: ${result.success ? 'SUCCESS' : 'FAILED'}`);
-    console.log(`   💬 Message: ${result.message}`);
-
-    if (result.data) {
-      console.log(`   📊 Data returned:`, JSON.stringify(result.data, null, 2));
-    }
-
-    if (!result.success && result.error) {
-      console.log(`   ⚠️  Error details: ${result.error}`);
-    }
-
-    console.log('📤 [ToolsManager] Complete function result payload for OpenAI:');
-    console.log(JSON.stringify(result, null, 2));
+    const status = result.success ? '✅' : '❌';
+    console.log(`${status} [ToolsManager] ${functionName} (${executionTime}ms): ${result.message}`);
   }
 
 }

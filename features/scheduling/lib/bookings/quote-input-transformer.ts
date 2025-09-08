@@ -11,7 +11,7 @@ import type { Service } from '../../../shared/lib/database/types/service';
 import type { Business } from '../../../shared/lib/database/types/business';
 import type { BusinessContext } from '../../../shared/lib/database/types/business-context';
 import type {
-  BookingCalculationInput,
+  QuoteRequestInfo,
   BookingAddress,
   ServiceWithQuantity
 } from '../types/booking-calculations';
@@ -45,15 +45,15 @@ export interface QuoteInputData {
 // QUOTE SERVICE
 // ============================================================================
 
-export class QuoteInputBuilder {
+export class QuoteInputTransformer {
   /**
-   * Build booking calculation input from quote arguments
+   * Build quote request from quote arguments
    */
-  static buildBookingInput(
+  static buildQuoteRequest(
     args: QuoteInputData,
     service: Service,
     businessContext: BusinessContext
-  ): BookingCalculationInput {
+  ): QuoteRequestInfo {
     const addresses = this.buildAddressList(args, service, businessContext);
     const serviceWithQuantity = this.buildServiceWithQuantity(service, args, addresses);
 

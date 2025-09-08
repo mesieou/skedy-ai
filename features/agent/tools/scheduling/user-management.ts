@@ -7,7 +7,7 @@
  * - Delegates domain logic to UserService
  */
 
-import { BookingCustomerService } from '../../../scheduling/lib/bookings/booking-customer-service';
+import { CustomerManager } from '../../../scheduling/lib/bookings/customer-manager';
 import { UserRepository } from '../../../shared/lib/database/repositories/user-repository';
 import type { FunctionCallResult } from '../types';
 import { createToolError } from '../../../shared/utils/error-utils';
@@ -22,12 +22,12 @@ import type { CreateUserFunctionArgs } from '../types';
 // ============================================================================
 
 export class UserManagementTool {
-  private readonly bookingCustomerService: BookingCustomerService;
+  private readonly customerManager: CustomerManager;
   private readonly userRepository: UserRepository;
   private readonly callContextManager: CallContextManager | null = null;
 
   constructor(callContextManager?: CallContextManager) {
-    this.bookingCustomerService = new BookingCustomerService();
+    this.customerManager = new CustomerManager();
     this.userRepository = new UserRepository();
     this.callContextManager = callContextManager || null;
   }
@@ -41,7 +41,6 @@ export class UserManagementTool {
    */
   async checkUserExists(phoneNumber: string, businessId: string): Promise<FunctionCallResult> {
     try {
-      console.log(`👤 [UserManagementTool] Checking if user exists: ${phoneNumber}`);
 
       // Use repository directly - simple and clean
       const normalizedPhone = DateUtils.normalizePhoneNumber(phoneNumber);
@@ -89,7 +88,7 @@ export class UserManagementTool {
       }
 
       // Delegate to domain service - it handles existing vs new users
-      const result = await this.bookingCustomerService.createOrFindUser({
+      const result = await this.customerManager.createOrFindUser({
         name: args.name,
         phone_number: args.phone_number,
         business_id: businessId
@@ -99,7 +98,6 @@ export class UserManagementTool {
       // Update call context with user information (integrate with Redis)
       if (callId && this.callContextManager) {
         await this.callContextManager.updateUserContext(callId, result.user);
-        console.log(`✅ [UserManagementTool] Updated call context with user: ${result.user.first_name}`);
       }
 
       // Format AI-friendly response

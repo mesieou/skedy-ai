@@ -1,4 +1,4 @@
-import { BookingCalculator } from '../../../../scheduling/lib/bookings/booking-calculator';
+import { BookingCalculator } from '../../../../scheduling/lib/bookings/pricing-calculator';
 import { BusinessSeeder } from '../../../lib/database/seeds/business-seeder';
 import { ServiceSeeder } from '../../../lib/database/seeds/service-seeder';
 import { AddressSeeder } from '../../../lib/database/seeds/address-seeder';
@@ -6,10 +6,10 @@ import { AuthUserSeeder } from '../../../lib/database/seeds/auth-user-seeder';
 import { UserSeeder } from '../../../lib/database/seeds/user-seeder';
 
 // Test data imports
-import { 
-  createUniqueRemovalistBusinessData, 
-  createUniqueMobileManicuristBusinessData, 
-  createUniqueMassageBusinessData 
+import {
+  createUniqueRemovalistBusinessData,
+  createUniqueMobileManicuristBusinessData,
+  createUniqueMassageBusinessData
 } from '../../../lib/database/seeds/data/business-data';
 
 import {
@@ -45,8 +45,8 @@ import {
 } from '../../../lib/database/seeds/data/addresses-data';
 
 import { AddressRole } from '../../../../scheduling/lib/types/booking-calculations';
-import type { 
-  BookingCalculationInput, 
+import type {
+  BookingCalculationInput,
   ServiceWithQuantity,
   BookingAddress
 } from '../../../../scheduling/lib/types/booking-calculations';
@@ -62,7 +62,7 @@ const createMockDistanceService = () => ({
       // Calculate realistic distance based on address names (suburb distance simulation)
       const origin = request.origin.toLowerCase();
       const destination = request.destination.toLowerCase();
-      
+
       // Melbourne suburb distance simulation
       const baseDistance = origin.includes('melbourne') && destination.includes('richmond') ? 8.5 :
                          origin.includes('melbourne') && destination.includes('hawthorn') ? 12.0 :
@@ -75,7 +75,7 @@ const createMockDistanceService = () => ({
       const distance_km = Math.round(baseDistance * 100) / 100;
       // Duration calculation: distance ÷ speed (40 km/h default) × 60 minutes
       const duration_mins = Math.round((distance_km / 40) * 60);
-      
+
       return {
         distance_km,
         duration_mins,
@@ -285,7 +285,7 @@ describe('BookingCalculator - Test Scenarios (Mocked API)', () => {
   // ===================================================================
 
   describe('Removalist Scenarios (Examples 1-4)', () => {
-    
+
     test('Example 1: Between Customer Locations Only', async () => {
       const input = createBookingInput(
         businesses.removalist,
@@ -315,7 +315,7 @@ describe('BookingCalculator - Test Scenarios (Mocked API)', () => {
       const travelBreakdown = result.price_breakdown.travel_breakdown;
       expect(travelBreakdown.total_travel_cost).toBeGreaterThan(0);
       expect(travelBreakdown.route_segments.length).toBeGreaterThan(0);
-      
+
       // Melbourne to Richmond: 8.5km = 13 minutes travel
       // For 2 people at $1.50/minute and 13 minutes travel = $19.50
       expect(travelBreakdown.total_travel_cost).toBe(19.50);
@@ -344,10 +344,10 @@ describe('BookingCalculator - Test Scenarios (Mocked API)', () => {
       expect(result).toBeDefined();
       expect(result.total_estimate_amount).toBeGreaterThan(0);
 
-      // Test service breakdown 
+      // Test service breakdown
       const serviceBreakdown = result.price_breakdown.service_breakdowns[0];
       expect(serviceBreakdown.service_name).toBe('Interstate Removals - Base + Between');
-      
+
       // Labor cost: $145/hour × 3 hours = $435
       expect(serviceBreakdown.service_cost).toBe(435);
 
@@ -377,7 +377,7 @@ describe('BookingCalculator - Test Scenarios (Mocked API)', () => {
       expect(result).toBeDefined();
       const serviceBreakdown = result.price_breakdown.service_breakdowns[0];
       expect(serviceBreakdown.service_name).toBe('Premium Removals - Between + Return');
-      
+
       // Labor: 3 people × $200/hour × 1.33 hours = $266.67
       expect(serviceBreakdown.service_cost).toBeCloseTo(266.67, 2);
 
@@ -390,7 +390,7 @@ describe('BookingCalculator - Test Scenarios (Mocked API)', () => {
   });
 
   // ===================================================================
-  // EXAMPLE 5-8: MANICURIST SCENARIOS  
+  // EXAMPLE 5-8: MANICURIST SCENARIOS
   // ===================================================================
 
   describe('Manicurist Scenarios (Examples 5-8)', () => {
@@ -418,7 +418,7 @@ describe('BookingCalculator - Test Scenarios (Mocked API)', () => {
       const service1 = result.price_breakdown.service_breakdowns[0];
       expect(service1.service_cost).toBe(45);
 
-      // Service 2: Gel Manicure $65  
+      // Service 2: Gel Manicure $65
       const service2 = result.price_breakdown.service_breakdowns[1];
       expect(service2.service_cost).toBe(65);
 
@@ -444,7 +444,7 @@ describe('BookingCalculator - Test Scenarios (Mocked API)', () => {
 
       expect(result).toBeDefined();
       const serviceBreakdown = result.price_breakdown.service_breakdowns[0];
-      
+
       // Service: $80 fixed
       expect(serviceBreakdown.service_cost).toBe(80);
 
@@ -524,9 +524,9 @@ describe('BookingCalculator - Test Scenarios (Mocked API)', () => {
 
       expect(businessFees.gst_rate).toBe(10);
       expect(businessFees.gst_amount).toBeGreaterThan(0);
-      
+
       // GST should be 10% of subtotal before fees
-      const subtotal = result.price_breakdown.service_breakdowns[0].service_cost + 
+      const subtotal = result.price_breakdown.service_breakdowns[0].service_cost +
                       result.price_breakdown.travel_breakdown.total_travel_cost;
       const expectedGST = subtotal * 0.1;
       expect(businessFees.gst_amount).toBeCloseTo(expectedGST, 2);
@@ -601,7 +601,7 @@ describe('BookingCalculator - Test Scenarios (Mocked API)', () => {
       );
 
       const result = await calculator.calculateBooking(input);
-      
+
       // $120 service > $80 minimum, so minimum shouldn't apply
       expect(result.minimum_charge_applied).toBe(false);
       expect(result.total_estimate_amount).toBeGreaterThan(80);

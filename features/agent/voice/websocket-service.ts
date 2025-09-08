@@ -53,8 +53,7 @@ export class WebSocketService {
     this.callId = callId;
     this.voiceEventBus = voiceEventBus;
 
-    console.log("🌐 Connecting to WebSocket for real-time communication...");
-    console.log(`🔗 WebSocket URL: ${this.baseUrl}?call_id=${callId}`);
+    console.log(`🌐 [WebSocket] Connecting to OpenAI Realtime API...`);
 
     const ws = new WebSocket(`${this.baseUrl}?call_id=${callId}`, {
       headers: getAuthHeaders(apiKey),
@@ -72,23 +71,18 @@ export class WebSocketService {
 
   private setupOpenHandler(ws: WebSocket, initialTools?: Array<Record<string, unknown>>): void {
     ws.on("open", () => {
-      console.log("✅ [WebSocket] Connected successfully to OpenAI Realtime API");
+      console.log("✅ [WebSocket] Connected to OpenAI Realtime API");
 
       // Set initial tools if provided
       if (initialTools && initialTools.length > 0) {
-        console.log(`🔧 [WebSocket] Setting initial OpenAI function schemas:`);
+        console.log(`🔧 [WebSocket] Setting ${initialTools.length} function schemas`);
         initialTools.forEach(tool => {
           console.log(`   📋 Function: ${tool.name}`);
-          console.log(`   📝 Description: ${tool.description || 'No description'}`);
+
         });
-        console.log('📤 [WebSocket] Complete initial tools payload sent to OpenAI:');
-        console.log(JSON.stringify(initialTools, null, 2));
 
         this.updateSessionTools(initialTools);
       }
-
-      // Start conversation
-      console.log('🚀 [WebSocket] Starting conversation with OpenAI');
       this.sendMessage({ type: "response.create" });
     });
   }
@@ -100,7 +94,7 @@ export class WebSocketService {
   ): void {
     ws.on("close", (code, reason) => {
       const reasonStr = reason?.toString() || "No reason provided";
-      console.log(`🔌 [WebSocket] Connection closed - Code: ${code}, Reason: ${reasonStr}`);
+      console.log(`🔌 [WebSocket] Closed (${code}): ${reasonStr}`);
 
       if (onClose) {
         onClose(code, reasonStr);
@@ -176,9 +170,7 @@ export class WebSocketService {
 
     if (!skipLogging) {
       // Log important OpenAI messages for tracking
-      console.log('📨 [WebSocket] OpenAI message received:');
-      console.log(`   🏷️  Type: ${messageType}`);
-      console.log(`   📋 Full payload:`, JSON.stringify(parsed, null, 2));
+      console.log(`📨 [WebSocket] ${messageType}`);
     }
 
     switch (messageType) {
@@ -187,7 +179,7 @@ export class WebSocketService {
         this.handleSessionCreated(parsed);
         break;
       case "session.updated":
-        console.log("🎯 [WebSocket] Session updated successfully");
+        console.log("🎯 [WebSocket] Session updated");
         break;
 
       // Conversation Flow
@@ -197,7 +189,7 @@ export class WebSocketService {
         });
         break;
       case "response.done":
-        console.log("✅ [WebSocket] Response completed - audio should be playing");
+        this.handleResponseDone(parsed);
         break;
 
       // User Speech Detection
@@ -221,6 +213,12 @@ export class WebSocketService {
       // Function Calling
       case "response.function_call_arguments.done":
         this.handleFunctionCallCompleted(parsed);
+        break;
+
+      // Response monitoring - detect when AI starts speaking after function calls
+      case "response.audio.delta":
+      case "response.output_audio_transcript.delta":
+        // AI is generating audio - this is good
         break;
 
       // Errors
@@ -261,21 +259,12 @@ export class WebSocketService {
   // ============================================================================
 
   private handleSessionCreated(parsed: OpenAIWebSocketMessage): void {
-    console.log("🎯 [WebSocket] Session created successfully");
+    console.log("🎯 [WebSocket] Session created");
 
     if (parsed.session) {
       const session = parsed.session as Record<string, unknown>;
-
-      console.log("🔍 [Session Details]:");
-      console.log(`   Model: ${parsed.session.model}`);
-      console.log(`   Voice: ${parsed.session.voice}`);
-
-      // Check transcription status
-      if (session.input_audio_transcription) {
-        console.log(`   🎤 Transcription: Enabled`);
-      } else {
-        console.log(`   🎤 Transcription: NOT CONFIGURED`);
-      }
+      const transcriptionStatus = session.input_audio_transcription ? "✅" : "❌";
+      console.log(`   Model: ${parsed.session.model}, Voice: ${parsed.session.voice}, Transcription: ${transcriptionStatus}`);
     }
   }
 
@@ -332,6 +321,37 @@ export class WebSocketService {
     }
   }
 
+  private handleResponseDone(parsed: OpenAIWebSocketMessage): void {
+    const responseData = parsed as unknown as {
+      response?: {
+        output?: Array<{
+          type?: string;
+          content?: Array<{ type?: string; transcript?: string; audio?: unknown }>
+        }>
+      }
+    };
+
+    if (responseData.response?.output) {
+      let hasAudio = false;
+      let hasTranscript = false;
+
+      for (const output of responseData.response.output) {
+        if (output.content) {
+          for (const content of output.content) {
+            if (content.type === 'audio') hasAudio = true;
+            if (content.transcript) hasTranscript = true;
+          }
+        }
+      }
+
+      if (!hasAudio && !hasTranscript) {
+        console.log("⚠️  [WebSocket] Response completed with no audio/transcript");
+      } else {
+        console.log("✅ [WebSocket] Response completed");
+      }
+    }
+  }
+
   // ============================================================================
   // FUNCTION CALL HANDLING
   // ============================================================================
@@ -360,25 +380,19 @@ export class WebSocketService {
   ): Promise<void> {
     const { name: functionName, arguments: argsString, call_id: functionCallId } = output;
 
-    console.log('🔧 [WebSocket] OpenAI function call detected:');
-    console.log(`   🎯 Function: ${functionName}`);
-    console.log(`   🆔 Call ID: ${functionCallId}`);
-    console.log(`   📋 Raw arguments: ${argsString}`);
-
+    console.log(`🔧 [WebSocket] Function call: ${functionName}`);
     try {
+      console.log(`🔍 [WebSocket] Raw arguments string length: ${argsString?.length || 0}`);
       const args = JSON.parse(argsString!) as Record<string, unknown>;
-      console.log(`   📊 Parsed arguments:`, JSON.stringify(args, null, 2));
 
       // Log function parameters in detail
       this.logFunctionParameters(functionName!, args);
 
-      console.log('⚡ [WebSocket] Executing function call...');
       const startTime = Date.now();
       const result = await onFunctionCall(functionName!, args, functionCallId!);
       const executionTime = Date.now() - startTime;
 
-      console.log(`✅ [WebSocket] Function call completed in ${executionTime}ms`);
-      console.log('📊 [WebSocket] Function result:', JSON.stringify(result, null, 2));
+      console.log(`✅ [WebSocket] ${functionName} completed (${executionTime}ms)`);
 
       // Log function result details
       this.logFunctionResult(functionName!, result);
@@ -386,10 +400,24 @@ export class WebSocketService {
       await this.sendFunctionResult(functionCallId!, result, ws);
 
     } catch (error) {
-      console.error(`❌ [Function Error]: ${functionName} failed`);
-      console.error(`   Error Details:`, error instanceof Error ? error.message : error);
-      console.error(`   This suggests malformed JSON from OpenAI or parsing issues`);
-      console.error(`   AI may be trying to call function with invalid arguments`);
+      console.error(`❌ [WebSocket] ${functionName} failed:`, error instanceof Error ? error.message : error);
+
+      // Debug malformed JSON
+      if (error instanceof SyntaxError && argsString) {
+        console.error(`🔍 [WebSocket] Malformed JSON details:`);
+        console.error(`   Length: ${argsString.length}`);
+        console.error(`   First 500 chars: ${argsString.substring(0, 500)}`);
+        console.error(`   Last 500 chars: ${argsString.substring(Math.max(0, argsString.length - 500))}`);
+
+        // Try to find the error position
+        const match = error.message.match(/position (\d+)/);
+        if (match) {
+          const position = parseInt(match[1]);
+          const start = Math.max(0, position - 50);
+          const end = Math.min(argsString.length, position + 50);
+          console.error(`   Around error position ${position}: "${argsString.substring(start, end)}"`);
+        }
+      }
 
       const errorResult = {
         success: false,
@@ -410,13 +438,7 @@ export class WebSocketService {
     };
 
     console.log(`📤 [WebSocket] Sending function result to OpenAI:`);
-    console.log(`   🆔 Call ID: ${functionCallId}`);
-    console.log(`   📊 Result payload:`, JSON.stringify(conversationItem, null, 2));
-
     ws.send(JSON.stringify(conversationItem));
-
-    // Trigger new response
-    console.log('🚀 [WebSocket] Triggering new response from OpenAI');
     ws.send(JSON.stringify({ type: "response.create" }));
   }
 
@@ -440,21 +462,15 @@ export class WebSocketService {
     tools.forEach(tool => {
       console.log(`   🔧 Tool: ${tool.name} - ${tool.description || 'No description'}`);
     });
-    console.log('📤 [WebSocket] Complete session update payload:');
-    console.log(JSON.stringify(sessionUpdate, null, 2));
 
     this.sendMessage(sessionUpdate);
   }
 
   sendMessage(message: Record<string, unknown>): void {
     if (this.activeWebSocket && this.activeWebSocket.readyState === WebSocket.OPEN) {
-      console.log('📤 [WebSocket] Sending message to OpenAI:');
-      console.log(`   🏷️  Type: ${message.type}`);
-      console.log(`   📋 Full payload:`, JSON.stringify(message, null, 2));
       this.activeWebSocket.send(JSON.stringify(message));
     } else {
-      console.warn('⚠️ [WebSocket] Cannot send message - WebSocket not connected');
-      console.warn(`   📋 Attempted message:`, JSON.stringify(message, null, 2));
+      console.warn(`⚠️ [WebSocket] Cannot send ${message.type} - not connected`);
     }
   }
 

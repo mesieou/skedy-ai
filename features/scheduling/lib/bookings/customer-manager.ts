@@ -32,7 +32,7 @@ export interface UserCreationResult {
 // USER SERVICE
 // ============================================================================
 
-export class BookingCustomerService {
+export class CustomerManager {
   private readonly userRepository: UserRepository;
 
   constructor() {

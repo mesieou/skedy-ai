@@ -90,6 +90,7 @@ export class BusinessContextProvider {
       payment_methods: business.payment_methods.map(method => this.getPaymentMethodDescription(method)),
       preferred_payment_method: this.getPaymentMethodDescription(business.preferred_payment_method),
       charges_deposit: business.charges_deposit,
+      deposit_type: business.deposit_type,
       deposit_percentage: business.deposit_percentage ?? undefined,
       deposit_fixed_amount: business.deposit_fixed_amount ?? undefined,
       offer_mobile_services: business.offers_mobile_services,

@@ -14,9 +14,9 @@ import type { Business } from '../../../shared/lib/database/types/business';
 import type { CallContextManager } from '../../memory/call-context-manager';
 
 import type { FunctionCallResult, QuoteFunctionArgs } from '../types';
-import { BookingCalculator } from '../../../scheduling/lib/bookings/booking-calculator';
-import { QuoteInputBuilder } from '../../../scheduling/lib/bookings/quote-input-builder';
-import type { BookingCalculationResult } from '../../../scheduling/lib/types/booking-calculations';
+import { BookingCalculator } from '../../../scheduling/lib/bookings/pricing-calculator';
+import { QuoteInputTransformer } from '../../../scheduling/lib/bookings/quote-input-transformer';
+import type { QuoteResultInfo, QuoteRequestInfo } from '../../../scheduling/lib/types/booking-calculations';
 import { createToolError } from '../../../shared/utils/error-utils';
 
 // ============================================================================
@@ -45,7 +45,9 @@ export class QuoteTool {
    */
   async getQuoteForSelectedService(args: QuoteFunctionArgs, callId: string): Promise<FunctionCallResult> {
     // Get the selected service from call context (set by select_service call)
+    console.log(`🔍 [QuoteTool] Looking for selected service in call context for callId: ${callId}`);
     const service = await this.callContextManager.getSelectedService(callId);
+    console.log(`🔍 [QuoteTool] Selected service found:`, service ? `${service.name} (${service.id})` : 'null');
 
     if (!service) {
       return createToolError(
@@ -58,12 +60,16 @@ export class QuoteTool {
       // Log requirement collection progress
       this.logRequirementProgress(args, service);
 
-      const bookingInput = QuoteInputBuilder.buildBookingInput(args, service, this.businessContext);
-      const quote = await this.bookingCalculator.calculateBooking(bookingInput, args.job_scope);
+      const quoteRequest = QuoteInputTransformer.buildQuoteRequest(args, service, this.businessContext);
+      const quoteResult = await this.bookingCalculator.calculateBooking(quoteRequest, args.job_scope);
 
-      this.logQuoteBreakdown(quote, service.name);
+      this.logQuoteBreakdown(quoteResult, service.name);
 
-      return this.formatQuoteResponse(quote, service);
+      // Store quote result and request info in call context
+      await this.callContextManager.setQuoteResultData(callId, quoteResult);
+      await this.callContextManager.setQuoteRequestData(callId, quoteRequest);
+
+      return this.formatQuoteResponse(quoteResult, service, quoteRequest);
 
     } catch (error) {
       console.error('❌ Quote calculation failed:', error);
@@ -76,7 +82,7 @@ export class QuoteTool {
   // RESPONSE FORMATTING
   // ============================================================================
 
-  private formatQuoteResponse(quote: BookingCalculationResult, service: Service): FunctionCallResult {
+  private formatQuoteResponse(quote: QuoteResultInfo, service: Service, quoteRequest: QuoteRequestInfo): FunctionCallResult {
     return {
       success: true,
       data: {
@@ -95,13 +101,16 @@ export class QuoteTool {
         breakdown: this.createQuoteBreakdown(quote, service),
 
         // Complete price breakdown (ready for database)
-        price_breakdown: quote.price_breakdown
+        price_breakdown: quote.price_breakdown,
+
+        // Original quote request (for booking creation without recalculation)
+        quote_request: quoteRequest
       },
       message: this.formatQuoteMessage(quote, service.name)
     };
   }
 
-  private createQuoteBreakdown(quote: BookingCalculationResult, service: Service) {
+  private createQuoteBreakdown(quote: QuoteResultInfo, service: Service) {
     const serviceBreakdown = quote.price_breakdown?.service_breakdowns?.[0];
     const travelBreakdown = quote.price_breakdown?.travel_breakdown;
     const feesBreakdown = quote.price_breakdown?.business_fees;
@@ -127,7 +136,7 @@ export class QuoteTool {
     };
   }
 
-  private formatQuoteMessage(quote: BookingCalculationResult, serviceName: string): string {
+  private formatQuoteMessage(quote: QuoteResultInfo, serviceName: string): string {
     const currency = this.businessContext.businessInfo.currency_code;
     const hours = Math.round(quote.total_estimate_time_in_minutes / 60 * 10) / 10;
 
@@ -161,7 +170,7 @@ export class QuoteTool {
     }
   }
 
-  private logQuoteBreakdown(quote: BookingCalculationResult, serviceName: string): void {
+  private logQuoteBreakdown(quote: QuoteResultInfo, serviceName: string): void {
     console.log(`💰 Quote breakdown for ${serviceName}:`, {
       total_amount: quote.total_estimate_amount,
       total_time: quote.total_estimate_time_in_minutes,

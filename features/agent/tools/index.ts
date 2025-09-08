@@ -20,10 +20,10 @@ export { BookingManagementTool } from './scheduling/booking-management';
 export { AvailabilityCheckTool } from './scheduling/availability-check';
 
 // Domain services (can be imported directly for non-AI use cases)
-export { BookingCreationService } from '../../scheduling/lib/bookings/booking-creation-service';
-export { QuoteInputBuilder } from '../../scheduling/lib/bookings/quote-input-builder';
-export { BookingServiceSelector } from '../../scheduling/lib/bookings/booking-service-selector';
-export { BookingCustomerService } from '../../scheduling/lib/bookings/booking-customer-service';
+export { BookingOrchestrator } from '../../scheduling/lib/bookings/booking-orchestrator';
+export { QuoteInputTransformer } from '../../scheduling/lib/bookings/quote-input-transformer';
+export { ServiceSelector } from '../../scheduling/lib/bookings/service-selector';
+export { CustomerManager } from '../../scheduling/lib/bookings/customer-manager';
 
 // All types
 export type {

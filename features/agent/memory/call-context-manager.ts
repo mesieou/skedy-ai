@@ -19,7 +19,7 @@ import { agentServiceContainer } from './service-container';
 import type { User } from '../../shared/lib/database/types/user';
 import type { Business } from '../../shared/lib/database/types/business';
 import type { Service } from '../../shared/lib/database/types/service';
-import type { BookingCalculationInput, BookingCalculationResult } from '../../scheduling/lib/types/booking-calculations';
+import type { QuoteRequestInfo, QuoteResultInfo } from '../../scheduling/lib/types/booking-calculations';
 
 // ============================================================================
 // TYPES
@@ -197,17 +197,6 @@ export class CallContextManager {
   // BOOKING DATA MANAGEMENT
   // ============================================================================
 
-  async updateBookingInput(callId: string, bookingInput: Partial<BookingCalculationInput>): Promise<void> {
-    await this.callStateManager.updateBookingInput(callId, bookingInput);
-
-    // Emit booking data update event
-    await this.voiceEventBus.publish({
-      type: 'voice:booking:data_updated',
-      callId,
-      timestamp: Date.now(),
-      data: { bookingInput }
-    });
-  }
 
   /**
    * Update user context when user is created (publishes event)
@@ -222,23 +211,40 @@ export class CallContextManager {
     console.log(`✅ [CallContextManager] User context updated: ${user.first_name} (${callId})`);
   }
 
-  async setQuoteData(callId: string, quoteData: BookingCalculationResult): Promise<void> {
-    await this.callStateManager.setQuoteData(callId, quoteData);
+  async setQuoteResultData(callId: string, quoteResult: QuoteResultInfo): Promise<void> {
+    console.log(`🔍 [CallContext] STORING quote result: AUD ${quoteResult.total_estimate_amount} for callId: ${callId}`);
+    await this.callStateManager.setQuoteData(callId, quoteResult);
+    console.log(`🔍 [CallContext] Quote result STORED successfully`);
+
+    // Verify storage immediately
+    const verification = await this.getQuoteResultData(callId);
+    console.log(`🔍 [CallContext] Verification - quote retrieved: ${verification ? `AUD ${verification.total_estimate_amount}` : 'null'}`);
 
     // Add system message about quote generation
-    await this.addSystemMessage(callId, `Quote generated: AUD ${quoteData.total_estimate_amount}`);
+    await this.addSystemMessage(callId, `Quote generated: AUD ${quoteResult.total_estimate_amount}`);
 
     // Emit quote generated event
     await this.voiceEventBus.publish({
       type: 'voice:quote:generated',
       callId,
       timestamp: Date.now(),
-      data: { quoteData }
+      data: { quoteData: quoteResult }
     });
   }
 
-  async getBookingInput(callId: string): Promise<Partial<BookingCalculationInput> | null> {
-    return await this.callStateManager.getBookingInput(callId);
+  /**
+   * Store quote request info in call context
+   */
+  async setQuoteRequestData(callId: string, quoteRequest: QuoteRequestInfo): Promise<void> {
+    await this.callStateManager.setQuoteRequestData(callId, quoteRequest);
+  }
+
+  /**
+   * Get quote request data from call context
+   */
+  async getQuoteRequestData(callId: string): Promise<QuoteRequestInfo | null> {
+    const callState = await this.callStateManager.getCallState(callId);
+    return callState?.quoteRequestData as QuoteRequestInfo || null;
   }
 
   // ============================================================================
@@ -246,10 +252,16 @@ export class CallContextManager {
   // ============================================================================
 
   async setSelectedService(callId: string, service: Service): Promise<void> {
+    console.log(`🔍 [CallContext] STORING service: ${service.name} for callId: ${callId}`);
     await this.updateCallState(callId, {
       selectedService: service,
       toolsAvailable: ['select_service', 'get_quote'] // Quote becomes available
     });
+    console.log(`🔍 [CallContext] Service STORED successfully`);
+
+    // Verify storage immediately
+    const verification = await this.getSelectedService(callId);
+    console.log(`🔍 [CallContext] Verification - service retrieved: ${verification ? verification.name : 'null'}`);
 
     // Add system message about service selection
     await this.addSystemMessage(callId, `Service selected: ${service.name}`);
@@ -258,6 +270,14 @@ export class CallContextManager {
   async getSelectedService(callId: string): Promise<Service | null> {
     const callState = await this.callStateManager.getCallState(callId);
     return callState?.selectedService || null;
+  }
+
+  /**
+   * Get quote data from call context
+   */
+  async getQuoteResultData(callId: string): Promise<QuoteResultInfo | null> {
+    const callState = await this.callStateManager.getCallState(callId);
+    return callState?.quoteResultData || null;
   }
 
   async updateAvailableTools(callId: string, tools: string[]): Promise<void> {

@@ -339,7 +339,7 @@ export class BookingCalculator {
             return total_travel_time_mins * tier.price;
           case PricingCombination.TRAVEL_PER_HOUR_PER_PERSON:
           case PricingCombination.TRAVEL_PER_HOUR_PER_VEHICLE:
-            // Price is the total rate for this tier/quantity
+            // Tier price is already the total rate for this quantity/tier
             return (total_travel_time_mins / 60) * tier.price;
         }
       }
@@ -483,7 +483,15 @@ export class BookingCalculator {
   }
 
   private calculateDeposit(total_amount: number, business: Business): number {
+    console.log('🔍 [Deposit Debug] Business deposit config:', {
+      charges_deposit: business.charges_deposit,
+      deposit_type: business.deposit_type,
+      deposit_fixed_amount: business.deposit_fixed_amount,
+      deposit_percentage: business.deposit_percentage
+    });
+
     if (!business.charges_deposit) {
+      console.log('❌ [Deposit] Business does not charge deposits');
       return 0;
     }
 
@@ -491,6 +499,7 @@ export class BookingCalculator {
       business.deposit_type === DepositType.FIXED &&
       business.deposit_fixed_amount
     ) {
+      console.log(`✅ [Deposit] Fixed deposit: $${business.deposit_fixed_amount}`);
       return business.deposit_fixed_amount;
     }
 
@@ -498,9 +507,12 @@ export class BookingCalculator {
       business.deposit_type === DepositType.PERCENTAGE &&
       business.deposit_percentage
     ) {
-      return total_amount * (business.deposit_percentage / 100);
+      const deposit = total_amount * (business.deposit_percentage / 100);
+      console.log(`✅ [Deposit] Percentage deposit: ${business.deposit_percentage}% of $${total_amount} = $${deposit}`);
+      return deposit;
     }
 
+    console.log('❌ [Deposit] No valid deposit configuration found');
     return 0;
   }
 

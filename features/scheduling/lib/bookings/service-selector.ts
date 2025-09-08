@@ -31,7 +31,7 @@ export interface ServiceSelectionResult {
 // SERVICE SELECTION SERVICE
 // ============================================================================
 
-export class BookingServiceSelector {
+export class ServiceSelector {
   /**
    * Find and validate service selection
    */

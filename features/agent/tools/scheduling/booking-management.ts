@@ -7,13 +7,13 @@
  * - Delegates domain logic to BookingService
  */
 
-import { BookingsRepository } from '../../../shared/lib/database/repositories/bookings-respository';
 import { UserRepository } from '../../../shared/lib/database/repositories/user-repository';
-import { BookingCreationService } from '../../../scheduling/lib/bookings/booking-creation-service';
+import { BookingOrchestrator } from '../../../scheduling/lib/bookings/booking-orchestrator';
+import type { CallContextManager } from '../../memory/call-context-manager';
 import type { Business } from '../../../shared/lib/database/types/business';
-import type { User } from '../../../shared/lib/database/types/user';
+import type { Booking } from '../../../shared/lib/database/types/bookings';
 import type { FunctionCallResult, CreateBookingFunctionArgs } from '../types';
-import type { BookingCalculationResult } from '../../../scheduling/lib/types/booking-domain';
+import type { QuoteResultInfo } from '../../../scheduling/lib/types/booking-calculations';
 import { createToolError } from '../../../shared/utils/error-utils';
 import { DateUtils } from '../../../shared/utils/date-utils';
 
@@ -22,14 +22,14 @@ import { DateUtils } from '../../../shared/utils/date-utils';
 // ============================================================================
 
 export class BookingManagementTool {
-  private readonly bookingsRepository: BookingsRepository;
   private readonly userRepository: UserRepository;
-  private readonly bookingCreationService: BookingCreationService;
+  private readonly bookingOrchestrator: BookingOrchestrator;
+  private readonly callContextManager: CallContextManager;
 
-  constructor() {
-    this.bookingsRepository = new BookingsRepository();
+  constructor(callContextManager: CallContextManager) {
     this.userRepository = new UserRepository();
-    this.bookingCreationService = new BookingCreationService();
+    this.bookingOrchestrator = new BookingOrchestrator();
+    this.callContextManager = callContextManager;
   }
 
   // ============================================================================
@@ -41,17 +41,39 @@ export class BookingManagementTool {
    */
   async createBooking(
     args: CreateBookingFunctionArgs,
-    business: Business
+    business: Business,
+    callId?: string
   ): Promise<FunctionCallResult> {
     try {
 
-      // Step 1: Validate all inputs and fetch user
-      const validation = this.validateBookingInput(args);
+      // Step 1: Validate basic inputs (quote data comes from Redis)
+      const validation = this.validateBookingRequestArgs(args);
       if (!validation.valid) {
         return createToolError("Invalid booking information", validation.message);
       }
 
-      // Step 2: Fetch the user from database
+      // Step 2: Get quote data from Redis context (where it should be)
+      if (!callId) {
+        return createToolError("Missing call context", "Booking creation requires call context.");
+      }
+
+      console.log(`🔍 [BookingTool] Retrieving quote result from Redis for callId: ${callId}`);
+      const quoteResult = await this.callContextManager.getQuoteResultData(callId);
+      console.log(`🔍 [BookingTool] Quote result from Redis:`, quoteResult ? `AUD ${quoteResult.total_estimate_amount}` : 'NOT FOUND');
+
+      if (!quoteResult) {
+        return createToolError("Quote result not found", "Please get a quote first before creating a booking.");
+      }
+
+      // Step 3: Get quote request info from Redis context
+      const quoteRequest = await this.callContextManager.getQuoteRequestData(callId);
+      console.log(`🔍 [BookingTool] Quote request from Redis:`, quoteRequest ? 'FOUND' : 'NOT FOUND');
+
+      if (!quoteRequest) {
+        return createToolError("Quote request not found", "Please get a quote first to establish booking context.");
+      }
+
+      // Step 4: Fetch the user from database
       const user = await this.userRepository.findOne({ id: args.user_id, business_id: business.id });
       if (!user) {
         return createToolError(
@@ -60,34 +82,21 @@ export class BookingManagementTool {
         );
       }
 
-      // Step 3: Check availability using domain service
-      const availabilityCheck = await this.bookingCreationService.checkTimeSlotAvailability(
-        args.preferred_date,
-        args.preferred_time,
-        business.id
-      );
-
-      if (!availabilityCheck.available) {
-        return createToolError(
-          "Time slot not available",
-          availabilityCheck.message
-        );
-      }
-
-      // Step 4: Create booking using domain service
-      const bookingData = this.bookingCreationService.buildBookingData({
-        quote_result: args.quote_data as unknown as BookingCalculationResult,
-        preferred_date: args.preferred_date,
-        preferred_time: args.preferred_time,
-        user,
-        business
+      // Step 5: Create booking using domain service (handles all orchestration)
+      const result = await this.bookingOrchestrator.createBooking({
+        quoteRequestData: quoteRequest,
+        quoteResultData: quoteResult,
+        userId: user.id,
+        preferredDate: args.preferred_date,
+        preferredTime: args.preferred_time
       });
 
-      // Step 5: Create the booking in the database
-      const newBooking = await this.bookingsRepository.create(bookingData as unknown as Parameters<typeof this.bookingsRepository.create>[0]);
+      if (!result.success || !result.booking) {
+        return createToolError("Booking creation failed", result.error || "Unknown error");
+      }
 
-      // Step 6: Format AI-friendly response
-      return this.formatBookingResponse(newBooking as unknown as Record<string, unknown>, args, business);
+      // Step 6: Format AI-friendly response (use quote result from Redis)
+      return this.formatBookingResponseFromRedis(result.booking, args, business, quoteResult);
 
     } catch (error) {
       console.error('❌ [BookingManagementTool] Booking creation failed:', error);
@@ -102,25 +111,13 @@ export class BookingManagementTool {
   // PRIVATE METHODS
   // ============================================================================
 
+
   /**
-   * Validate booking input data
+   * Validate booking request arguments
    */
-  private validateBookingInput(
+  private validateBookingRequestArgs(
     args: CreateBookingFunctionArgs
   ): { valid: boolean; message: string } {
-    // Validate quote data
-    if (!args.quote_data) {
-      return { valid: false, message: "Quote data is required. Please get a quote first." };
-    }
-
-    if (!args.quote_data.total_estimate_amount || args.quote_data.total_estimate_amount <= 0) {
-      return { valid: false, message: "Invalid quote amount." };
-    }
-
-    if (!args.quote_data.service_name) {
-      return { valid: false, message: "Service name is required in quote data." };
-    }
-
     // Validate date and time using DateUtils
     if (!args.preferred_date || !DateUtils.isValidDateFormat(args.preferred_date)) {
       return { valid: false, message: "Please provide a valid date in YYYY-MM-DD format." };
@@ -138,14 +135,14 @@ export class BookingManagementTool {
     return { valid: true, message: "" };
   }
 
-
   /**
-   * Format AI-friendly booking response
+   * Format AI-friendly booking response using Redis quote data
    */
-  private formatBookingResponse(
-    booking: Record<string, unknown>,
+  private formatBookingResponseFromRedis(
+    booking: Booking,
     args: CreateBookingFunctionArgs,
-    business: Business
+    business: Business,
+    quoteResult: QuoteResultInfo
   ): FunctionCallResult {
     const displayDate = DateUtils.formatDateForDisplay(args.preferred_date);
     const displayTime = DateUtils.formatTimeForDisplay(args.preferred_time);
@@ -153,140 +150,25 @@ export class BookingManagementTool {
     return {
       success: true,
       data: {
-        booking_id: (booking.id as string) || 'pending',
-        service_name: args.quote_data.service_name,
+        booking_id: booking.id,
+        service_name: quoteResult.price_breakdown.service_breakdowns[0]?.service_name || 'Service',
         date: args.preferred_date,
         time: args.preferred_time,
-        total_amount: args.quote_data.total_estimate_amount,
-        deposit_amount: args.quote_data.deposit_amount,
+        total_amount: quoteResult.total_estimate_amount,
+        deposit_amount: quoteResult.deposit_amount,
         status: 'pending',
         currency: business.currency_code
       },
-      message: `Excellent! Your ${args.quote_data.service_name} is booked for ${displayTime} on ${displayDate}. ` +
-               `Total: ${business.currency_code} ${args.quote_data.total_estimate_amount}` +
-               (args.quote_data.deposit_amount > 0
-                 ? `, with a ${business.currency_code} ${args.quote_data.deposit_amount} deposit required.`
+      message: `Excellent! Your booking is confirmed for ${displayTime} on ${displayDate}. ` +
+               `Total: ${business.currency_code} ${quoteResult.total_estimate_amount}` +
+               (quoteResult.deposit_amount > 0
+                 ? `, with a ${business.currency_code} ${quoteResult.deposit_amount} deposit required.`
                  : '.') +
                ` You'll receive a confirmation shortly!`
     };
   }
 
-  /**
-   * Create a new booking with user from context (event-driven, no DB fetch)
-   */
-  async createBookingWithUser(
-    args: CreateBookingFunctionArgs,
-    user: User,
-    business: Business
-  ): Promise<FunctionCallResult> {
-    try {
 
-      // Step 1: Validate inputs (no user validation needed - comes from context)
-      const validation = this.validateBookingInputWithoutUser(args);
-      if (!validation.valid) {
-        return createToolError("Invalid booking information", validation.message);
-      }
 
-      // Step 2: Check availability using domain service
-      const availabilityCheck = await this.bookingCreationService.checkTimeSlotAvailability(
-        args.preferred_date,
-        args.preferred_time,
-        business.id
-      );
 
-      if (!availabilityCheck.available) {
-        return createToolError(
-          "Time slot not available",
-          availabilityCheck.message
-        );
-      }
-
-      // Step 3: Create booking using domain service
-      const bookingData = this.bookingCreationService.buildBookingData({
-        quote_result: args.quote_data as unknown as BookingCalculationResult,
-        preferred_date: args.preferred_date,
-        preferred_time: args.preferred_time,
-        user,
-        business
-      });
-
-      // Step 4: Create the booking in the database
-      const newBooking = await this.bookingsRepository.create(bookingData as unknown as Parameters<typeof this.bookingsRepository.create>[0]);
-
-      // Step 5: Format AI-friendly response
-      return this.formatBookingResponse(newBooking as unknown as Record<string, unknown>, args, business);
-
-    } catch (error) {
-      console.error('❌ [BookingManagementTool] Booking creation with context user failed:', error);
-      return createToolError(
-        "Booking creation failed",
-        "Sorry, I couldn't create your booking right now. Please try again."
-      );
-    }
-  }
-
-  // ============================================================================
-  // VALIDATION HELPERS
-  // ============================================================================
-
-  /**
-   * Validate booking input without user validation (for event-driven approach)
-   */
-  private validateBookingInputWithoutUser(args: CreateBookingFunctionArgs): { valid: boolean; message: string } {
-    // Validate quote data
-    if (!args.quote_data) {
-      return { valid: false, message: "Quote data is required. Please get a quote first." };
-    }
-
-    if (!args.quote_data.total_estimate_amount || args.quote_data.total_estimate_amount <= 0) {
-      return { valid: false, message: "Invalid quote amount." };
-    }
-
-    if (!args.quote_data.service_name) {
-      return { valid: false, message: "Service name is required in quote data." };
-    }
-
-    // Validate date and time using DateUtils
-    if (!args.preferred_date || !DateUtils.isValidDateFormat(args.preferred_date)) {
-      return { valid: false, message: "Please provide a valid date in YYYY-MM-DD format." };
-    }
-
-    if (!args.preferred_time || !DateUtils.isValidTimeFormat(args.preferred_time)) {
-      return { valid: false, message: "Please provide a valid time in HH:MM format." };
-    }
-
-    return { valid: true, message: "" };
-  }
-
-  /**
-   * Create booking using event-driven context (AI-friendly wrapper)
-   */
-  async createBookingWithContext(
-    args: CreateBookingFunctionArgs,
-    business: Business,
-    callId: string
-  ): Promise<FunctionCallResult> {
-    try {
-      // Delegate to domain service for event-driven booking creation
-      const result = await this.bookingCreationService.createBookingWithContext(
-        args as unknown as Parameters<typeof this.bookingCreationService.createBookingWithContext>[0],
-        business,
-        callId
-      );
-
-      if (!result.success) {
-        return createToolError("Booking creation failed", result.error || "Unknown error");
-      }
-
-      // Format AI-friendly response
-      return this.formatBookingResponse(result.booking as unknown as Record<string, unknown>, args, business);
-
-    } catch (error) {
-      console.error('❌ [BookingManagementTool] Context booking failed:', error);
-      return createToolError(
-        "Booking creation failed",
-        "Sorry, I couldn't create your booking right now. Please try again."
-      );
-    }
-  }
 }

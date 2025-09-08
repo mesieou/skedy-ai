@@ -329,3 +329,22 @@ export async function rolloverSingleBusinessAvailability(business: Business): Pr
     throw error;
   }
 }
+
+// =====================================
+// DURATION MATCHING UTILITIES
+// =====================================
+
+/**
+ * Find the best duration interval match for a given service duration
+ * Reuses DURATION_INTERVALS to avoid code duplication across the system
+ */
+export function findBestDurationMatch(serviceDurationMinutes: number): string {
+  // Find the smallest duration interval that can accommodate the service
+  for (const interval of DURATION_INTERVALS) {
+    if (interval.minutes >= serviceDurationMinutes) {
+      return interval.key;
+    }
+  }
+  // If service duration exceeds all intervals, use the largest one
+  return DURATION_INTERVALS[DURATION_INTERVALS.length - 1].key;
+}

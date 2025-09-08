@@ -29,8 +29,8 @@ export interface ServiceWithQuantity {
 
 
 
-// Input for booking calculations
-export interface BookingCalculationInput {
+// Input for quote calculations - what customer is requesting
+export interface QuoteRequestInfo {
   services: ServiceWithQuantity[];
   business: Business;
   addresses: BookingAddress[];
@@ -87,15 +87,15 @@ export interface PriceBreakdown {
   business_fees: BusinessFeeBreakdown;
 }
 
-// Final booking calculation result - ready for database storage
-export interface BookingCalculationResult {
+// Result of quote calculation - the calculated quote
+export interface QuoteResultInfo {
   total_estimate_amount: number;
   total_estimate_time_in_minutes: number;
   minimum_charge_applied: boolean;
   deposit_amount: number;
   remaining_balance: number;
   deposit_paid: boolean;
-  price_breakdown: PriceBreakdown;  // ✅ Already structured for JSONB
+  price_breakdown: PriceBreakdown;
 }
 
 // Business fees

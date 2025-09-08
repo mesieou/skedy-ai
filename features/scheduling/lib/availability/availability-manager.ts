@@ -8,7 +8,8 @@ import { CalendarSettings } from "@/features/shared/lib/database/types/calendar-
 import {
   generateAvailabilitySlotsForDate,
   findBusinessesNeedingRollover,
-  rolloverBusinessesAvailability
+  rolloverBusinessesAvailability,
+  findBestDurationMatch
 } from "../../utils/availability-helpers";
 
 // Class AvailabilityManager
@@ -79,10 +80,10 @@ export class AvailabilityManager {
   }
 
   /**
-   * Check availability for a specific date and return 30-minute slots
+   * Check availability for a specific date with optional service duration
    * Returns formatted availability data suitable for AI receptionist responses
    */
-  checkDayAvailability(dateStr: string): {
+  checkDayAvailability(dateStr: string, serviceDurationMinutes?: number): {
     success: boolean;
     date: string;
     availableSlots: Array<{ time: string; providerCount: number }>;
@@ -116,10 +117,13 @@ export class AvailabilityManager {
         };
       }
 
-      // Get 60-minute slots for AI responses (most common booking duration)
-      const sixtyMinSlots = daySlots["60"] || [];
+      // Get slots for the appropriate duration (use service duration or default to 60-min)
+      const durationKey = findBestDurationMatch(serviceDurationMinutes || 60);
+      const durationSlots = daySlots[durationKey] || [];
 
-      if (sixtyMinSlots.length === 0) {
+      console.log(`[AvailabilityManager] Checking ${durationKey}-minute slots for ${serviceDurationMinutes || 60}-minute service`);
+
+      if (durationSlots.length === 0) {
         return {
           success: true,
           date: dateStr,
@@ -129,16 +133,10 @@ export class AvailabilityManager {
       }
 
       // Convert to structured format (slots are already in UTC, convert to business timezone for display)
-      const availableSlots = sixtyMinSlots.map(([time, providerCount]) => {
-        // Convert UTC time to business timezone for customer display
-        const utcTimestamp = DateUtils.createSlotTimestamp(dateStr, time + ':00');
-        const { time: businessTime } = DateUtils.convertUTCToTimezone(utcTimestamp, this.business.time_zone);
-
-        return {
-          time: businessTime.substring(0, 5), // "17:00" format (business timezone)
-          providerCount
-        };
-      });
+      const availableSlots = durationSlots.map(([time, providerCount]) => ({
+        time: this.convertSlotToBusinessTime(dateStr, time + ':00'),
+        providerCount
+      }));
 
       // Create natural receptionist message
       const formattedMessage = this.formatAvailabilityMessage(dateStr, availableSlots);
@@ -195,22 +193,16 @@ export class AvailabilityManager {
    * Format date for natural display (e.g., "Monday, 15th January")
    */
   private formatDateForDisplay(dateStr: string): string {
-    // Use DateUtils to create proper UTC timestamp
-    const utcTimestamp = DateUtils.createSlotTimestamp(dateStr, '00:00:00');
-
-    // Convert to business timezone using DateUtils
-    const { date: localDate } = DateUtils.convertUTCToTimezone(utcTimestamp, this.business.time_zone);
+    const { date: localDate } = this.convertToBusinessTimezone(dateStr, '00:00:00');
 
     // Create date object for formatting
     const date = new Date(localDate + 'T00:00:00');
-    const options: Intl.DateTimeFormatOptions = {
+    const formatted = date.toLocaleDateString('en-AU', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
       timeZone: this.business.time_zone
-    };
-
-    const formatted = date.toLocaleDateString('en-AU', options);
+    });
 
     // Add ordinal suffix to day
     const day = date.getDate();
@@ -218,6 +210,27 @@ export class AvailabilityManager {
 
     return formatted.replace(`${day}`, `${day}${suffix}`);
   }
+
+  // ============================================================================
+  // TIMEZONE & FORMATTING HELPERS
+  // ============================================================================
+
+  /**
+   * Convert UTC slot time to business timezone
+   */
+  private convertSlotToBusinessTime(dateStr: string, time: string): string {
+    const { time: businessTime } = this.convertToBusinessTimezone(dateStr, time);
+    return businessTime.substring(0, 5); // "17:00" format
+  }
+
+  /**
+   * Convert UTC timestamp to business timezone (centralized helper)
+   */
+  private convertToBusinessTimezone(dateStr: string, time: string): { date: string; time: string } {
+    const utcTimestamp = DateUtils.createSlotTimestamp(dateStr, time);
+    return DateUtils.convertUTCToTimezone(utcTimestamp, this.business.time_zone);
+  }
+
 
   /**
    * Format time for natural display (e.g., "10:30 AM", "1:00 PM", "1:30 PM")
@@ -280,41 +293,48 @@ export class AvailabilityManager {
   }
 
 
+  // ============================================================================
+  // SLOT PROCESSING HELPERS
+  // ============================================================================
+
   private processSlots(
     slots: [string, number][],
     dateStr: string,
     duration: { key: string; minutes: number },
     booking: Booking
   ): [string, number][] {
-    const newSlots: [string, number][] = [];
+    return slots
+      .map(([slotTime, providerCount]) =>
+        this.processIndividualSlot(slotTime, providerCount, dateStr, duration, booking)
+      )
+      .filter((slot): slot is [string, number] => slot !== null);
+  }
 
-    for (const [slotTime, providerCount] of slots) {
-      const slotStartMs = DateUtils.createSlotTimestamp(dateStr, slotTime);
-      const slotEndMs = DateUtils.calculateEndTimestamp(
-        slotStartMs,
-        duration.minutes
+  private processIndividualSlot(
+    slotTime: string,
+    providerCount: number,
+    dateStr: string,
+    duration: { key: string; minutes: number },
+    booking: Booking
+  ): [string, number] | null {
+    const slotStartMs = DateUtils.createSlotTimestamp(dateStr, slotTime);
+    const slotEndMs = DateUtils.calculateEndTimestamp(slotStartMs, duration.minutes);
+
+    const hasOverlap = DateUtils.doPeriodsOverlap(
+      slotStartMs,
+      slotEndMs,
+      booking.start_at,
+      booking.end_at
+    );
+
+    if (hasOverlap) {
+      const newProviderCount = providerCount - 1;
+      console.log(
+        `[AvailabilityManager] Reducing providers for ${duration.key}min slot at ${slotTime} from ${providerCount} to ${newProviderCount}`
       );
-
-      if (
-        DateUtils.doPeriodsOverlap(
-          slotStartMs,
-          slotEndMs,
-          booking.start_at,
-          booking.end_at
-        )
-      ) {
-        const newProviderCount = providerCount - 1;
-        console.log(
-          `[AvailabilityManager- updateAvailabilityAfterBooking] Reducing providers for ${duration.key}min slot at ${slotTime} from ${providerCount} to ${newProviderCount}`
-        );
-        if (newProviderCount > 0) {
-          newSlots.push([slotTime, newProviderCount]);
-        }
-      } else {
-        newSlots.push([slotTime, providerCount]);
-      }
+      return newProviderCount > 0 ? [slotTime, newProviderCount] : null;
     }
 
-    return newSlots;
+    return [slotTime, providerCount];
   }
 }

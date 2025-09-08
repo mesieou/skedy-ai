@@ -12,7 +12,7 @@ import { voiceRedisClient } from '../redis/redis-client';
 import { simpleCircuitBreaker } from '../redis/simple-circuit-breaker';
 import type { Service } from '../../../shared/lib/database/types/service';
 import type { User } from '../../../shared/lib/database/types/user';
-import type { BookingCalculationInput, BookingCalculationResult } from '../../../scheduling/lib/types/booking-calculations';
+import type { QuoteRequestInfo, QuoteResultInfo } from '../../../scheduling/lib/types/booking-calculations';
 
 // ============================================================================
 // TYPES
@@ -40,9 +40,9 @@ export interface CallState {
   toolsAvailable: string[]; // Current available function names
 
   // Booking data collection (using existing database interfaces)
-  collectedBookingInput: Partial<BookingCalculationInput>;
+  quoteRequestData: Partial<QuoteRequestInfo>;
   quoteGenerated: boolean;
-  quoteData: BookingCalculationResult | null;
+  quoteResultData: QuoteResultInfo | null;
 
   // Customer info for booking creation
   customerInfo: {
@@ -59,9 +59,9 @@ export interface CallStateUpdate {
   user?: User | null;
   selectedService?: Service | null;
   toolsAvailable?: string[];
-  collectedBookingInput?: Partial<BookingCalculationInput>;
+  quoteRequestData?: Partial<QuoteRequestInfo>;
   quoteGenerated?: boolean;
-  quoteData?: BookingCalculationResult;
+  quoteResultData?: QuoteResultInfo;
   customerInfo?: Partial<CallState['customerInfo']>;
   lastActivity?: number;
 }
@@ -92,9 +92,9 @@ export class CallStateManager {
       webSocketStatus: 'connecting',
       selectedService: null,
       toolsAvailable: ['select_service'],
-      collectedBookingInput: {},
+      quoteRequestData: {},
       quoteGenerated: false,
-      quoteData: null,
+      quoteResultData: null,
       user: null, // Will be populated when user is created
       customerInfo: {
         phone: callData.phoneNumber
@@ -176,32 +176,31 @@ export class CallStateManager {
   // BOOKING DATA MANAGEMENT
   // ============================================================================
 
-  async updateBookingInput(callId: string, bookingInput: Partial<BookingCalculationInput>): Promise<void> {
+  async setQuoteRequestData(callId: string, quoteRequest: Partial<QuoteRequestInfo>): Promise<void> {
     const currentState = await this.getCallState(callId);
     if (!currentState) return;
 
-    const mergedBookingInput = {
-      ...currentState.collectedBookingInput,
-      ...bookingInput
+    const mergedQuoteRequest = {
+      ...currentState.quoteRequestData,
+      ...quoteRequest
     };
 
     await this.updateCallState(callId, {
-      collectedBookingInput: mergedBookingInput
+      quoteRequestData: mergedQuoteRequest
     });
 
   }
 
-  async getBookingInput(callId: string): Promise<Partial<BookingCalculationInput> | null> {
+  async getQuoteRequestData(callId: string): Promise<Partial<QuoteRequestInfo> | null> {
     const state = await this.getCallState(callId);
-    return state?.collectedBookingInput || null;
+    return state?.quoteRequestData || null;
   }
 
-  async setQuoteData(callId: string, quoteData: BookingCalculationResult): Promise<void> {
+  async setQuoteData(callId: string, quoteResult: QuoteResultInfo): Promise<void> {
     await this.updateCallState(callId, {
       quoteGenerated: true,
-      quoteData
+      quoteResultData: quoteResult
     });
-
   }
 
   async updateCustomerInfo(callId: string, customerInfo: Partial<CallState['customerInfo']>): Promise<void> {

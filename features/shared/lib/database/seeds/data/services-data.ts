@@ -78,19 +78,19 @@ export const removalistExample1ServiceData: CreateServiceData = {
           {
             min_quantity: 1,
             max_quantity: 1,
-            price: 1.00,
+            price: 95.00,
             duration_estimate_mins: null
           },
           {
             min_quantity: 2,
             max_quantity: 2,
-            price: 1.50,
+            price: 145.00,
             duration_estimate_mins: null
           },
           {
             min_quantity: 3,
             max_quantity: 3,
-            price: 2.00,
+            price: 185.00,
             duration_estimate_mins: null
           }
         ]

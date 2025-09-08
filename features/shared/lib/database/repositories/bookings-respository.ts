@@ -2,14 +2,14 @@ import { BaseRepository } from '../base-repository';
 import type { Booking, CreateBookingData } from '../types/bookings';
 import { BookingStatus } from '../types/bookings';
 import { DateUtils } from '../../../utils/date-utils';
-import type { 
-  BookingCalculationInput, 
-  BookingCalculationResult,
+import type {
+  QuoteRequestInfo,
+  QuoteResultInfo,
   BookingAddress,
-  ServiceWithQuantity 
+  ServiceWithQuantity
 } from '../../../../scheduling/lib/types/booking-calculations';
 import type { Business } from '../types/business';
-import { BookingCalculator } from '../../../../scheduling/lib/bookings/booking-calculator';
+import { BookingCalculator } from '../../../../scheduling/lib/bookings/pricing-calculator';
 import { AddressRepository } from './address-repository';
 import { ServiceRepository } from './service-repository';
 import { BookingServiceRepository } from './booking-service-repository';
@@ -34,44 +34,48 @@ export class BookingsRepository extends BaseRepository<Booking> {
 
   /**
    * Create a complete booking with services, addresses, and pricing
+   * Supports both calculated-on-demand and pre-calculated pricing
    */
   async createBookingWithServicesAndAddresses(
-    input: BookingCalculationInput,
+    quoteRequestData: QuoteRequestInfo,
     user_id: string,
-    start_at: string // UTC ISO string
+    start_at: string, // UTC ISO string
+    quoteResultData?: QuoteResultInfo // Optional: use pre-calculated pricing to avoid recalculation
   ): Promise<Booking> {
     try {
       // Step 1: Create addresses in database first
-      await this.createAddresses(input.addresses);
-      
-      // Step 2: Calculate booking pricing and time using SAME input
-      const calculationResult: BookingCalculationResult = await this.bookingCalculator.calculateBooking(input);
-      
+      await this.createAddresses(quoteRequestData.addresses);
+
+      // Step 2: Use pre-calculated result OR calculate pricing (for backwards compatibility)
+      const calculationResult: QuoteResultInfo = quoteResultData ||
+        await this.bookingCalculator.calculateBooking(quoteRequestData);
+
       // Step 3: Create booking with calculated data
       const bookingData: CreateBookingData = {
         user_id,
-        business_id: input.business.id,
+        business_id: quoteRequestData.business.id,
         status: BookingStatus.PENDING,
         start_at,
         end_at: DateUtils.addMinutesUTC(start_at, calculationResult.total_estimate_time_in_minutes),
         ...calculationResult // Spread the calculation result directly
       };
-      
+
       // Step 4: Create the booking in database
       const createdBooking = await this.create(bookingData);
-      
+
       // Step 5: Create booking services (many-to-many relationship)
-      await this.createBookingServices(createdBooking.id, input.services);
-      
+      await this.createBookingServices(createdBooking.id, quoteRequestData.services);
+
       // Step 6: Update availability slots after successful booking creation
-      await this.updateAvailabilityAfterBooking(createdBooking, input.business);
-      
+      await this.updateAvailabilityAfterBooking(createdBooking, quoteRequestData.business);
+
       return createdBooking;
-      
+
     } catch (error) {
       throw new Error(`Failed to create booking with calculation: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
+
 
   /**
    * Create addresses in database
@@ -104,6 +108,7 @@ export class BookingsRepository extends BaseRepository<Booking> {
     }
   }
 
+
   /**
    * Update availability slots after booking creation
    */
@@ -117,10 +122,10 @@ export class BookingsRepository extends BaseRepository<Booking> {
       if (currentAvailabilitySlots) {
         // Create availability manager instance
         const availabilityManager = new AvailabilityManager(currentAvailabilitySlots, business);
-        
+
         // Update availability after booking
         const updatedAvailabilitySlots = availabilityManager.updateAvailabilityAfterBooking(booking);
-        
+
         // Save updated availability slots back to database
         await this.availabilitySlotsRepository.updateOne(
           { id: currentAvailabilitySlots.id },

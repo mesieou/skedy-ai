@@ -2,13 +2,13 @@
  * Integration tests for BookingCalculator with real Google Distance API
  * These tests are slower and require a Google API key
  * Run with: npm test -- booking-calculator-integration.test.ts
- * 
+ *
  * Environment Variables Required:
  * - GOOGLE_MAPS_API_KEY: Your Google Maps API key
  * - USE_MOCK_DISTANCE_API: Set to 'false' to use real API
  */
 
-import { BookingCalculator } from '../../../../scheduling/lib/bookings/booking-calculator';
+import { BookingCalculator } from '../../../../scheduling/lib/bookings/pricing-calculator';
 import { BusinessSeeder } from '../../../lib/database/seeds/business-seeder';
 import { ServiceSeeder } from '../../../lib/database/seeds/service-seeder';
 import { AddressSeeder } from '../../../lib/database/seeds/address-seeder';
@@ -16,8 +16,8 @@ import { AuthUserSeeder } from '../../../lib/database/seeds/auth-user-seeder';
 import { UserSeeder } from '../../../lib/database/seeds/user-seeder';
 
 // Test data imports
-import { 
-  createUniqueRemovalistBusinessData, 
+import {
+  createUniqueRemovalistBusinessData,
   createUniqueMobileManicuristBusinessData
 } from '../../../lib/database/seeds/data/business-data';
 
@@ -37,8 +37,8 @@ import {
 } from '../../../lib/database/seeds/data/addresses-data';
 
 import { AddressRole } from '../../../../scheduling/lib/types/booking-calculations';
-import type { 
-  BookingCalculationInput, 
+import type {
+  BookingCalculationInput,
   ServiceWithQuantity,
   BookingAddress
 } from '../../../../scheduling/lib/types/booking-calculations';
@@ -67,7 +67,7 @@ describeRealApi('BookingCalculator - Real Google API Integration', () => {
   beforeAll(async () => {
     // Set environment to force real API usage
     process.env.USE_MOCK_DISTANCE_API = 'false';
-    
+
     calculator = new BookingCalculator();
     businessSeeder = new BusinessSeeder();
     serviceSeeder = new ServiceSeeder();
@@ -93,7 +93,7 @@ describeRealApi('BookingCalculator - Real Google API Integration', () => {
     await userSeeder.cleanup();
     await authUserSeeder.cleanup();
     await businessSeeder.cleanup();
-    
+
     // Reset environment
     delete process.env.USE_MOCK_DISTANCE_API;
   });
@@ -135,7 +135,7 @@ describeRealApi('BookingCalculator - Real Google API Integration', () => {
       ...southYarraApartmentAddress,
       service_id: services.manicuristExample6.id
     });
-    
+
     // Additional addresses for multi-stop test
     addresses.hawthornPickup = await addressSeeder.createAddressWith({
       ...hawthornPickupAddress,
@@ -266,7 +266,7 @@ describeRealApi('BookingCalculator - Real Google API Integration', () => {
       expect(segment.duration_mins).toBeGreaterThan(0);
       expect(segment.from_address).toBeDefined();
       expect(segment.to_address).toBeDefined();
-      
+
       console.log(`Segment ${index + 1}: ${segment.from_address.slice(0, 20)}... → ${segment.to_address.slice(0, 20)}...`);
       console.log(`  ${segment.distance_km}km, ${segment.duration_mins}min, chargeable: ${segment.is_chargeable}`);
     });
@@ -313,7 +313,7 @@ describeRealApi('BookingCalculator - Real Google API Integration', () => {
     console.log(`  Travel Cost: $${travelBreakdown.total_travel_cost}`);
     console.log(`  Service Cost: $${serviceBreakdown.service_cost} (3-person team)`);
     console.log(`  Total: $${result.total_estimate_amount}`);
-    
+
     console.log(`\n  Route breakdown:`);
     travelBreakdown.route_segments.forEach((segment, index) => {
       const fromShort = segment.from_address.split(',')[0]; // Just street name
@@ -329,7 +329,7 @@ describeRealApi('BookingCalculator - Real Google API Integration', () => {
     // Test that travel model BETWEEN_CUSTOMER_LOCATIONS is working correctly
     // First segment (base to first pickup) should not be chargeable
     expect(travelBreakdown.route_segments[0].is_chargeable).toBe(false);
-    // Last segment (last dropoff to base) should not be chargeable  
+    // Last segment (last dropoff to base) should not be chargeable
     expect(travelBreakdown.route_segments[travelBreakdown.route_segments.length - 1].is_chargeable).toBe(false);
   }, 30000); // Longer timeout for complex route
 });
@@ -339,11 +339,11 @@ describe('BookingCalculator - API Configuration', () => {
   test('Real API test configuration check', () => {
     const hasApiKey = !!process.env.GOOGLE_MAPS_API_KEY;
     const useMockApi = process.env.USE_MOCK_DISTANCE_API !== 'false';
-    
+
     console.log('=== Google Distance API Configuration ===');
     console.log(`API Key configured: ${hasApiKey ? 'YES' : 'NO'}`);
     console.log(`Use mock API: ${useMockApi ? 'YES' : 'NO'}`);
-    
+
     if (skipRealApiTests) {
       console.log('⚠️  Real API tests are SKIPPED');
       console.log('To run real API tests:');
@@ -353,7 +353,7 @@ describe('BookingCalculator - API Configuration', () => {
     } else {
       console.log('✅ Real API tests will run');
     }
-    
+
     // This test always passes, it's just for information
     expect(true).toBe(true);
   });

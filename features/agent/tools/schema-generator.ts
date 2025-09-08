@@ -33,9 +33,6 @@ export class SchemaManager {
       console.log(`     Required params: ${schema.parameters.required?.join(', ') || 'none'}`);
     });
 
-    console.log('📤 [SchemaManager] Complete static schemas payload:');
-    console.log(JSON.stringify(schemas, null, 2));
-
     return schemas;
   }
 
@@ -139,14 +136,10 @@ export class SchemaManager {
     return {
       type: "function",
       name: "create_booking",
-      description: `Create a booking for ${businessContext.businessInfo.name}. Use this only after getting a quote, creating a user, and checking availability.`,
+      description: `Create a booking for ${businessContext.businessInfo.name}. Use this only after getting a quote, creating a user, and checking availability. Quote data is automatically retrieved from context.`,
       parameters: {
         type: "object",
         properties: {
-          quote_data: {
-            type: "object",
-            description: "The complete quote data from the get_quote function"
-          },
           preferred_date: {
             type: "string",
             description: "The customer's preferred date in YYYY-MM-DD format"
@@ -164,7 +157,7 @@ export class SchemaManager {
             description: "Optional confirmation message or special instructions from the customer"
           }
         },
-        required: ["quote_data", "preferred_date", "preferred_time", "user_id"],
+        required: ["preferred_date", "preferred_time", "user_id"],
         additionalProperties: false
       }
     } as ToolSchema;
