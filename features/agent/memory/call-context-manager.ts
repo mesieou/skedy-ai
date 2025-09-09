@@ -86,6 +86,11 @@ export class CallContextManager {
     business: Business;
   }): Promise<CallContext> {
 
+    // Initialize per-call Redis operation tracking
+    const { voiceRedisClient } = await import('./redis/redis-client');
+    voiceRedisClient.resetOperationStats(callData.callId);
+    console.log(`🔄 [Redis] Initialized operation tracking for call: ${callData.callId}`);
+
     // Create call state in Redis
     const callState = await this.callStateManager.createCallState({
       callId: callData.callId,
@@ -175,16 +180,7 @@ export class CallContextManager {
     const message = this.realTimeConversationManager.createSystemMessage(content);
     const storedMessage = await this.realTimeConversationManager.addMessage(callId, message);
 
-    // Emit system message event
-    await this.voiceEventBus.publish({
-      type: 'voice:message:system',
-      callId,
-      timestamp: Date.now(),
-      data: {
-        content,
-        messageId: storedMessage.id
-      }
-    });
+    // Direct storage only - no event publishing to prevent infinite loops
 
     return storedMessage;
   }
@@ -348,14 +344,15 @@ export class CallContextManager {
       // Set TTL for cleanup (1 hour)
       await simpleTTL.setEndedCallTTL(callId);
 
-      // Log Redis operation stats for this session
+      // Log Redis operation stats for this specific call
       const { voiceRedisClient } = await import('./redis/redis-client');
-      const stats = voiceRedisClient.getOperationStats();
-      console.log(`📊 [Redis] FINAL SESSION STATS for ${callId}:`);
-      console.log(`   Total Operations: ${stats.total}`);
-      console.log(`   Writes: ${stats.writes} | Reads: ${stats.reads}`);
-      console.log(`   Session Duration: ${stats.sessionDuration}s`);
-      console.log(`   Ops/Second: ${(stats.total / Math.max(stats.sessionDuration, 1)).toFixed(2)}`);
+      const stats = voiceRedisClient.getOperationStats(callId);
+      console.log(`📊 [Redis] FINAL STATS for ${callId}:`);
+      console.log(`   Operations: ${stats.total} (${stats.writes} writes, ${stats.reads} reads)`);
+      console.log(`   Duration: ${stats.sessionDuration}s | Ops/Second: ${(stats.total / Math.max(stats.sessionDuration, 1)).toFixed(2)}`);
+
+      // Clean up stats for this call
+      voiceRedisClient.resetOperationStats(callId);
 
       // Emit call ended event
       await this.voiceEventBus.publish({
@@ -394,17 +391,8 @@ export class CallContextManager {
         await this.handleCallEndedEvent(event);
         break;
 
-      case 'voice:message:user':
-        await this.handleUserMessageEvent(event);
-        break;
-
-      case 'voice:message:assistant':
-        await this.handleAssistantMessageEvent(event);
-        break;
-
-      case 'voice:message:system':
-        await this.handleSystemMessageEvent(event);
-        break;
+      // Removed voice:message:* handlers to prevent infinite loops
+      // Messages are now stored directly without events
 
 
       default:
@@ -438,20 +426,7 @@ export class CallContextManager {
     await simpleTTL.setEndedCallTTL(event.callId);
   }
 
-  private async handleUserMessageEvent(event: VoiceEvent): Promise<void> {
-    const { content, openai_item_id } = event.data as { content: string; openai_item_id?: string };
-    await this.addUserMessage(event.callId, content, openai_item_id);
-  }
-
-  private async handleAssistantMessageEvent(event: VoiceEvent): Promise<void> {
-    const { content, openai_item_id } = event.data as { content: string; openai_item_id?: string };
-    await this.addAssistantMessage(event.callId, content, openai_item_id);
-  }
-
-  private async handleSystemMessageEvent(event: VoiceEvent): Promise<void> {
-    const { content } = event.data as { content: string };
-    await this.addSystemMessage(event.callId, content);
-  }
+  // Removed message event handlers - messages are now stored directly
 
 
   /**

@@ -60,12 +60,14 @@ export class AvailabilityCheckTool {
         );
       }
 
+      const availableTimes = availabilityResult.availableSlots.map(slot => slot.time);
+
       return {
         success: true,
         data: {
           date: availabilityResult.date,
-          available_slots: availabilityResult.availableSlots,
-          slot_count: availabilityResult.availableSlots.length
+          available_times: availableTimes,
+          slot_count: availableTimes.length
         },
         message: availabilityResult.formattedMessage
       };

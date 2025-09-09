@@ -175,6 +175,19 @@ export class WebSocketService {
 
         if (!hasAudio && !hasTranscript && !hasFunctionCall) {
           console.warn("⚠️ [WebSocket] Empty response.done - AI generated no content!");
+
+          // CRITICAL: Check if OpenAI sent hidden error details (as per OpenAI community findings)
+          console.log("🔍 [WebSocket] Full response.done payload for debugging:");
+          console.log(JSON.stringify(parsed, null, 2));
+
+          // Check for OpenAI error fields that might be hidden
+          const response = responseData.response as Record<string, unknown>;
+          if (response?.status_details) {
+            console.error("❌ [WebSocket] OpenAI response status_details:", response.status_details);
+          }
+          if (response?.error) {
+            console.error("❌ [WebSocket] OpenAI response error:", response.error);
+          }
         }
 
         // This is where function calls are detected and executed
@@ -293,7 +306,6 @@ export class WebSocketService {
       }
 
       // After all function calls are complete, request a new response
-      // Longer delay to ensure all function results are processed by OpenAI
       console.log("⏳ [WebSocket] All function calls completed, waiting before requesting AI response...");
       await new Promise(resolve => setTimeout(resolve, 200));
 
@@ -303,11 +315,18 @@ export class WebSocketService {
         return;
       }
 
+      const responseEventId = `response_request_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
       console.log("🔄 [WebSocket] Requesting AI response...");
-      this.sendMessage({
+      console.log(`📡 [WebSocket] Sending response.create with event_id: ${responseEventId}`);
+
+      const responseMessage = {
         type: "response.create",
-        event_id: `response_request_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
-      });
+        event_id: responseEventId
+      };
+
+      console.log(`📨 [WebSocket] Response request payload: ${JSON.stringify(responseMessage)}`);
+      this.sendMessage(responseMessage);
+      console.log(`✅ [WebSocket] Response request sent, waiting for OpenAI...`);
 
     } finally {
       // Reset processing flag
@@ -384,6 +403,7 @@ export class WebSocketService {
 
       console.log(`📤 [WebSocket] Sending function result for call: ${functionCallId}`);
       console.log(`   📊 Result size: ${serializedResult.length} characters`);
+      console.log(`   🔍 Function result preview: ${serializedResult.substring(0, 200)}...`);
 
       // Verify WebSocket is still open
       if (ws.readyState !== WebSocket.OPEN) {
@@ -391,7 +411,9 @@ export class WebSocketService {
         return;
       }
 
+      console.log(`📡 [WebSocket] Sending conversation.item.create with event_id: ${eventId}`);
       ws.send(JSON.stringify(conversationItem));
+      console.log(`✅ [WebSocket] Function result sent successfully`);
 
       // Longer delay for complex results to ensure proper processing
       const delay = serializedResult.length > 1000 ? 150 : 75;

@@ -166,50 +166,35 @@ export class QuoteSelectionTool {
   ): string | null {
     const lowerChoice = choice.toLowerCase();
 
-    // Sort quotes by price (ascending) to match "cheaper"/"expensive" choices
-    const sortedByPrice = [...quotes].sort((a, b) =>
-      a.quoteResultData.total_estimate_amount - b.quoteResultData.total_estimate_amount
+    // FIXED: Sort quotes by price (same order as AI presents them)
+    // AI presents: Option 1 = highest price, Option 2 = lower price, etc.
+    const presentationOrder = [...quotes].sort((a, b) =>
+      b.quoteResultData.total_estimate_amount - a.quoteResultData.total_estimate_amount
     );
-
-    // Sort quotes by timestamp (newest first) to match "first"/"second" choices
-    const sortedByTime = [...quotes].sort((a, b) => b.timestamp - a.timestamp);
 
     // Price-based matching
     if (lowerChoice.includes('cheap') || lowerChoice.includes('lower') || lowerChoice.includes('less')) {
-      return sortedByPrice[0]?.quoteId || null;
+      return presentationOrder[presentationOrder.length - 1]?.quoteId || null;
     }
 
     if (lowerChoice.includes('expensive') || lowerChoice.includes('higher') || lowerChoice.includes('more')) {
-      return sortedByPrice[sortedByPrice.length - 1]?.quoteId || null;
+      return presentationOrder[0]?.quoteId || null;
     }
 
-    // Ordinal/positional matching (service-agnostic)
-    if (lowerChoice.includes('first') || lowerChoice.includes('1st')) {
-      return sortedByTime[0]?.quoteId || null;
+    // Option number matching (matches AI presentation order)
+    if (lowerChoice.includes('one') || lowerChoice.includes('1st') || lowerChoice.match(/\boption\s*1\b/) || lowerChoice.match(/\b1\b/)) {
+      return presentationOrder[0]?.quoteId || null;
     }
 
-    if (lowerChoice.includes('second') || lowerChoice.includes('2nd')) {
-      return sortedByTime[1]?.quoteId || null;
+    if (lowerChoice.includes('two') || lowerChoice.includes('2nd') || lowerChoice.match(/\boption\s*2\b/) || lowerChoice.match(/\b2\b/)) {
+      return presentationOrder[1]?.quoteId || null;
     }
 
-    if (lowerChoice.includes('third') || lowerChoice.includes('3rd')) {
-      return sortedByTime[2]?.quoteId || null;
+    if (lowerChoice.includes('three') || lowerChoice.includes('3rd') || lowerChoice.match(/\boption\s*3\b/) || lowerChoice.match(/\b3\b/)) {
+      return presentationOrder[2]?.quoteId || null;
     }
 
-    // Generic number matching (1, 2, 3) - use chronological order
-    if (lowerChoice.includes('one') || lowerChoice.match(/\b1\b/)) {
-      return sortedByTime[0]?.quoteId || null;
-    }
-
-    if (lowerChoice.includes('two') || lowerChoice.match(/\b2\b/)) {
-      return sortedByTime[1]?.quoteId || null;
-    }
-
-    if (lowerChoice.includes('three') || lowerChoice.match(/\b3\b/)) {
-      return sortedByTime[2]?.quoteId || null;
-    }
-
-    // Fallback: return the most recent quote
-    return sortedByTime[0]?.quoteId || null;
+    // No fallback - if choice is unclear, return null to ask for clarification
+    return null;
   }
 }

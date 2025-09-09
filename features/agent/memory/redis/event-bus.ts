@@ -41,13 +41,7 @@ export interface UserCreatedEvent extends VoiceEvent {
   };
 }
 
-export interface MessageReceivedEvent extends VoiceEvent {
-  type: 'voice:message:user' | 'voice:message:assistant' | 'voice:message:system';
-  data: {
-    content: string;
-    openai_item_id?: string;
-  };
-}
+// Removed MessageReceivedEvent - messages are now stored directly without events
 
 export interface CallEndedEvent extends VoiceEvent {
   type: 'voice:call:ended';

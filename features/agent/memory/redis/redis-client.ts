@@ -33,15 +33,16 @@ export class VoiceRedisClient {
   private subscribedPatterns: Map<string, ((channel: string, message: string) => void)[]> = new Map(); // Track pattern callbacks
   private eventHandlersSetup = false;
 
-  // Operation monitoring and logging
-  private operationCount = 0;
-  private writeCount = 0;
-  private readCount = 0;
-  private sessionStartTime = Date.now();
-  private lastResetTime = Date.now();
-  private readonly WRITE_LIMIT_PER_MINUTE = 100; // Reasonable limit
-  private readonly RESET_INTERVAL = 60 * 1000; // 1 minute
-  private readonly LOG_OPERATIONS = true; // Enable detailed operation logging
+  // Operation monitoring per call
+  private readonly callStats = new Map<string, {
+    operationCount: number;
+    writeCount: number;
+    readCount: number;
+    sessionStartTime: number;
+  }>();
+  private currentCallId: string | null = null;
+  private readonly WRITE_LIMIT_PER_MINUTE = 100;
+  private readonly LOG_OPERATIONS = true;
 
   constructor() {
     this.config = this.getRedisConfig();
@@ -112,41 +113,71 @@ export class VoiceRedisClient {
   // ============================================================================
 
   private logOperation(operation: string, key: string, isWrite: boolean = false): void {
-    this.operationCount++;
+    // Extract callId from key (e.g., "voice:call:rtc_123:state" -> "rtc_123")
+    const keyParts = key.split(':');
+    const callId = keyParts.length >= 3 ? keyParts[2] : 'unknown';
+
+    // Initialize stats for new calls
+    if (!this.callStats.has(callId)) {
+      this.callStats.set(callId, {
+        operationCount: 0,
+        writeCount: 0,
+        readCount: 0,
+        sessionStartTime: Date.now()
+      });
+    }
+
+    const stats = this.callStats.get(callId)!;
+    stats.operationCount++;
     if (isWrite) {
-      this.writeCount++;
+      stats.writeCount++;
     } else {
-      this.readCount++;
+      stats.readCount++;
     }
 
     if (this.LOG_OPERATIONS) {
-      const sessionTime = Math.round((Date.now() - this.sessionStartTime) / 1000);
+      const sessionTime = Math.round((Date.now() - stats.sessionStartTime) / 1000);
       const opType = isWrite ? '✏️ WRITE' : '📖 READ';
-      console.log(`🔍 [Redis] ${opType} #${this.operationCount} (${sessionTime}s): ${operation}(${key.split(':').pop()})`);
+      console.log(`🔍 [Redis] ${opType} #${stats.operationCount} (${sessionTime}s): ${operation}(${key.split(':').pop()}) [${callId.substring(0, 8)}]`);
     }
 
-    // Log summary every 10 operations
-    if (this.operationCount % 10 === 0) {
-      const sessionTime = Math.round((Date.now() - this.sessionStartTime) / 1000);
-      console.log(`📊 [Redis] Session Summary (${sessionTime}s): ${this.operationCount} ops (${this.writeCount} writes, ${this.readCount} reads)`);
+    // Log summary every 10 operations per call
+    if (stats.operationCount % 10 === 0) {
+      const sessionTime = Math.round((Date.now() - stats.sessionStartTime) / 1000);
+      console.log(`📊 [Redis] Call Summary [${callId.substring(0, 8)}] (${sessionTime}s): ${stats.operationCount} ops (${stats.writeCount} writes, ${stats.readCount} reads)`);
     }
   }
 
-  public getOperationStats(): { total: number; writes: number; reads: number; sessionDuration: number } {
-    return {
-      total: this.operationCount,
-      writes: this.writeCount,
-      reads: this.readCount,
-      sessionDuration: Math.round((Date.now() - this.sessionStartTime) / 1000)
-    };
+  public getOperationStats(callId?: string): { total: number; writes: number; reads: number; sessionDuration: number } {
+    if (callId && this.callStats.has(callId)) {
+      const stats = this.callStats.get(callId)!;
+      return {
+        total: stats.operationCount,
+        writes: stats.writeCount,
+        reads: stats.readCount,
+        sessionDuration: Math.round((Date.now() - stats.sessionStartTime) / 1000)
+      };
+    }
+
+    // Return aggregated stats if no specific call requested
+    let total = 0, writes = 0, reads = 0;
+    for (const stats of this.callStats.values()) {
+      total += stats.operationCount;
+      writes += stats.writeCount;
+      reads += stats.readCount;
+    }
+
+    return { total, writes, reads, sessionDuration: 0 };
   }
 
-  public resetOperationStats(): void {
-    this.operationCount = 0;
-    this.writeCount = 0;
-    this.readCount = 0;
-    this.sessionStartTime = Date.now();
-    console.log('🔄 [Redis] Operation stats reset');
+  public resetOperationStats(callId?: string): void {
+    if (callId) {
+      this.callStats.delete(callId);
+      console.log(`🔄 [Redis] Operation stats reset for call: ${callId}`);
+    } else {
+      this.callStats.clear();
+      console.log('🔄 [Redis] All operation stats reset');
+    }
   }
 
   // ============================================================================

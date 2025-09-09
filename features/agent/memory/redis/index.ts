@@ -12,6 +12,7 @@ export { VoiceRedisClient, voiceRedisClient } from './redis-client';
 export { SimpleCircuitBreaker, simpleCircuitBreaker } from './simple-circuit-breaker';
 export { VoiceEventBus, createVoiceEventBus } from './event-bus';
 export { SimpleTTL, simpleTTL } from './simple-ttl';
+export { KnowledgeCacheManager } from './knowledge-cache-manager';
 
 // Export Redis stats for monitoring
 export const getRedisStats = async () => {
@@ -29,7 +30,6 @@ export type {
   EventHandler,
   CallStartedEvent,
   UserCreatedEvent,
-  MessageReceivedEvent,
   CallEndedEvent
 } from './event-bus';
 
