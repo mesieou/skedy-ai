@@ -133,9 +133,28 @@ export class ServicesPricingTool {
 
   private getPricingUnit(pricingCombination: string): string {
     const units: Record<string, string> = {
+      // Labor combinations
       'labor_per_hour_per_person': 'person/hour',
+      'labor_per_minute_per_person': 'person/minute',
+      'labor_per_hour_per_room': 'room/hour',
+      'labour_per_hour': 'per hour',
+      'labour_per_minute': 'per minute',
+
+      // Travel combinations
+      'travel_per_hour_per_person': 'person/hour',
+      'travel_per_minute_per_person': 'person/minute',
       'travel_per_km_per_person': 'person/km',
+      'travel_per_hour_per_vehicle': 'vehicle/hour',
+      'travel_per_minute_per_vehicle': 'vehicle/minute',
+      'travel_per_km_per_vehicle': 'vehicle/km',
+      'travel_per_km': 'per km',
+      'travel_per_minute': 'per minute',
+
+      // Service combinations
       'service_per_hour_per_person': 'person/hour',
+      'service_per_minute_per_person': 'person/minute',
+      'service_per_room': 'per room',
+      'service_per_sqm': 'per sqm',
       'service_fixed_per_service': 'service',
     };
     return units[pricingCombination] || 'unit';

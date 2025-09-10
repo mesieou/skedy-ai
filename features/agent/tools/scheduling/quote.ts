@@ -18,6 +18,7 @@ import { BookingCalculator } from '../../../scheduling/lib/bookings/pricing-calc
 import { QuoteInputTransformer } from '../../../scheduling/lib/bookings/quote-input-transformer';
 import type { QuoteResultInfo, QuoteRequestInfo } from '../../../scheduling/lib/types/booking-calculations';
 import { createToolError } from '../../../shared/utils/error-utils';
+import { AddressValidator } from '../../../scheduling/lib/bookings/address-validator';
 
 // ============================================================================
 // QUOTE TOOL SERVICE
@@ -28,12 +29,14 @@ export class QuoteTool {
   private readonly business: Business;
   private readonly bookingCalculator: BookingCalculator;
   private readonly callContextManager: CallContextManager;
+  private readonly addressValidator: AddressValidator;
 
   constructor(businessContext: BusinessContext, business: Business, callContextManager: CallContextManager) {
     this.businessContext = businessContext;
     this.business = business;
     this.bookingCalculator = new BookingCalculator();
     this.callContextManager = callContextManager;
+    this.addressValidator = new AddressValidator();
   }
 
   // ============================================================================
@@ -65,6 +68,12 @@ export class QuoteTool {
         "No service selected",
         "Please select a service first using select_service() before requesting a quote."
       );
+    }
+
+    // Validate addresses before processing
+    const addressValidation = await this.addressValidator.validateQuoteAddresses(args);
+    if (!addressValidation.isValid) {
+      return createToolError("Invalid address", addressValidation.message);
     }
 
     try {
@@ -204,5 +213,6 @@ export class QuoteTool {
       minimum_charge_applied: quote.minimum_charge_applied
     });
   }
+
 
 }
