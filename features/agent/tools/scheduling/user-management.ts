@@ -14,8 +14,6 @@ import { createToolError } from '../../../shared/utils/error-utils';
 import { DateUtils } from '../../../shared/utils/date-utils';
 import { type CallContextManager } from '../../memory';
 
-// Import the shared type instead of duplicating it
-import type { CreateUserFunctionArgs } from '../types';
 
 // ============================================================================
 // USER MANAGEMENT TOOL
@@ -37,13 +35,24 @@ export class UserManagementTool {
   // ============================================================================
 
   /**
-   * Check if user exists by phone number (AI-specific orchestration)
+   * Check if user exists by getting phone from call context (AI-specific orchestration)
    */
-  async checkUserExists(phoneNumber: string, businessId: string): Promise<FunctionCallResult> {
+  async checkUserExists(callId: string, businessId: string): Promise<FunctionCallResult> {
     try {
+      // Get phone number from call context instead of parameter
+      if (!this.callContextManager) {
+        return { success: false, message: "Call context manager not available." };
+      }
+      const callState = await this.callContextManager.getCallContext(callId);
+      if (!callState?.phoneNumber) {
+        return {
+          success: false,
+          message: "Phone number not available from call context."
+        };
+      }
 
       // Use repository directly - simple and clean
-      const normalizedPhone = DateUtils.normalizePhoneNumber(phoneNumber);
+      const normalizedPhone = DateUtils.normalizePhoneNumber(callState.phoneNumber);
       const existingUser = await this.userRepository.findOne({
         phone_number: normalizedPhone,
         business_id: businessId
@@ -77,20 +86,29 @@ export class UserManagementTool {
   }
 
   /**
-   * Create a new user - thin orchestrator for AI interactions
+   * Create a new user - gets phone from call context automatically
    */
-  async createUser(args: CreateUserFunctionArgs, businessId: string, callId?: string): Promise<FunctionCallResult> {
+  async createUser(args: { name: string }, businessId: string, callId?: string): Promise<FunctionCallResult> {
     try {
+      // Get phone from call context
+      if (!callId || !this.callContextManager) {
+        return createToolError("Missing call context", "User creation requires call context.");
+      }
+
+      const callState = await this.callContextManager.getCallContext(callId);
+      if (!callState?.phoneNumber) {
+        return createToolError("Phone not available", "Phone number not available from call context.");
+      }
+
       // Agent-specific input validation
-      const validation = this.validateUserInput(args);
-      if (!validation.valid) {
-        return createToolError("Invalid user information", validation.message);
+      if (!args.name || args.name.trim().length === 0) {
+        return createToolError("Invalid user information", "Name is required.");
       }
 
       // Delegate to domain service - it handles existing vs new users
       const result = await this.customerManager.createOrFindUser({
         name: args.name,
-        phone_number: args.phone_number,
+        phone_number: callState.phoneNumber,
         business_id: businessId
       });
 
@@ -123,24 +141,4 @@ export class UserManagementTool {
     }
   }
 
-
-  // ============================================================================
-  // AGENT-SPECIFIC VALIDATION
-  // ============================================================================
-
-  /**
-   * Validate AI function arguments (agent-specific validation only)
-   */
-  private validateUserInput(args: CreateUserFunctionArgs): { valid: boolean; message: string } {
-    // Simple agent-level validation
-    if (!args.name || args.name.trim().length === 0) {
-      return { valid: false, message: "Name is required." };
-    }
-
-    if (!args.phone_number || args.phone_number.trim().length === 0) {
-      return { valid: false, message: "Phone number is required." };
-    }
-
-    return { valid: true, message: "" };
-  }
 }

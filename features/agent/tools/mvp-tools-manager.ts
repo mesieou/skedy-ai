@@ -13,7 +13,6 @@ import type {
   QuoteFunctionArgs,
   ServiceSelectionFunctionArgs,
   CheckDayAvailabilityFunctionArgs,
-  CreateUserFunctionArgs,
   CreateBookingFunctionArgs,
   ToolSchema
 } from './types';
@@ -173,14 +172,14 @@ export class MVPToolsManager {
         return await this.availabilityCheckTool.checkDayAvailability(availabilityArgs, this.callId);
 
       case 'check_user_exists':
-        const userExistsArgs = args as { phone_number: string };
+        // No args needed - phone comes from call context
         return await this.userManagementTool.checkUserExists(
-          userExistsArgs.phone_number,
+          this.callId,
           this.businessId
         );
 
       case 'create_user':
-        const createUserArgs = args as unknown as CreateUserFunctionArgs;
+        const createUserArgs = args as { name: string };
         return await this.userManagementTool.createUser(
           createUserArgs,
           this.businessId,

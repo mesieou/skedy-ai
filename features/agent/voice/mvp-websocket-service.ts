@@ -62,6 +62,8 @@ export interface MVPWebSocketConnectionOptions {
   onError?: (error: Error) => void;
   onClose?: (code: number, reason: string) => void;
   onFunctionCall?: (functionName: string, args: Record<string, unknown>, functionCallId: string) => Promise<unknown>;
+  onUserMessage?: (transcript: string) => Promise<void>;
+  onAIMessage?: (transcript: string) => Promise<void>;
 }
 
 // Simplified: Just what we actually need for optimization
@@ -102,7 +104,7 @@ export class MVPWebSocketService {
   // ============================================================================
 
   async connect(options: MVPWebSocketConnectionOptions): Promise<WebSocket> {
-    const { callId, businessId, apiKey, voiceEventBus, initialTools, onMessage, onError, onClose, onFunctionCall } = options;
+    const { callId, businessId, apiKey, voiceEventBus, initialTools, onMessage, onError, onClose, onFunctionCall, onUserMessage, onAIMessage } = options;
 
     this.callId = callId;
     this.businessId = businessId;
@@ -119,7 +121,7 @@ export class MVPWebSocketService {
 
     // Setup event handlers
     this.setupConnectionHandlers(ws, onError, onClose);
-    this.setupMessageHandlers(ws, onMessage, onFunctionCall);
+    this.setupMessageHandlers(ws, onMessage, onFunctionCall, onUserMessage, onAIMessage);
     this.setupOpenHandler(ws, initialTools);
 
     return ws;
@@ -159,7 +161,9 @@ export class MVPWebSocketService {
   private setupMessageHandlers(
     ws: WebSocket,
     onMessage?: (message: string) => void,
-    onFunctionCall?: (functionName: string, args: Record<string, unknown>, functionCallId: string) => Promise<unknown>
+    onFunctionCall?: (functionName: string, args: Record<string, unknown>, functionCallId: string) => Promise<unknown>,
+    onUserMessage?: (transcript: string) => Promise<void>,
+    onAIMessage?: (transcript: string) => Promise<void>
   ): void {
     ws.on("message", async (data: WebSocket.Data) => {
       try {
@@ -167,7 +171,7 @@ export class MVPWebSocketService {
         if (onMessage) onMessage(message);
 
         const parsed = JSON.parse(message) as OpenAIWebSocketMessage;
-        await this.handleIncomingMessage(parsed, onFunctionCall);
+        await this.handleIncomingMessage(parsed, onFunctionCall, onUserMessage, onAIMessage);
       } catch (error) {
         console.error("❌ [MVP WebSocket] Message parsing error:", error);
       }
@@ -180,7 +184,9 @@ export class MVPWebSocketService {
 
   private async handleIncomingMessage(
     message: OpenAIWebSocketMessage,
-    onFunctionCall?: (functionName: string, args: Record<string, unknown>, functionCallId: string) => Promise<unknown>
+    onFunctionCall?: (functionName: string, args: Record<string, unknown>, functionCallId: string) => Promise<unknown>,
+    onUserMessage?: (transcript: string) => Promise<void>,
+    onAIMessage?: (transcript: string) => Promise<void>
   ): Promise<void> {
     const messageType = message.type;
 
@@ -204,11 +210,11 @@ export class MVPWebSocketService {
         break;
 
       case "response.output_audio_transcript.done":
-        this.handleAudioTranscript(message as AudioTranscriptMessage);
+        await this.handleAudioTranscript(message as AudioTranscriptMessage, onAIMessage);
         break;
 
       case "conversation.item.input_audio_transcription.completed":
-        await this.handleUserTranscript(message as UserTranscriptMessage);
+        await this.handleUserTranscript(message as UserTranscriptMessage, onUserMessage);
         break;
 
       case "conversation.item.done":
@@ -253,27 +259,25 @@ export class MVPWebSocketService {
     }
   }
 
-  private async handleAudioTranscript(message: AudioTranscriptMessage): Promise<void> {
+  private async handleAudioTranscript(message: AudioTranscriptMessage, onAIMessage?: (transcript: string) => Promise<void>): Promise<void> {
     const transcript = message.transcript;
-    if (transcript && this.callId) {
+    if (transcript) {
       console.log(`🤖 [MVP AI said]: "${transcript}"`);
-      // TODO: Store AI message in conversation history
-      // await this.callContextManager?.addConversationMessage(this.callId, {
-      //   role: 'assistant',
-      //   content: transcript
-      // });
+      // Store AI message via coordinator callback
+      if (onAIMessage) {
+        await onAIMessage(transcript);
+      }
     }
   }
 
-  private async handleUserTranscript(message: UserTranscriptMessage): Promise<void> {
+  private async handleUserTranscript(message: UserTranscriptMessage, onUserMessage?: (transcript: string) => Promise<void>): Promise<void> {
     const transcript = message.transcript;
-    if (transcript && this.callId) {
+    if (transcript) {
       console.log(`👤 [MVP User said]: "${transcript}"`);
-      // TODO: Store user message in conversation history
-      // await this.callContextManager?.addConversationMessage(this.callId, {
-      //   role: 'user',
-      //   content: transcript
-      // });
+      // Store user message via coordinator callback
+      if (onUserMessage) {
+        await onUserMessage(transcript);
+      }
     }
   }
 

@@ -100,6 +100,8 @@ export class ConversationPersistenceService {
       businessPhoneNumber: string;
     };
 
+    console.log(`🎬 [ConversationPersistence] Call started: ${event.callId} from ${phoneNumber} for business ${businessId}`);
+
     // Store session info (don't create DB record yet)
     const voiceSession: VoiceChatSession = {
       chatSessionId: '', // Will be created at call end
@@ -112,6 +114,7 @@ export class ConversationPersistenceService {
     };
 
     this.pendingVoiceSessions.set(event.callId, voiceSession);
+    console.log(`📋 [ConversationPersistence] Pending session created for: ${event.callId} (${this.pendingVoiceSessions.size} total pending)`);
   }
 
 
@@ -120,11 +123,13 @@ export class ConversationPersistenceService {
     const { reason, duration } = callEndedEvent.data;
     const callId = event.callId;
 
+    console.log(`🏁 [ConversationPersistence] Call ended: ${callId} (reason: ${reason}, duration: ${duration}s)`);
 
     try {
       const result = await this.flushCompleteConversation(callId, reason, duration);
 
       if (result.success) {
+        console.log(`✅ [ConversationPersistence] Successfully persisted conversation: ${callId} (${result.messageCount} messages, session: ${result.chatSessionId})`);
       } else {
         console.error(`❌ [ConversationPersistence] Failed to persist conversation: ${result.error}`);
       }
@@ -134,6 +139,7 @@ export class ConversationPersistenceService {
     } finally {
       // Always clean up pending session
       this.pendingVoiceSessions.delete(callId);
+      console.log(`🧹 [ConversationPersistence] Cleaned up pending session for: ${callId} (${this.pendingVoiceSessions.size} remaining)`);
     }
   }
 
@@ -142,29 +148,38 @@ export class ConversationPersistenceService {
   // ============================================================================
 
   async flushCompleteConversation(callId: string, endReason: string, duration: number): Promise<ConversationFlushResult> {
+    console.log(`💾 [ConversationPersistence] Starting conversation flush for: ${callId} (reason: ${endReason}, duration: ${duration}s)`);
+
     const pendingSession = this.pendingVoiceSessions.get(callId);
     if (!pendingSession) {
+      console.error(`❌ [ConversationPersistence] No pending session found for call ${callId}`);
       return {
         success: false,
         error: `No pending session found for call ${callId}`
       };
     }
 
-    // Allow anonymous chat sessions (userId can be null)
+    console.log(`📋 [ConversationPersistence] Found pending session: ${callId} (business: ${pendingSession.businessId}, phone: ${pendingSession.phoneNumber})`);
 
     try {
       // 1. Get complete conversation from Redis (using new list-based approach)
       const conversationManager = new RealTimeConversationManager();
       const messageCount = await conversationManager.getMessageCount(callId);
 
+      console.log(`📊 [ConversationPersistence] Message count from Redis: ${messageCount} for ${callId}`);
+
       if (messageCount === 0) {
+        console.log(`📭 [ConversationPersistence] No messages to persist for ${callId}`);
         return { success: true, messageCount: 0 };
       }
 
       // Get all messages from the Redis list
       const messages = await conversationManager.getRecentMessages(callId, messageCount);
+      console.log(`📥 [ConversationPersistence] Retrieved ${messages.length} messages from Redis for ${callId}`);
 
       // 2. Create chat session first (empty messages) - userId can be null for anonymous calls
+      console.log(`🗃️ [ConversationPersistence] Creating chat session for ${callId} (business: ${pendingSession.businessId}, user: ${pendingSession.userId || 'anonymous'})`);
+
       const chatSession = await this.chatSessionRepository.create({
         channel: ChatChannel.PHONE,
         user_id: pendingSession.userId || null, // Allow null for anonymous calls
@@ -174,7 +189,11 @@ export class ConversationPersistenceService {
         all_messages: [] // Start empty
       });
 
+      console.log(`✅ [ConversationPersistence] Created chat session: ${chatSession.id} for ${callId}`);
+
       // 3. Add all messages to the session (batch operation)
+      console.log(`📝 [ConversationPersistence] Adding ${messages.length} messages to chat session ${chatSession.id}`);
+
       for (const message of messages) {
         const senderType = this.mapRoleToSenderType(message.role);
         const phoneNumber = senderType === MessageSenderType.USER
@@ -190,20 +209,9 @@ export class ConversationPersistenceService {
         await this.chatSessionRepository.addMessage(chatSession.id, chatMessageData);
       }
 
+      console.log(`✅ [ConversationPersistence] Added all ${messages.length} messages to chat session ${chatSession.id}`);
 
-      // 4. Emit persistence complete event
-        await this.voiceEventBus.publish({
-        type: 'voice:conversation:persisted',
-        callId,
-        timestamp: Date.now(),
-        data: {
-        chatSessionId: chatSession.id,
-        messageCount: messages.length,
-        duration,
-        endReason
-        }
-      });
-
+      // Note: voice:conversation:persisted event removed - no current subscribers
       return {
         success: true,
         chatSessionId: chatSession.id,

@@ -200,16 +200,11 @@ export class MVPSchemaManager {
     return {
       type: "function",
       name: "check_user_exists",
-      description: "Check if a customer already exists in our system by phone number. Call this first before asking for their name.",
+      description: "Check if the caller already exists in our system. Uses phone number from the call automatically.",
       parameters: {
         type: "object",
-        properties: {
-          phone_number: {
-            type: "string",
-            description: "Customer's phone number to check"
-          }
-        },
-        required: ["phone_number"],
+        properties: {},
+        required: [],
         additionalProperties: false
       }
     };
@@ -219,20 +214,16 @@ export class MVPSchemaManager {
     return {
       type: "function",
       name: "create_user",
-      description: "Create a new customer record with their name and phone number. ONLY call this AFTER asking for and receiving the customer's name. Use the caller's phone number from the call.",
+      description: "Create a new customer account with their name. Phone number is taken from call automatically.",
       parameters: {
         type: "object",
         properties: {
           name: {
             type: "string",
             description: "Customer's full name"
-          },
-          phone_number: {
-            type: "string",
-            description: "Customer's phone number"
           }
         },
-        required: ["name", "phone_number"],
+        required: ["name"],
         additionalProperties: false
       }
     };

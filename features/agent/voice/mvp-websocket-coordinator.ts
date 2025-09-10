@@ -91,7 +91,9 @@ export class MVPWebSocketCoordinator {
         onError: (error) => this.handleWebSocketError(callId, error),
         onClose: (code, reason) => this.handleWebSocketClose(callId, code, reason),
         onFunctionCall: (functionName, args) =>
-          this.handleFunctionCall(callId, functionName, args)
+          this.handleFunctionCall(callId, functionName, args),
+        onUserMessage: (transcript) => this.handleUserMessage(callId, transcript),
+        onAIMessage: (transcript) => this.handleAIMessage(callId, transcript)
       });
 
       // Track call session
@@ -165,6 +167,38 @@ export class MVPWebSocketCoordinator {
 
     // Complete call context
     this.callContextManager.completeCall(callId, 'ended');
+  }
+
+  // ============================================================================
+  // MESSAGE STORAGE HANDLING
+  // ============================================================================
+
+  private async handleUserMessage(callId: string, transcript: string): Promise<void> {
+    try {
+      await this.callContextManager.addConversationMessage(callId, {
+        id: '', // Will be generated
+        role: 'user',
+        content: transcript,
+        timestamp: Date.now()
+      });
+      console.log(`💾 [MVP Coordinator] Stored user message for ${callId}`);
+    } catch (error) {
+      console.error(`❌ [MVP Coordinator] Failed to store user message for ${callId}:`, error);
+    }
+  }
+
+  private async handleAIMessage(callId: string, transcript: string): Promise<void> {
+    try {
+      await this.callContextManager.addConversationMessage(callId, {
+        id: '', // Will be generated
+        role: 'assistant',
+        content: transcript,
+        timestamp: Date.now()
+      });
+      console.log(`💾 [MVP Coordinator] Stored AI message for ${callId}`);
+    } catch (error) {
+      console.error(`❌ [MVP Coordinator] Failed to store AI message for ${callId}:`, error);
+    }
   }
 
   // ============================================================================

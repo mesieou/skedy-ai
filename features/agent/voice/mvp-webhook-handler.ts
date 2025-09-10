@@ -333,7 +333,7 @@ TOKEN OPTIMIZATION:
       const stats = await this.mvpCallContextManager.getCallStats(callId);
 
       return {
-        status: context.callState.status,
+        status: context.status,
         tokenUsage: stats ? {
           total: stats.messageCount * 100, // Rough estimate
           rate: stats.duration > 0 ? Math.round((stats.messageCount * 100) / stats.duration) : 0

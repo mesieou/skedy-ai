@@ -15,7 +15,7 @@
  * - Complex business logic (tools handle this)
  */
 
-import { CallStateManager, type CallState, type CallStateUpdate } from './short-term/call-state-manager';
+import { CallStateManager, type CallStateUpdate } from './short-term/call-state-manager';
 import { RealTimeConversationManager, type ConversationMessage } from './short-term/conversation-manager';
 import { ConversationPersistenceService } from './long-term/conversation-persistence';
 import { type VoiceEventBus } from './redis/event-bus';
@@ -36,7 +36,20 @@ export interface MVPCallContext {
   phoneNumber: string;
   user: User | null;
   business: Business;
-  callState: CallState;
+
+  // Booking context (flattened from CallState)
+  status: 'connecting' | 'active' | 'ended';
+  startedAt: number;
+  lastActivity: number;
+  selectedService: Service | null;
+  quotes: Record<string, {
+    quoteRequestData: QuoteRequestInfo;
+    quoteResultData: QuoteResultInfo;
+    timestamp: number;
+  }>;
+  selectedQuoteId: string | null;
+  bookingCompleted: boolean;
+  bookingId: string | null;
 }
 
 export interface MVPInitializeCallData {
@@ -92,7 +105,19 @@ export class MVPCallContextManager {
         phoneNumber
       });
 
-      console.log(`✅ [MVP Context] Call state initialized: ${callId}`);
+      // Publish call started event to trigger conversation persistence setup
+      await this.voiceEventBus.publish({
+        type: 'voice:call:started',
+        callId,
+        timestamp: Date.now(),
+        data: {
+          phoneNumber,
+          businessId,
+          businessPhoneNumber: business.phone_number
+        }
+      });
+
+      console.log(`✅ [MVP Context] Call state initialized and events published: ${callId}`);
 
     } catch (error) {
       console.error(`❌ [MVP Context] Failed to initialize call ${callId}:`, error);
@@ -124,7 +149,16 @@ export class MVPCallContextManager {
         phoneNumber: callState.phoneNumber,
         user: callState.user,
         business: this.businessEntity,
-        callState
+
+        // Flattened booking context
+        status: callState.status,
+        startedAt: callState.startedAt,
+        lastActivity: callState.lastActivity,
+        selectedService: callState.selectedService,
+        quotes: callState.quotes,
+        selectedQuoteId: callState.selectedQuoteId,
+        bookingCompleted: false, // TODO: Get from call state when implemented
+        bookingId: null // TODO: Get from call state when implemented
       };
 
     } catch (error) {
@@ -262,11 +296,7 @@ export class MVPCallContextManager {
   async addConversationMessage(callId: string, message: ConversationMessage): Promise<void> {
     try {
       await this.conversationManager.addMessage(callId, message);
-
-      // Update last activity
-      await this.updateCallState(callId, {
-        lastActivity: Date.now()
-      });
+      // Removed redundant call state update - meta already tracks lastMessageAt
 
     } catch (error) {
       console.error(`❌ [MVP Context] Failed to add conversation message for call ${callId}:`, error);
@@ -299,18 +329,35 @@ export class MVPCallContextManager {
         lastActivity: Date.now()
       });
 
-      // 2. Persist conversation to long-term storage
+      // 2. Publish call ended event to trigger conversation persistence
       const messages = await this.getRecentMessages(callId, 100); // Get all messages
       if (messages.length > 0) {
-        // Note: persistConversation method signature may need adjustment
-        console.log(`💾 [MVP Context] Persisting ${messages.length} messages for ${callId}`);
+        console.log(`💾 [MVP Context] Publishing call ended event to trigger persistence of ${messages.length} messages for ${callId}`);
+
+        // Calculate duration
+        const callState = await this.callStateManager.getCallState(callId);
+        const duration = callState ? Date.now() - callState.startedAt : 0;
+
+        // Publish event to trigger conversation persistence
+        await this.voiceEventBus.publish({
+          type: 'voice:call:ended',
+          callId,
+          timestamp: Date.now(),
+          data: {
+            reason,
+            duration: Math.round(duration / 1000), // Convert to seconds
+            messageCount: messages.length
+          }
+        });
+      } else {
+        console.log(`📭 [MVP Context] No messages to persist for ${callId}`);
       }
 
       // 3. Clean up knowledge data from Redis (note: this should be handled by webhook handler)
       console.log(`🧹 [MVP Context] Knowledge cleanup should be handled by webhook handler for: ${callId}`);
 
-      // 4. Emit completion event (simplified for MVP)
-      console.log(`📡 [MVP Context] Call completed event for: ${callId} (${reason}, ${messages.length} messages)`);
+      // 4. Event published for persistence
+      console.log(`📡 [MVP Context] Call ended event published for: ${callId} (${reason}, ${messages.length} messages)`);
 
       console.log(`✅ [MVP Context] Call completed and cleaned up: ${callId}`);
 
