@@ -181,6 +181,16 @@ export class QuoteSelectionTool {
       return presentationOrder[0]?.quoteId || null;
     }
 
+    // Total amount matching - customer references the price
+    for (const quote of quotes) {
+      const total = Math.round(quote.quoteResultData.total_estimate_amount);
+      if (lowerChoice.includes(String(total)) || lowerChoice.includes(`$${total}`) || lowerChoice.includes(`${total} aud`)) {
+        console.log(`🎯 [QuoteSelection] Matched quote by total: $${total}`);
+        return quote.quoteId;
+      }
+    }
+
+
     // Option number matching (matches AI presentation order)
     if (lowerChoice.includes('one') || lowerChoice.includes('1st') || lowerChoice.match(/\boption\s*1\b/) || lowerChoice.match(/\b1\b/)) {
       return presentationOrder[0]?.quoteId || null;

@@ -57,6 +57,7 @@ export class BookingManagementTool {
         return createToolError("Missing call context", "Booking creation requires call context.");
       }
 
+
       console.log(`🔍 [BookingTool] Retrieving selected quote from Redis for callId: ${callId}`);
       const selectedQuote = await this.callContextManager.getSelectedQuoteData(callId);
 
@@ -88,6 +89,7 @@ export class BookingManagementTool {
       if (!result.success || !result.booking) {
         return createToolError("Booking creation failed", result.error || "Unknown error");
       }
+
 
       // Step 6: Format AI-friendly response (use quote result from Redis)
       return this.formatBookingResponseFromRedis(result.booking, args, business, quoteResult);

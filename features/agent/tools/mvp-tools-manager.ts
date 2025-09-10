@@ -251,6 +251,23 @@ export class MVPToolsManager {
     return schemas;
   }
 
+  getInitialToolsForAI(): ToolSchema[] {
+    // Start with only essential tools: knowledge tools + select_service
+    const allSchemas = MVPSchemaManager.getAllStaticSchemas(this.businessContext);
+
+    const initialTools = allSchemas.filter(schema =>
+      // Knowledge tools (always available)
+      ['get_services_pricing_info', 'get_business_information', 'get_general_faqs', 'escalate_conversation'].includes(schema.name) ||
+      // Objection handling (always available)
+      ['get_objection_handling_guidance'].includes(schema.name) ||
+      // First booking step
+      ['select_service'].includes(schema.name)
+    );
+
+    console.log(`🔧 [MVP Tools] Initial tools (${initialTools.length}): ${initialTools.map(t => t.name).join(', ')}`);
+    return initialTools;
+  }
+
   async getDynamicQuoteSchema(): Promise<ToolSchema | null> {
     // Get selected service from Redis, not local memory
     const selectedService = await this.callContextManager.getSelectedService(this.callId);
@@ -396,6 +413,7 @@ export class MVPToolsManager {
       'get_objection_handling_guidance'
     ];
   }
+
 
   hasFunction(functionName: string): boolean {
     return this.getAvailableFunctions().includes(functionName);

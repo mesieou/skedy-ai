@@ -136,16 +136,16 @@ export class MVPSchemaManager {
     return {
       type: "function",
       name: "select_quote",
-      description: "Compare and select from multiple quotes. Call without parameters first to get comparison data.",
+      description: "Select customer's chosen quote. ALWAYS call with quote_choice parameter - use 'option 1', 'option 2', or exact total amount.",
       parameters: {
         type: "object",
         properties: {
           quote_choice: {
             type: "string",
-            description: "Customer's quote selection (e.g., 'option one', 'cheapest', 'fastest')"
+            description: "REQUIRED: Customer's quote selection. Use 'option 1', 'option 2', or exact total amount like '329' or '$425'"
           }
         },
-        required: [],
+        required: ["quote_choice"],
         additionalProperties: false
       }
     };

@@ -75,8 +75,8 @@ export class MVPWebSocketCoordinator {
       // Initialize WebSocket service
       this.webSocketService = new MVPWebSocketService();
 
-      // Get initial tools
-      const initialTools = this.toolsManager.getStaticToolsForAI() as unknown as Array<Record<string, unknown>>;
+      // Get initial tools (just knowledge + select_service)
+      const initialTools = this.toolsManager.getInitialToolsForAI() as unknown as Array<Record<string, unknown>>;
 
       console.log(`🔧 [MVP Coordinator] Initial tools: ${initialTools.length}`);
 
@@ -175,28 +175,30 @@ export class MVPWebSocketCoordinator {
     callId: string,
     functionName: string,
     args: Record<string, unknown>
-  ): Promise<unknown> {
+  ): Promise<{ result: unknown; additionalTools?: Array<Record<string, unknown>> }> {
     try {
       console.log(`🔧 [MVP Coordinator] Function call: ${functionName} for ${callId}`);
 
       // Execute function through tools manager
       const result = await this.toolsManager.executeFunction(functionName, args);
 
-      // Update schemas if needed (e.g., after service selection)
-      await this.updateSchemasIfNeeded(functionName, result);
+      // Get additional tools if needed (e.g., after service selection)
+      const additionalTools = await this.updateSchemasIfNeeded(functionName, result, callId);
 
       // Update call activity
       this.updateCallActivity(callId);
 
-      return result;
+      return { result, additionalTools: additionalTools || undefined };
 
     } catch (error) {
       console.error(`❌ [MVP Coordinator] Function call error for ${callId}:`, error);
 
       return {
-        success: false,
-        error: 'Function execution failed',
-        message: 'Sorry, I encountered an error processing that request. Please try again.'
+        result: {
+          success: false,
+          error: 'Function execution failed',
+          message: 'Sorry, I encountered an error processing that request. Please try again.'
+        }
       };
     }
   }
@@ -205,56 +207,77 @@ export class MVPWebSocketCoordinator {
   // SMART SCHEMA MANAGEMENT
   // ============================================================================
 
-  private async updateSchemasIfNeeded(functionName: string, result: FunctionCallResult): Promise<void> {
+  private async updateSchemasIfNeeded(functionName: string, result: FunctionCallResult, callId: string): Promise<Array<Record<string, unknown>> | null> {
     if (!this.webSocketService) {
-      return;
+      return null;
     }
 
-    let needsUpdate = false;
-    let newSchemas: Array<Record<string, unknown>> = [];
+    let newToolsToAdd: Array<Record<string, unknown>> = [];
 
     try {
-      // Check if we need to add dynamic schemas
+      // Progressive tool addition - only add tools needed for next step
       switch (functionName) {
         case 'select_service':
           if (result.success) {
-            // Add quote schema for selected service
+            // Add get_quote for selected service
             const quoteSchema = await this.toolsManager.getDynamicQuoteSchema();
             if (quoteSchema) {
-            newSchemas = [...this.toolsManager.getStaticToolsForAI(), quoteSchema] as unknown as Array<Record<string, unknown>>;
-            needsUpdate = true;
+              newToolsToAdd = [quoteSchema] as unknown as Array<Record<string, unknown>>;
+              console.log(`🔄 [MVP Coordinator] Adding get_quote after service selection`);
             }
           }
           break;
 
         case 'get_quote':
           if (result.success) {
-            // Check if we have multiple quotes and need quote selection
-            const quoteSelectionSchema = this.toolsManager.getQuoteSelectionSchema();
-            if (quoteSelectionSchema) {
-              const currentSchemas = [...this.toolsManager.getStaticToolsForAI()];
-              const quoteSchema = await this.toolsManager.getDynamicQuoteSchema();
+            const allQuotes = await this.callContextManager.getAllQuotes(callId);
 
-              if (quoteSchema) {
-                currentSchemas.push(quoteSchema);
+            if (allQuotes.length === 1) {
+              // First quote - add check_day_availability
+              const availabilitySchema = this.toolsManager.getStaticToolsForAI().find(tool => tool.name === 'check_day_availability');
+              if (availabilitySchema) {
+                newToolsToAdd = [availabilitySchema] as unknown as Array<Record<string, unknown>>;
+                console.log(`🔄 [MVP Coordinator] Adding check_day_availability after 1st quote`);
               }
-              currentSchemas.push(quoteSelectionSchema);
+            } else if (allQuotes.length >= 2) {
+              // Second+ quote - add select_quote
+              const quoteSelectionSchema = this.toolsManager.getQuoteSelectionSchema();
+              if (quoteSelectionSchema) {
+                newToolsToAdd = [quoteSelectionSchema] as unknown as Array<Record<string, unknown>>;
+                console.log(`🔄 [MVP Coordinator] Adding select_quote after ${allQuotes.length} quotes`);
+              }
+            }
+          }
+          break;
+        case 'check_day_availability':
+          if (result.success) {
+            // Add check_user_exists
+            const userCheckSchema = this.toolsManager.getStaticToolsForAI().find(tool => tool.name === 'check_user_exists');
+            if (userCheckSchema) {
+              newToolsToAdd = [userCheckSchema] as unknown as Array<Record<string, unknown>>;
+              console.log(`🔄 [MVP Coordinator] Adding check_user_exists after availability check`);
+            }
+          }
+          break;
+        case 'check_user_exists':
+          if (result.success) {
+            // Add both create_user and create_booking (AI needs both options)
+            const createUserSchema = this.toolsManager.getStaticToolsForAI().find(tool => tool.name === 'create_user');
+            const createBookingSchema = this.toolsManager.getStaticToolsForAI().find(tool => tool.name === 'create_booking');
 
-              newSchemas = currentSchemas as unknown as Array<Record<string, unknown>>;
-              needsUpdate = true;
+            if (createUserSchema && createBookingSchema) {
+              newToolsToAdd = [createUserSchema, createBookingSchema] as unknown as Array<Record<string, unknown>>;
+              console.log(`🔄 [MVP Coordinator] Adding create_user and create_booking after user check`);
             }
           }
           break;
       }
 
-      // Update schemas if needed
-      if (needsUpdate && newSchemas.length > 0) {
-        await this.webSocketService.updateSessionToolsIfChanged(newSchemas);
-        console.log(`🔄 [MVP Coordinator] Updated schemas after ${functionName}`);
-      }
+      return newToolsToAdd.length > 0 ? newToolsToAdd : null;
 
     } catch (error) {
-      console.error(`❌ [MVP Coordinator] Error updating schemas:`, error);
+      console.error(`❌ [MVP Coordinator] Error preparing progressive tools:`, error);
+      return null;
     }
   }
 

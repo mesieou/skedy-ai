@@ -88,6 +88,10 @@ export class MVPWebSocketService {
   // Schema management
   private currentSchemaHash: string | null = null;
   private conversationId: string | null = null;
+  private currentSessionTools: Array<Record<string, unknown>> = [];
+
+  // Retry protection - track by tool call ID, not function name
+  private processedCallIds = new Set<string>();
 
   // Token tracking
   private cumulativeTokens = 0;
@@ -249,17 +253,27 @@ export class MVPWebSocketService {
     }
   }
 
-  private handleAudioTranscript(message: AudioTranscriptMessage): void {
+  private async handleAudioTranscript(message: AudioTranscriptMessage): Promise<void> {
     const transcript = message.transcript;
-    if (transcript) {
+    if (transcript && this.callId) {
       console.log(`🤖 [MVP AI said]: "${transcript}"`);
+      // TODO: Store AI message in conversation history
+      // await this.callContextManager?.addConversationMessage(this.callId, {
+      //   role: 'assistant',
+      //   content: transcript
+      // });
     }
   }
 
   private async handleUserTranscript(message: UserTranscriptMessage): Promise<void> {
     const transcript = message.transcript;
-    if (transcript) {
+    if (transcript && this.callId) {
       console.log(`👤 [MVP User said]: "${transcript}"`);
+      // TODO: Store user message in conversation history
+      // await this.callContextManager?.addConversationMessage(this.callId, {
+      //   role: 'user',
+      //   content: transcript
+      // });
     }
   }
 
@@ -280,11 +294,9 @@ export class MVPWebSocketService {
         arguments?: string;
         call_id?: string;
       }
-
+      // Check if there are any function calls to execute
       const response = (message as { response?: { output?: FunctionCallOutput[] } }).response;
       if (!response?.output) return;
-
-      // Check if there are any function calls to execute
       const functionCalls = response.output.filter(
         (output: FunctionCallOutput) => output.type === 'function_call' && output.name && output.arguments && output.call_id
       );
@@ -294,20 +306,48 @@ export class MVPWebSocketService {
       // Set processing flag to prevent duplicates
       this.isProcessingFunctionCall = true;
 
-      // Execute all function calls in sequence
+      // Execute all function calls in sequence (usually just one)
       for (const functionCall of functionCalls) {
         console.log(`🔧 [MVP WebSocket] Executing function: ${functionCall.name}`);
 
-        const args = JSON.parse(functionCall.arguments || "{}");
-        const result = await onFunctionCall(functionCall.name!, args, functionCall.call_id!);
+        // Check if this specific tool call ID was already processed (prevent duplicate execution)
+        if (this.processedCallIds.has(functionCall.call_id!)) {
+          console.warn(`⚠️ [MVP WebSocket] Skipping ${functionCall.name} - call ID ${functionCall.call_id} already processed`);
+          continue;
+        }
 
-        // Send function result
+        const args = JSON.parse(functionCall.arguments || "{}");
+        const functionResult = await onFunctionCall(functionCall.name!, args, functionCall.call_id!);
+
+        // Extract result and additional tool if returned as object
+        let result: unknown;
+        let newTool: Array<Record<string, unknown>> | undefined;
+
+        if (functionResult && typeof functionResult === 'object' && 'result' in functionResult) {
+          const typedResult = functionResult as { result: unknown; additionalTools?: Array<Record<string, unknown>> };
+          result = typedResult.result;
+          newTool = typedResult.additionalTools;
+        } else {
+          result = functionResult;
+        }
+
+        // Update session with new tools BEFORE sending function result (like old architecture)
+        if (newTool && newTool.length > 0) {
+          console.log(`🔧 [MVP WebSocket] Adding ${newTool.length} tools before function result: ${newTool.map(t => t.name).join(', ')}`);
+          await this.addToolsToSession(newTool);
+        }
+
+        // Send function result AFTER session update
         await this.sendFunctionResult(functionCall.call_id!, result);
+
+        // Track processed call ID to prevent duplicate execution
+        this.processedCallIds.add(functionCall.call_id!);
+        console.log(`✅ [MVP WebSocket] Marked call ID ${functionCall.call_id} as processed`);
       }
 
-      // Request optimized response after all function calls (no artificial delays)
+      // Request optimized response after all function calls (maintain conversation context)
       console.log(`🔄 [MVP WebSocket] Requesting AI response...`);
-      await this.requestOptimizedResponse(true);
+      await this.requestOptimizedResponse(false);
 
     } catch (error) {
       console.error("❌ [MVP WebSocket] Function call error:", error);
@@ -375,6 +415,30 @@ export class MVPWebSocketService {
     console.log(`✅ [MVP WebSocket] Response request sent, waiting for OpenAI...`);
   }
 
+  private async addToolsToSession(newTools: Array<Record<string, unknown>>): Promise<void> {
+    console.log(`🔧 [MVP WebSocket] Adding ${newTools.length} tools to session: ${newTools.map(t => t.name).join(', ')}`);
+    console.log(`🔍 [MVP WebSocket] Current session has ${this.currentSessionTools.length} tools: ${this.currentSessionTools.map(t => t.name).join(', ')}`);
+
+    // Add new tools to existing tools (accumulate, don't replace)
+    const updatedTools = [...this.currentSessionTools, ...newTools];
+
+    const sessionUpdate = {
+      type: "session.update",
+      session: {
+        type: "realtime",
+        tools: updatedTools, // ALL tools (existing + new)
+        tool_choice: "auto"
+      }
+    };
+
+    console.log(`✅ [MVP WebSocket] Adding ${newTools.length} tools to ${this.currentSessionTools.length} existing tools`);
+    console.log(`🔄 [MVP WebSocket] New session will have ${updatedTools.length} tools: ${updatedTools.map(t => t.name).join(', ')}`);
+
+    await this.sendMessage(sessionUpdate);
+    this.currentSessionTools = updatedTools; // Update our tracking
+    console.log(`✅ [MVP WebSocket] Session updated with ${updatedTools.length} total tools`);
+  }
+
   // ============================================================================
   // SMART TOOL MANAGEMENT
   // ============================================================================
@@ -395,6 +459,7 @@ export class MVPWebSocketService {
       console.log(`🔄 [MVP Tools] Updating ${tools.length} tools (hash: ${newHash.slice(0,8)})`);
       await this.sendMessage(sessionUpdate);
       this.currentSchemaHash = newHash;
+      this.currentSessionTools = [...tools]; // Track current tools
     } else {
       console.log(`✅ [MVP Tools] Tools unchanged, skipping update`);
     }

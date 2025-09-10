@@ -216,6 +216,19 @@ export class MVPCallContextManager {
     return selectedQuote;
   }
 
+  async getAllQuotes(callId: string): Promise<Array<{
+    quoteId: string;
+    quoteRequestData: QuoteRequestInfo;
+    quoteResultData: QuoteResultInfo;
+    timestamp: number;
+  }>> {
+    const quotes = await this.callStateManager.getAllQuotes(callId);
+    return Object.entries(quotes).map(([quoteId, quote]) => ({
+      quoteId,
+      ...quote
+    }));
+  }
+
   async updateUserContext(callId: string, user: User): Promise<void> {
     await this.callStateManager.updateCallState(callId, {
       userId: user.id,
@@ -224,6 +237,22 @@ export class MVPCallContextManager {
     });
 
     console.log(`✅ [MVP Context] User context updated: ${user.first_name} (${callId})`);
+  }
+
+  async selectQuote(callId: string, quoteId: string): Promise<void> {
+    console.log(`🔍 [MVP Context] SELECTING quote: ${quoteId} for callId: ${callId}`);
+    await this.callStateManager.selectQuote(callId, quoteId);
+
+    // Add system message about quote selection
+    await this.addSystemMessage(callId, `Quote selected: ${quoteId}`);
+  }
+
+  async addSystemMessage(callId: string, content: string): Promise<ConversationMessage> {
+    const message = this.conversationManager.createSystemMessage(content);
+    const storedMessage = await this.conversationManager.addMessage(callId, message);
+
+    // Direct storage only - no event publishing to prevent infinite loops
+    return storedMessage;
   }
 
   // ============================================================================
