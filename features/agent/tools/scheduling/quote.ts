@@ -51,8 +51,10 @@ export class QuoteTool {
     const fullContext = await this.callContextManager.getCallContext(callId);
     console.log(`🔍 [QuoteTool] Full call context available:`, fullContext ? 'yes' : 'no');
     if (fullContext) {
-      console.log(`🔍 [QuoteTool] Call state keys:`, Object.keys(fullContext.callState));
-      console.log(`🔍 [QuoteTool] Selected service in state:`, fullContext.callState.selectedService ? 'present' : 'missing');
+      console.log(`🔍 [QuoteTool] Call context keys:`, Object.keys(fullContext));
+      // MVP context has flattened structure with selectedService directly on context
+      const selectedService = (fullContext as { selectedService?: Service }).selectedService;
+      console.log(`🔍 [QuoteTool] Selected service in context:`, selectedService ? 'present' : 'missing');
     }
 
     const service = await this.callContextManager.getSelectedService(callId);
