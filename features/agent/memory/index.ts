@@ -25,7 +25,6 @@ export type {
   EventHandler,
   CallStartedEvent,
   UserCreatedEvent,
-  MessageReceivedEvent,
   CallEndedEvent
 } from './redis';
 
@@ -62,8 +61,6 @@ export { agentServiceContainer, AgentServiceContainer } from './service-containe
 // ============================================================================
 // CALL CONTEXT COORDINATION (NOT Business Context)
 // ============================================================================
-export { CallContextManager } from './call-context-manager';
-export type { CallContext, MessageContext } from './call-context-manager';
 
 // ============================================================================
 // INITIALIZATION

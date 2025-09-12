@@ -118,6 +118,7 @@ export class ServiceRequirementsGenerator {
 
       // Fixed pricing - no quantity needed
       case PricingCombination.SERVICE_FIXED_PER_SERVICE:
+      case PricingCombination.SERVICE_PER_MINUTE:
       case PricingCombination.TRAVEL_PER_KM:
       case PricingCombination.TRAVEL_PER_MINUTE:
       case PricingCombination.LABOUR_PER_HOUR:

@@ -556,3 +556,45 @@ export const massageExample9Service2Data: CreateServiceData = {
     ]
   }
 };
+
+// ===================================================================
+// SKEDY AI AGENT SERVICE - Pay-as-you-go
+// ===================================================================
+// Service: AI phone agent service
+// Location type: business (virtual service)
+// Pricing: $0.60 per minute of call time
+export const skedyAIAgentServiceData: CreateServiceData = {
+  business_id: "placeholder-business-id",
+  name: "AI Phone Agent Service",
+  description: "24/7 AI agent that answers your business calls, provides quotes, and books appointments. Pay only for actual call time - no monthly fees, no setup costs.",
+  how_it_works: "Our AI agent answers your business phone calls professionally, understands your services and pricing, provides instant quotes to customers, and books appointments directly into your calendar. You only pay for the minutes the AI agent spends on calls - no hidden fees or monthly subscriptions.",
+  location_type: LocationType.BUSINESS, // Virtual service
+  pricing_config: {
+    components: [
+      {
+        name: "Call Time",
+        pricing_combination: PricingCombination.SERVICE_PER_MINUTE,
+        tiers: [
+          {
+            min_quantity: 1,
+            max_quantity: 500, // Lite tier: 0-500 minutes
+            price: 0.38,
+            duration_estimate_mins: null // Variable duration
+          },
+          {
+            min_quantity: 501,
+            max_quantity: 1500, // Standard tier: 501-1,500 minutes
+            price: 0.34,
+            duration_estimate_mins: null // Variable duration
+          },
+          {
+            min_quantity: 1501,
+            max_quantity: 10000, // Pro tier: 1,501+ minutes
+            price: 0.30,
+            duration_estimate_mins: null // Variable duration
+          }
+        ]
+      }
+    ]
+  }
+};

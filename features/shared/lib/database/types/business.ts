@@ -40,6 +40,7 @@ export interface Business extends BaseEntity {
   language: string;
   business_category: BusinessCategory;
   charges_gst: boolean;
+  prices_include_gst: boolean;
   gst_rate?: number;
   charges_deposit: boolean;
   payment_processing_fee_percentage: number;
@@ -60,9 +61,8 @@ export interface Business extends BaseEntity {
   offers_mobile_services: boolean;     // "Do you travel to customers?"
   offers_location_services: boolean;   // "Do customers come to you?"
   minimum_charge: number;
+  twilio_account_sid?: string | null;
 }
 
 export type CreateBusinessData = Omit<Business, 'id' | 'created_at' | 'updated_at'>;
 export type UpdateBusinessData = Partial<Omit<Business, 'id' | 'created_at'>>;
-
-

@@ -105,57 +105,22 @@ export class QuoteTool {
       return {
         success: true,
         data: {
-          // Quote identification
           quote_id: quoteId,
-          // Core booking information (matches Booking interface)
           service_name: service.name,
-        total_estimate_amount: quote.total_estimate_amount,
-        total_estimate_time_in_minutes: quote.total_estimate_time_in_minutes,
-        deposit_amount: quote.deposit_amount,
-        remaining_balance: quote.remaining_balance,
-        deposit_paid: quote.deposit_paid,
-        minimum_charge_applied: quote.minimum_charge_applied,
-        currency: this.businessContext.businessInfo.currency_code,
-        status: 'quote',
+          total_estimate_amount: quote.total_estimate_amount,
+          total_estimate_time_in_minutes: quote.total_estimate_time_in_minutes,
+          deposit_amount: quote.deposit_amount,
+          currency: this.businessContext.businessInfo.currency_code,
 
-        // Organized breakdown for AI
-        breakdown: this.createQuoteBreakdown(quote, service),
-
-        // Complete price breakdown (ready for database)
-        price_breakdown: quote.price_breakdown,
-
-        // Original quote request (for booking creation without recalculation)
-        quote_request: quoteRequest
-      },
-      message: this.formatQuoteMessage(quote, service.name)
-    };
+          // Simple breakdown for customer questions
+          labor_cost: quote.price_breakdown?.service_breakdowns?.[0]?.total_cost || 0,
+          travel_cost: quote.price_breakdown?.travel_breakdown?.total_travel_cost || 0,
+          gst_included: quote.price_breakdown?.business_fees?.gst_amount || 0
+        },
+        message: this.formatQuoteMessage(quote, service.name)
+      };
   }
 
-  private createQuoteBreakdown(quote: QuoteResultInfo, service: Service) {
-    const serviceBreakdown = quote.price_breakdown?.service_breakdowns?.[0];
-    const travelBreakdown = quote.price_breakdown?.travel_breakdown;
-    const feesBreakdown = quote.price_breakdown?.business_fees;
-
-    return {
-      labor: {
-        cost: serviceBreakdown?.total_cost || 0,
-        duration_mins: serviceBreakdown?.estimated_duration_mins || 0,
-        rate_description: `${service.name} labor`
-      },
-      travel: {
-        cost: travelBreakdown?.total_travel_cost || 0,
-        duration_mins: travelBreakdown?.total_travel_time_mins || 0,
-        distance_km: travelBreakdown?.total_distance_km || 0,
-        rate_description: "Travel between locations"
-      },
-      fees: {
-        gst_amount: feesBreakdown?.gst_amount || 0,
-        gst_rate: feesBreakdown?.gst_rate || 0,
-        platform_fee: feesBreakdown?.platform_fee || 0,
-        payment_processing_fee: feesBreakdown?.payment_processing_fee || 0
-      }
-    };
-  }
 
   private formatQuoteMessage(quote: QuoteResultInfo, serviceName: string): string {
     const currency = this.businessContext.businessInfo.currency_code;

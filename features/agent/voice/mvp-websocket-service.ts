@@ -12,6 +12,7 @@ import WebSocket from "ws";
 import crypto from "crypto";
 import { getAuthHeaders, OpenAIWebSocketMessage } from "./config";
 import { type VoiceEventBus } from "../memory/redis/event-bus";
+import type { TokenSpent } from "../../shared/lib/database/types/chat-sessions";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -80,6 +81,18 @@ export class MVPWebSocketService {
   private voiceEventBus: VoiceEventBus | null = null;
   private isProcessingFunctionCall = false;
 
+  // Token tracking for debugging and final persistence
+  private callTokens: TokenSpent = {
+    inputTokens: 0,
+    outputTokens: 0,
+    cachedTokens: 0,
+    uncachedTokens: 0,
+    audioInputTokens: 0,
+    audioOutputTokens: 0,
+    totalCost: 0,
+    lastUpdated: 0
+  };
+
   // Core optimization settings
   private readonly MAX_TURNS_BEFORE_SUMMARY = 6;
   private readonly MAX_OUTPUT_TOKENS = 120;
@@ -95,8 +108,7 @@ export class MVPWebSocketService {
   // Retry protection - track by tool call ID, not function name
   private processedCallIds = new Set<string>();
 
-  // Token tracking
-  private cumulativeTokens = 0;
+  // Session tracking
   private sessionStartTime = Date.now();
 
   // ============================================================================
@@ -198,7 +210,12 @@ export class MVPWebSocketService {
         break;
 
       case "session.updated":
+        const sessionUpdate = message as { session?: { tools?: Array<{ name?: string }> } };
+        const confirmedTools = sessionUpdate.session?.tools?.map(t => t.name).filter(Boolean) || [];
+        console.log("═".repeat(80));
         console.log("🎯 [MVP WebSocket] Session updated (MVP optimized)");
+        console.log(`🔧 [MVP WebSocket] OpenAI confirmed tools (${confirmedTools.length}): ${confirmedTools.join(', ')}`);
+        console.log("═".repeat(80));
         break;
 
       case "response.done":
@@ -238,18 +255,38 @@ export class MVPWebSocketService {
 
   private async handleResponseDone(message: ResponseDoneMessage): Promise<void> {
     const usage = message.response.usage;
-    if (usage?.total_tokens) {
-      this.cumulativeTokens += usage.total_tokens;
-      const sessionTime = Math.round((Date.now() - this.sessionStartTime) / 1000);
-      const tokensPerSecond = Math.round(this.cumulativeTokens / Math.max(sessionTime, 1));
+    if (usage && this.callId && this.businessId) {
+      // Extract detailed usage
+      const detailedUsage = usage as {
+        input_tokens_details?: { cached_tokens?: number; audio_tokens?: number };
+        output_tokens_details?: { audio_tokens?: number };
+      };
 
-      console.log(`📊 [MVP Tokens] This response: ${usage.total_tokens} (${usage.input_tokens} in, ${usage.output_tokens} out)`);
-      console.log(`📊 [MVP Tokens] Session total: ${this.cumulativeTokens} tokens in ${sessionTime}s (${tokensPerSecond} tokens/sec)`);
+      const cachedTokens = detailedUsage.input_tokens_details?.cached_tokens || 0;
+      const audioInputTokens = detailedUsage.input_tokens_details?.audio_tokens || 0;
+      const audioOutputTokens = detailedUsage.output_tokens_details?.audio_tokens || 0;
 
-      // Alert if approaching limits
-      if (tokensPerSecond > 500) {
-        console.warn(`⚠️ [MVP Tokens] HIGH USAGE: ${tokensPerSecond} tokens/sec`);
-      }
+      // Accumulate tokens for this call (debugging + final persistence)
+      this.callTokens.inputTokens += usage.input_tokens || 0;
+      this.callTokens.outputTokens += usage.output_tokens || 0;
+      this.callTokens.cachedTokens += cachedTokens;
+      this.callTokens.uncachedTokens += (usage.input_tokens || 0) - cachedTokens;
+      this.callTokens.audioInputTokens += audioInputTokens;
+      this.callTokens.audioOutputTokens += audioOutputTokens;
+
+      // Calculate incremental cost for this response
+      const inputCost = ((usage.input_tokens || 0) / 1000) * 2.50;
+      const outputCost = ((usage.output_tokens || 0) / 1000) * 10.00;
+      const audioInCost = (audioInputTokens / 1000) * 100.00;
+      const audioOutCost = (audioOutputTokens / 1000) * 200.00;
+      const responseCost = inputCost + outputCost + audioInCost + audioOutCost;
+
+      this.callTokens.totalCost += responseCost;
+      this.callTokens.lastUpdated = Date.now();
+
+      // Debug logging only
+      console.log(`📊 [Call Debug] Response: ${usage.input_tokens}in/${usage.output_tokens}out, $${responseCost.toFixed(4)}`);
+      console.log(`📊 [Call Total] So far: ${this.callTokens.inputTokens + this.callTokens.outputTokens} tokens, $${this.callTokens.totalCost.toFixed(4)}`);
     }
 
     // Check if we need conversation management
@@ -539,21 +576,25 @@ export class MVPWebSocketService {
   // UTILITIES
   // ============================================================================
 
-  getTokenUsage(): { total: number; rate: number; duration: number } {
-    const duration = Math.round((Date.now() - this.sessionStartTime) / 1000);
-    const rate = Math.round(this.cumulativeTokens / Math.max(duration, 1));
-
-    return {
-      total: this.cumulativeTokens,
-      rate,
-      duration
-    };
+  getSessionDuration(): number {
+    return Math.round((Date.now() - this.sessionStartTime) / 1000);
   }
 
-  disconnect(): void {
+  /**
+   * Get accumulated token data for chat session persistence
+   */
+  getCallTokens(): TokenSpent {
+    return { ...this.callTokens };
+  }
+
+  async disconnect(): Promise<void> {
+    // Analytics cleanup (MVP version doesn't need explicit cleanup)
+    console.log(`📊 [MVP Analytics] Call ${this.callId} ended`);
+
     if (this.activeWebSocket) {
       this.activeWebSocket.close();
       this.activeWebSocket = null;
     }
   }
+
 }

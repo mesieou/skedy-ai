@@ -30,6 +30,18 @@ export interface ChatMessage extends BaseEntity {
   phone_number: string; // Phone number - always required (voice calls, SMS, WhatsApp)
 }
 
+// Token usage tracking
+export interface TokenSpent {
+  inputTokens: number;
+  outputTokens: number;
+  cachedTokens: number;
+  uncachedTokens: number;
+  audioInputTokens: number;
+  audioOutputTokens: number;
+  totalCost: number;
+  lastUpdated: number;
+}
+
 // Chat session interface
 export interface ChatSession extends BaseEntity {
   channel: ChatChannel;
@@ -38,6 +50,7 @@ export interface ChatSession extends BaseEntity {
   status: ChatSessionStatus;
   ended_at?: string | null;
   all_messages?: ChatMessage[]; // JSON column in database
+  token_spent?: TokenSpent | null; // Token usage for this call/session
 }
 
 // Create/Update types

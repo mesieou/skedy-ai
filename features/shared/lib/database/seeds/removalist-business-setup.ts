@@ -210,23 +210,23 @@ export class FullBusinessSetupSeeder {
   /**
    * Cleanup all seeded data (for testing)
    */
-  async cleanup(): Promise<void> {
-    console.log('🧹 Cleaning up all seeded data...');
+  // async cleanup(): Promise<void> {
+  //   console.log('🧹 Cleaning up all seeded data...');
 
-    try {
-      await this.availabilitySlotsSeeder.cleanup();
-      await this.calendarSettingsSeeder.cleanup();
-      await this.serviceSeeder.cleanup();
-      await this.userSeeder.cleanup();
-      await this.authUserSeeder.cleanup();
-      await this.businessSeeder.cleanup();
+  //   try {
+  //     await this.availabilitySlotsSeeder.cleanup();
+  //     await this.calendarSettingsSeeder.cleanup();
+  //     await this.serviceSeeder.cleanup();
+  //     await this.userSeeder.cleanup();
+  //     await this.authUserSeeder.cleanup();
+  //     await this.businessSeeder.cleanup();
 
-      console.log('✅ Cleanup completed successfully');
-    } catch (error) {
-      console.error('❌ Cleanup failed:', error);
-      throw error;
-    }
-  }
+  //     console.log('✅ Cleanup completed successfully');
+  //   } catch (error) {
+  //     console.error('❌ Cleanup failed:', error);
+  //     throw error;
+  //   }
+  // }
 }
 
 // Export singleton instance for easy use

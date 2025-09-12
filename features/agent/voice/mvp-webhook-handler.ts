@@ -81,6 +81,62 @@ export class MVPVoiceWebhookHandler {
   // MAIN CALL PROCESSING
   // ============================================================================
 
+  async handleIncomingCallWithValidation(event: WebhookEvent): Promise<{ success: boolean; error?: string }> {
+    const callId = event.data.call_id;
+    console.log(`📞 [MVP Webhook] Handling incoming call with validation: ${callId}`);
+
+    try {
+      // 🛡️ CALL STATE VALIDATION - Check if already processing
+      const { voiceRedisClient } = await import('@/features/agent/memory/redis');
+      const existingState = await voiceRedisClient.get(`call:${callId}:state`);
+
+      if (existingState) {
+        const state = JSON.parse(existingState);
+        if (state.status === 'active' || state.status === 'processing') {
+          console.log(`🔄 [MVP Webhook] Call ${callId} already being processed (status: ${state.status})`);
+          return { success: true }; // Return success for idempotency
+        }
+      }
+
+      // Mark call as processing to prevent race conditions
+      await voiceRedisClient.set(`call:${callId}:processing`, JSON.stringify({
+        status: 'processing',
+        timestamp: new Date().toISOString()
+      }), 60);
+
+      await this.handleIncomingCall(event);
+
+      // Clean up processing flag
+      await voiceRedisClient.del(`call:${callId}:processing`);
+
+      return { success: true };
+
+    } catch (error) {
+      console.error(`❌ [MVP Webhook] Failed to handle incoming call ${callId}:`, error);
+
+      // Clean up processing flag on error
+      try {
+        const { voiceRedisClient } = await import('@/features/agent/memory/redis');
+        await voiceRedisClient.del(`call:${callId}:processing`);
+      } catch (cleanupError) {
+        console.error('❌ Failed to clean up call processing flag:', cleanupError);
+      }
+
+      // Determine if this is a recoverable error
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isRecoverable = errorMessage.includes('No session found') ||
+                           errorMessage.includes('call_id_not_found') ||
+                           errorMessage.includes('endpoints failed');
+
+      if (isRecoverable) {
+        console.log(`🔄 [MVP Webhook] Treating as recoverable error for call ${callId}`);
+        return { success: true, error: 'Call expired or invalid - handled gracefully' };
+      }
+
+      return { success: false, error: errorMessage };
+    }
+  }
+
   async handleIncomingCall(
     event: WebhookEvent,
     options: WebhookHandlerOptions = {}

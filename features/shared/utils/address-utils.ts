@@ -13,15 +13,22 @@ export class AddressUtils {
    */
   static parseAddressString(addressString: string): Address {
     const parts = addressString.split(',').map(p => p.trim());
+
+    // Don't use hardcoded defaults - extract what's actually provided
+    const address_line_1 = parts[0] || addressString;
+    const city = parts[1] || '';
+    const state = parts[2] || '';
+    const postcode = parts[3] || '';
+
     return {
       id: 'temp-' + Math.random().toString(36).substring(7),
       service_id: 'temp',
       type: AddressType.CUSTOMER,
-      address_line_1: parts[0] || addressString,
+      address_line_1,
       address_line_2: null,
-      city: parts[1] || 'Melbourne',
-      state: parts[2] || 'VIC',
-      postcode: parts[3] || '3000',
+      city,
+      state,
+      postcode,
       country: 'Australia',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()

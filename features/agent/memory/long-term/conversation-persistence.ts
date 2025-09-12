@@ -186,7 +186,8 @@ export class ConversationPersistenceService {
         business_id: pendingSession.businessId,
         status: ChatSessionStatus.ENDED, // Already ended
         ended_at: DateUtils.nowUTC(),
-        all_messages: [] // Start empty
+        all_messages: [], // Start empty
+        token_spent: null // TODO: Add token tracking later
       });
 
       console.log(`✅ [ConversationPersistence] Created chat session: ${chatSession.id} for ${callId}`);

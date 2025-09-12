@@ -200,12 +200,6 @@ export class RealTimeConversationManager {
     };
   }
 
-  createSystemMessage(content: string): Omit<ConversationMessage, 'id' | 'timestamp'> {
-    return {
-      role: 'system',
-      content
-    };
-  }
 
   // ============================================================================
   // INTERNAL METHODS

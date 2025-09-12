@@ -51,6 +51,8 @@ export interface CallEndedEvent extends VoiceEvent {
   };
 }
 
+// UsageTrackedEvent removed - analytics uses direct calls
+
 // ============================================================================
 // EVENT BUS CLASS
 // ============================================================================

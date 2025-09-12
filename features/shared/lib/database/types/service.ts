@@ -46,6 +46,7 @@ export enum PricingCombination {
   SERVICE_PER_HOUR_PER_PERSON = 'service_per_hour_per_person',
   SERVICE_PER_ROOM = 'service_per_room',
   SERVICE_PER_SQM = 'service_per_sqm',
+  SERVICE_PER_MINUTE = 'service_per_minute',
 
   // Only one component with one tier
   SERVICE_FIXED_PER_SERVICE = 'service_fixed_per_service'

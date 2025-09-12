@@ -276,18 +276,12 @@ export class MVPCallContextManager {
   async selectQuote(callId: string, quoteId: string): Promise<void> {
     console.log(`🔍 [MVP Context] SELECTING quote: ${quoteId} for callId: ${callId}`);
     await this.callStateManager.selectQuote(callId, quoteId);
-
-    // Add system message about quote selection
-    await this.addSystemMessage(callId, `Quote selected: ${quoteId}`);
+    // Quote selection logged but not stored as message
   }
 
-  async addSystemMessage(callId: string, content: string): Promise<ConversationMessage> {
-    const message = this.conversationManager.createSystemMessage(content);
-    const storedMessage = await this.conversationManager.addMessage(callId, message);
+  // System messages removed - only track user and agent messages
 
-    // Direct storage only - no event publishing to prevent infinite loops
-    return storedMessage;
-  }
+  // Token tracking removed - will be implemented later with cleaner architecture
 
   // ============================================================================
   // CONVERSATION MANAGEMENT

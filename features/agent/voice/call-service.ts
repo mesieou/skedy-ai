@@ -33,6 +33,7 @@ export class CallService {
           "Content-Type": "application/json",
         },
         validateStatus: (status) => status < 500, // Don't throw for 4xx errors
+        timeout: 10000, // 10 second timeout for faster failure
       });
 
       console.log(`📞 Accept call response status: ${response.status}`);
@@ -53,12 +54,15 @@ export class CallService {
       }
 
       if (response.status === 404) {
-        console.error("❌ Call accept endpoint returned 404. Possible causes:");
-        console.error("   1. The endpoint URL is incorrect");
-        console.error("   2. The call ID is invalid or expired");
-        console.error("   3. The API endpoint has changed");
+        console.log("🔄 Call accept returned 404 - likely expired or invalid call ID");
+        console.log("   This is expected for expired calls - failing fast without retry");
 
-        return await this.tryAlternativeEndpoint(callId, config);
+        return {
+          success: false,
+          status: response.status,
+          data: response.data,
+          error: "No session found for the provided call_id",
+        };
       }
 
       if (response.status >= 400) {

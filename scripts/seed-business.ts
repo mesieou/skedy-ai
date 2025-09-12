@@ -16,7 +16,7 @@ dotenv.config({ path: path.join(__dirname, '../.env.test'), override: true });
 
 // Admin client will be detected automatically for scripts
 
-import { fullBusinessSetupSeeder } from '../features/shared/lib/database/seeds/full-business-setup';
+import { fullBusinessSetupSeeder } from '../features/shared/lib/database/seeds/removalist-business-setup';
 import { initializeTestDatabase } from '../features/shared/lib/test-setup';
 
 async function main() {

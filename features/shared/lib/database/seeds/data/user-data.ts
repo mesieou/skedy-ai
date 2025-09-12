@@ -45,4 +45,14 @@ export function createUniqueCustomerUserData(businessId: string): CreateUserData
   };
 }
 
-
+// Function to create super admin user data
+export function createSuperAdminUserData(businessId: string): CreateUserData {
+  return {
+    role: UserRole.SUPER_ADMIN,
+    first_name: "Juan",
+    business_id: businessId,
+    last_name: "Bernal",
+    phone_number: "+61411851098",
+    email: "info@skedy.io",
+  };
+}

@@ -6,8 +6,8 @@ import {
 } from "../../../shared/lib/database/types/service";
 import { AddressRole } from "../types/booking-calculations";
 import type {
-  BookingCalculationInput,
-  BookingCalculationResult,
+  QuoteRequestInfo,
+  QuoteResultInfo,
   ServiceWithQuantity,
   ServiceBreakdown,
   TravelBreakdown,
@@ -38,9 +38,9 @@ export class BookingCalculator {
    * Main entry point for booking calculations
    */
   async calculateBooking(
-    input: BookingCalculationInput,
+    input: QuoteRequestInfo,
     jobScope?: string
-  ): Promise<BookingCalculationResult> {
+  ): Promise<QuoteResultInfo> {
     try {
       // Step 1: Calculate shared travel for the entire booking
       const travel_breakdown = await this.calculateBookingTravel(
@@ -58,26 +58,35 @@ export class BookingCalculator {
         const breakdown = await this.calculateServiceCost(serviceItem, jobScope);
 
         service_breakdowns.push(breakdown);
-        total_estimate_amount += breakdown.total_cost;
+        total_estimate_amount += Math.round(breakdown.total_cost);
         total_estimate_time_in_minutes += breakdown.estimated_duration_mins;
       }
 
       // Step 3: Add shared travel time and cost (once for the entire booking)
       total_estimate_time_in_minutes += travel_breakdown.total_travel_time_mins;
-      total_estimate_amount += travel_breakdown.total_travel_cost;
+      total_estimate_amount += Math.round(travel_breakdown.total_travel_cost);
 
-      // Step 4: Calculate business fees
+      // Step 4: Calculate business fees based on GST inclusion setting
+      const subtotal_before_fees = total_estimate_amount;
+
+      // If prices don't include GST, add GST to get the GST-inclusive amount
+      if (input.business.charges_gst && !input.business.prices_include_gst) {
+        const gst_amount = total_estimate_amount * (input.business.gst_rate || 0) / 100;
+        total_estimate_amount += Math.round(gst_amount);
+        console.log(`💰 Adding GST: $${Math.round(gst_amount)} (prices are GST-exclusive)`);
+      }
+
       const business_fees = this.calculateBusinessFees(
-        total_estimate_amount,
+        subtotal_before_fees, // Calculate fees on pre-GST amount
         input.business
       );
 
       // Ensure fees are numbers, not null/undefined (prevents NaN)
-      const gstAmount = business_fees.gst_amount || 0;
       const platformFee = business_fees.platform_fee || 0;
       const processingFee = business_fees.payment_processing_fee || 0;
 
-      total_estimate_amount += gstAmount + platformFee + processingFee;
+      // Add platform and processing fees
+      total_estimate_amount += Math.round(platformFee) + Math.round(processingFee);
 
       // Step 5: Apply minimum charge
       const minimum_charge_applied =
@@ -216,7 +225,7 @@ export class BookingCalculator {
     return {
       total_distance_km,
       total_travel_time_mins,
-      total_travel_cost,
+      total_travel_cost: Math.round(total_travel_cost),
       route_segments,
       free_travel_applied: false,
       free_travel_distance_km: 0,
@@ -257,9 +266,9 @@ export class BookingCalculator {
       service_id: service.id,
       service_name: service.name,
       quantity,
-      service_cost,
+      service_cost: Math.round(service_cost),
       setup_cost: 0,
-      total_cost: service_cost, // No travel cost added here
+      total_cost: Math.round(service_cost), // No travel cost added here
       estimated_duration_mins,
       component_breakdowns: [],
     };
@@ -449,12 +458,19 @@ export class BookingCalculator {
     amount: number,
     business: Business
   ): BusinessFeeBreakdown {
-    // Calculate GST if business charges it
+    // Calculate GST for reporting (always calculate the GST component even if included in prices)
     const gst_rate = business.charges_gst ? business.gst_rate || 0 : 0;
-    const gst_amount =
-      business.charges_gst && business.gst_rate
-        ? amount * (business.gst_rate / 100)
-        : 0;
+    let gst_amount = 0;
+
+    if (business.charges_gst && business.gst_rate) {
+      if (business.prices_include_gst) {
+        // Extract GST from GST-inclusive amount: GST = amount - (amount / (1 + rate/100))
+        gst_amount = amount - (amount / (1 + business.gst_rate / 100));
+      } else {
+        // Calculate GST to add on top: GST = amount * (rate/100)
+        gst_amount = amount * (business.gst_rate / 100);
+      }
+    }
 
     // Calculate payment processing fee only if deposit is required
     const payment_processing_fee_percentage =

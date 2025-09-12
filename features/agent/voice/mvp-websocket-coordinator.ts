@@ -116,6 +116,10 @@ export class MVPWebSocketCoordinator {
 
       // Disconnect WebSocket
       if (this.webSocketService) {
+        // Log final token data for debugging
+        const tokenData = this.webSocketService.getCallTokens();
+        console.log(`📊 [MVP Coordinator] Final call tokens for ${callId}: ${tokenData.inputTokens + tokenData.outputTokens} tokens, $${tokenData.totalCost.toFixed(4)}`);
+
         this.webSocketService.disconnect();
         this.webSocketService = null;
       }
@@ -211,7 +215,9 @@ export class MVPWebSocketCoordinator {
     args: Record<string, unknown>
   ): Promise<{ result: unknown; additionalTools?: Array<Record<string, unknown>> }> {
     try {
+      console.log("─".repeat(60));
       console.log(`🔧 [MVP Coordinator] Function call: ${functionName} for ${callId}`);
+      console.log("─".repeat(60));
 
       // Execute function through tools manager
       const result = await this.toolsManager.executeFunction(functionName, args);
@@ -257,7 +263,9 @@ export class MVPWebSocketCoordinator {
             const quoteSchema = await this.toolsManager.getDynamicQuoteSchema();
             if (quoteSchema) {
               newToolsToAdd = [quoteSchema] as unknown as Array<Record<string, unknown>>;
-              console.log(`🔄 [MVP Coordinator] Adding get_quote after service selection`);
+                console.log("▶️ TOOL ADDITION ◀️");
+                console.log(`🔄 [MVP Coordinator] Adding get_quote after service selection`);
+                console.log("▶️ ─────────── ◀️");
             }
           }
           break;
@@ -271,14 +279,18 @@ export class MVPWebSocketCoordinator {
               const availabilitySchema = this.toolsManager.getStaticToolsForAI().find(tool => tool.name === 'check_day_availability');
               if (availabilitySchema) {
                 newToolsToAdd = [availabilitySchema] as unknown as Array<Record<string, unknown>>;
+                console.log("▶️ TOOL ADDITION ◀️");
                 console.log(`🔄 [MVP Coordinator] Adding check_day_availability after 1st quote`);
+                console.log("▶️ ─────────── ◀️");
               }
             } else if (allQuotes.length >= 2) {
               // Second+ quote - add select_quote
               const quoteSelectionSchema = this.toolsManager.getQuoteSelectionSchema();
               if (quoteSelectionSchema) {
                 newToolsToAdd = [quoteSelectionSchema] as unknown as Array<Record<string, unknown>>;
+                console.log("▶️ TOOL ADDITION ◀️");
                 console.log(`🔄 [MVP Coordinator] Adding select_quote after ${allQuotes.length} quotes`);
+                console.log("▶️ ─────────── ◀️");
               }
             }
           }

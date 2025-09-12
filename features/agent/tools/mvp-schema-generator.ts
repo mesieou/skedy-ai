@@ -108,7 +108,7 @@ export class MVPSchemaManager {
     if (serviceJobScopes.length > 0) {
       properties.job_scope = {
         type: "string",
-        description: "The scope or type of job being requested",
+        description: "Job scope",
         enum: serviceJobScopes
       };
       required.push('job_scope'); // Job scope is required when available
@@ -118,7 +118,7 @@ export class MVPSchemaManager {
     const schema = {
       type: "function",
       name: "get_quote",
-      description: `Get a price quote for ${service.name}. Provide as much detail as possible for accurate pricing.`,
+      description: `Get quote for ${service.name}`,
       parameters: {
         type: "object",
         properties,
@@ -136,13 +136,13 @@ export class MVPSchemaManager {
     return {
       type: "function",
       name: "select_quote",
-      description: "Select customer's chosen quote. ALWAYS call with quote_choice parameter - use 'option 1', 'option 2', or exact total amount.",
+      description: "Select customer's quote choice",
       parameters: {
         type: "object",
         properties: {
           quote_choice: {
             type: "string",
-            description: "REQUIRED: Customer's quote selection. Use 'option 1', 'option 2', or exact total amount like '329' or '$425'"
+            description: "Quote selection (amount or option)"
           }
         },
         required: ["quote_choice"],
@@ -161,13 +161,13 @@ export class MVPSchemaManager {
     return {
       type: "function",
       name: "select_service",
-      description: `Select a service for quote calculation. Available services from ${businessContext.businessInfo.name}.`,
+      description: `Select service after customer confirms`,
       parameters: {
         type: "object",
         properties: {
           service_name: {
             type: "string",
-            description: "The name of the service to select",
+            description: "Service name",
             enum: serviceNames
           }
         },
@@ -181,13 +181,13 @@ export class MVPSchemaManager {
     return {
       type: "function",
       name: "check_day_availability",
-      description: "Check availability for a specific date. Use this when customer asks about availability or wants to book a specific date.",
+      description: "Check date availability (YYYY-MM-DD)",
       parameters: {
         type: "object",
         properties: {
           date: {
             type: "string",
-            description: "Date to check in YYYY-MM-DD format"
+            description: "Date YYYY-MM-DD"
           }
         },
         required: ["date"],
@@ -200,7 +200,7 @@ export class MVPSchemaManager {
     return {
       type: "function",
       name: "check_user_exists",
-      description: "Check if the caller already exists in our system. Uses phone number from the call automatically.",
+      description: "Check if caller exists (auto phone)",
       parameters: {
         type: "object",
         properties: {},
@@ -214,13 +214,13 @@ export class MVPSchemaManager {
     return {
       type: "function",
       name: "create_user",
-      description: "Create a new customer account with their name. Phone number is taken from call automatically.",
+      description: "Create customer (auto phone)",
       parameters: {
         type: "object",
         properties: {
           name: {
             type: "string",
-            description: "Customer's full name"
+            description: "Full name"
           }
         },
         required: ["name"],
@@ -233,21 +233,21 @@ export class MVPSchemaManager {
     return {
       type: "function",
       name: "create_booking",
-      description: "Create a booking. Use this only after getting a quote, creating a user, and checking availability. Quote data is automatically retrieved from context.",
+      description: "Create booking after quote+availability+user",
       parameters: {
         type: "object",
         properties: {
           preferred_date: {
             type: "string",
-            description: "Preferred booking date in YYYY-MM-DD format"
+            description: "Date YYYY-MM-DD"
           },
           preferred_time: {
             type: "string",
-            description: "Preferred booking time in HH:MM format"
+            description: "Time HH:MM"
           },
           user_id: {
             type: "string",
-            description: "User ID from create_user function"
+            description: "User ID"
           }
         },
         required: ["preferred_date", "preferred_time", "user_id"],
@@ -264,13 +264,13 @@ export class MVPSchemaManager {
     return {
       type: "function",
       name: "get_services_pricing_info",
-      description: "Get service pricing, what's included, how services work. Use for: 'How much does X cost?', 'What's included?', 'How does Y service work?'",
+      description: "Get pricing & service details",
       parameters: {
         type: "object",
         properties: {
           service_name: {
             type: "string",
-            description: "Optional: specific service name, or leave empty for general pricing overview"
+            description: "Service name (optional)"
           }
         },
         required: [],
@@ -283,13 +283,13 @@ export class MVPSchemaManager {
     return {
       type: "function",
       name: "get_business_information",
-      description: "Get business operations info: hours, areas served, contact, policies, deposit requirements. Use for operational questions.",
+      description: "Get business info (hours, areas, contact)",
       parameters: {
         type: "object",
         properties: {
           query: {
             type: "string",
-            description: "Optional: specific topic like 'hours', 'areas', 'contact', 'deposit', 'payment'"
+            description: "Topic (optional)"
           }
         },
         required: [],
@@ -302,13 +302,13 @@ export class MVPSchemaManager {
     return {
       type: "function",
       name: "get_general_faqs",
-      description: "LAST RESORT: Get general FAQs for unusual questions not covered by services_pricing or business_information.",
+      description: "Get general FAQs",
       parameters: {
         type: "object",
         properties: {
           query: {
             type: "string",
-            description: "Search term to find relevant FAQs"
+            description: "Search term"
           }
         },
         required: [],
@@ -321,13 +321,13 @@ export class MVPSchemaManager {
     return {
       type: "function",
       name: "get_objection_handling_guidance",
-      description: "Get guidance for handling customer objections about price, timing, service fit, etc.",
+      description: "Handle customer objections",
       parameters: {
         type: "object",
         properties: {
           objection_type: {
             type: "string",
-            description: "Type of objection to handle",
+            description: "Objection type",
             enum: ["price", "spouse_approval", "service_fit", "hesitation"]
           }
         },
@@ -341,13 +341,13 @@ export class MVPSchemaManager {
     return {
       type: "function",
       name: "escalate_conversation",
-      description: "Escalate to human agent when AI cannot help or customer requests human assistance.",
+      description: "Escalate to human",
       parameters: {
         type: "object",
         properties: {
           reason: {
             type: "string",
-            description: "Reason for escalation"
+            description: "Reason"
           }
         },
         required: [],
@@ -371,48 +371,48 @@ export class MVPSchemaManager {
       case 'pickup_addresses':
         return {
           type: "array",
-          description: "Array of pickup addresses for the service",
+          description: "Pickup addresses",
           items: { type: "string" }
         };
 
       case 'dropoff_addresses':
         return {
           type: "array",
-          description: "Array of dropoff addresses for the service",
+          description: "Dropoff addresses",
           items: { type: "string" }
         };
 
       case 'customer_address':
         return {
           type: "string",
-          description: "Customer's address for the service"
+          description: "Customer address"
         };
 
       case 'number_of_people':
         return {
           type: "integer",
-          description: "Number of people required for the service",
+          description: "People count",
           minimum: 1
         };
 
       case 'number_of_rooms':
         return {
           type: "integer",
-          description: "Number of rooms for the service",
+          description: "Room count",
           minimum: 1
         };
 
       case 'square_meters':
         return {
           type: "number",
-          description: "Square meters for the service",
+          description: "Square meters",
           minimum: 1
         };
 
       case 'number_of_vehicles':
         return {
           type: "integer",
-          description: "Number of vehicles required",
+          description: "Vehicle count",
           minimum: 1
         };
 

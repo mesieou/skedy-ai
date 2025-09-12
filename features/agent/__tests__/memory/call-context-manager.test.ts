@@ -87,16 +87,7 @@ describe('CallContextManager', () => {
       expect(message.role).toBe('assistant');
     });
 
-    test('should add system messages', async () => {
-      const message = await contextManager.addSystemMessage(
-        testCallId,
-        'WebSocket connected successfully'
-      );
-
-      expect(message).toHaveProperty('id');
-      expect(message.content).toBe('WebSocket connected successfully');
-      expect(message.role).toBe('system');
-    });
+    // System messages removed - only track user and agent messages
 
     test('should retrieve recent messages', async () => {
       // Add some messages

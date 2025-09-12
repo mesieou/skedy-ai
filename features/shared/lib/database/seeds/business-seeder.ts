@@ -2,7 +2,7 @@
 import { BaseSeeder } from './base-seeder';
 import { BusinessRepository } from '../repositories/business-repository';
 import type { Business, CreateBusinessData } from '../types/business';
-import { createUniqueRemovalistBusinessData, createUniqueMobileManicuristBusinessData, createUniqueMassageBusinessData } from './data/business-data';
+import { createUniqueRemovalistBusinessData, createUniqueMobileManicuristBusinessData, createUniqueMassageBusinessData, createSkedyBusinessData } from './data/business-data';
 
 export class BusinessSeeder extends BaseSeeder<Business> {
   constructor() {
@@ -27,5 +27,10 @@ export class BusinessSeeder extends BaseSeeder<Business> {
   // Create unique massage business for tests (avoids parallel test conflicts)
   async createUniqueMassageBusiness(): Promise<Business> {
     return await this.create(createUniqueMassageBusinessData());
+  }
+
+  // Create Skedy business
+  async createSkedyBusiness(): Promise<Business> {
+    return await this.create(createSkedyBusinessData());
   }
 }

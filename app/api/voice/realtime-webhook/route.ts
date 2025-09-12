@@ -74,6 +74,8 @@ async function verifyWebhookSignature(
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  let callId: string | undefined;
+  let webhookId: string | undefined;
 
   try {
     console.log('📥 Incoming webhook request (MVP Token Optimized)');
@@ -82,7 +84,7 @@ export async function POST(request: NextRequest) {
     const headersList = await headers();
     const signature = headersList.get('webhook-signature') || '';
     const timestamp = headersList.get('webhook-timestamp') || '';
-    const webhookId = headersList.get('webhook-id') || '';
+    webhookId = headersList.get('webhook-id') || '';
 
     console.log('📋 Headers:', Object.fromEntries(headersList.entries()));
 
@@ -90,6 +92,49 @@ export async function POST(request: NextRequest) {
     const body = await request.text();
     console.log('📊 Raw body length:', body.length);
     console.log('👀 Raw body preview:', body.substring(0, 200) + '...');
+
+    // Parse webhook event first to get call_id for idempotency check
+    const event: WebhookEvent = JSON.parse(body);
+    callId = event.data?.call_id;
+
+    // 🕐 TIMESTAMP VALIDATION - Reject stale webhooks
+    const eventCreatedAt = event.created_at;
+    const now = Math.floor(Date.now() / 1000);
+
+    // Reject webhooks older than 5 minutes (300 seconds)
+    const MAX_WEBHOOK_AGE = 300;
+    const webhookAge = now - eventCreatedAt;
+
+    if (webhookAge > MAX_WEBHOOK_AGE) {
+      console.log(`🕐 [Stale Webhook] Rejecting ${webhookAge}s old webhook for call ${callId}`);
+      console.log(`   Event created: ${new Date(eventCreatedAt * 1000).toISOString()}`);
+      console.log(`   Current time: ${new Date(now * 1000).toISOString()}`);
+
+      return NextResponse.json({
+        success: true,
+        message: 'Webhook too old - likely already processed',
+        agent_mode: 'mvp',
+        webhook_age_seconds: webhookAge
+      });
+    }
+
+    // 🛡️ IDEMPOTENCY CHECK - Prevent duplicate processing
+    if (callId && webhookId) {
+      const idempotencyKey = `webhook:${webhookId}:${callId}`;
+
+      // Check Redis for existing processing attempt
+      const { voiceRedisClient } = await import('@/features/agent/memory/redis');
+      const existingResult = await voiceRedisClient.get(idempotencyKey);
+
+      if (existingResult) {
+        console.log(`🔄 [Idempotency] Webhook ${webhookId} already processed for call ${callId}`);
+        const result = JSON.parse(existingResult);
+        return NextResponse.json(result.response, { status: result.status });
+      }
+
+      // Mark as processing (short TTL to handle race conditions)
+      await voiceRedisClient.set(`${idempotencyKey}:processing`, 'true', 30);
+    }
 
     // Verify webhook signature
     if (!await verifyWebhookSignature(body, signature, timestamp, webhookId)) {
@@ -99,42 +144,70 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse webhook event
-    const event: WebhookEvent = JSON.parse(body);
-    console.log(`📞 Handling ${event.type} event: ${event.data?.call_id || 'unknown'}`);
+    console.log(`📞 Handling ${event.type} event: ${callId || 'unknown'}`);
 
     // Initialize MVP handler
     const handler = new MVPVoiceWebhookHandler();
+    let processingResult: { success: boolean; error?: string } = { success: false };
 
     // Handle the event
     switch (event.type) {
       case 'realtime.call.incoming':
-        await handler.handleIncomingCall(event);
+        processingResult = await handler.handleIncomingCallWithValidation(event);
         break;
 
       case 'realtime.call.ended':
         if (handler.handleCallEnd) {
           await handler.handleCallEnd(event.data.call_id, 'ended');
+          processingResult = { success: true };
         }
         break;
 
       default:
         console.log(`⚠️ Unhandled event type: ${event.type}`);
+        processingResult = { success: true }; // Don't fail on unknown events
         break;
     }
 
     const duration = Date.now() - startTime;
-    console.log(`✅ MVP Webhook processed successfully in ${duration}ms`);
-
-    return NextResponse.json({
-      success: true,
+    const response = {
+      success: processingResult.success,
       agent_mode: 'mvp',
-      processing_time_ms: duration
-    });
+      processing_time_ms: duration,
+      ...(processingResult.error && { error: processingResult.error })
+    };
+
+    // Store result for idempotency (24 hour TTL)
+    if (callId && webhookId) {
+      const idempotencyKey = `webhook:${webhookId}:${callId}`;
+      const { voiceRedisClient } = await import('@/features/agent/memory/redis');
+
+      await voiceRedisClient.set(idempotencyKey, JSON.stringify({
+        response,
+        status: processingResult.success ? 200 : 500,
+        timestamp: new Date().toISOString()
+      }), 86400);
+
+      // Clean up processing flag
+      await voiceRedisClient.del(`${idempotencyKey}:processing`);
+    }
+
+    console.log(`✅ MVP Webhook processed successfully in ${duration}ms`);
+    return NextResponse.json(response);
 
   } catch (error) {
     const duration = Date.now() - startTime;
     console.error('❌ MVP Webhook processing error:', error);
+
+    // Clean up processing flag on error
+    if (callId && webhookId) {
+      try {
+        const { voiceRedisClient } = await import('@/features/agent/memory/redis');
+        await voiceRedisClient.del(`webhook:${webhookId}:${callId}:processing`);
+      } catch (cleanupError) {
+        console.error('❌ Failed to clean up processing flag:', cleanupError);
+      }
+    }
 
     return NextResponse.json(
       {

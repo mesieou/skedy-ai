@@ -35,5 +35,11 @@ export function createUniqueCustomerAuthUserData(): CreateAuthUserData {
   };
 }
 
-
-
+// Function to create super admin auth user data
+export function createSuperAdminAuthUserData(): CreateAuthUserData {
+  return {
+    email: "info@skedy.io",
+    password: "skedy1010",
+    email_confirm: true
+  };
+}

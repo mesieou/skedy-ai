@@ -16,6 +16,8 @@ export interface BusinessContext {
         payment_methods: string[];
         preferred_payment_method: string;
         charges_deposit: boolean;
+        charges_gst: boolean;
+        prices_include_gst: boolean;
         deposit_percentage?: number;
         deposit_fixed_amount?: number;
         offer_mobile_services?: boolean;
