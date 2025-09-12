@@ -19,6 +19,8 @@ import { ServiceSeeder } from './service-seeder';
 import { CalendarSettingsSeeder } from './calendar-settings-seeder';
 import { AvailabilitySlotsSeeder } from './availability-slots-seeder';
 import { AvailabilitySlotsRepository } from '../repositories/availability-slots-repository';
+import { ToolsRepository } from '../repositories/tools-repository';
+import { BusinessToolsRepository } from '../repositories/business-tools-repository';
 
 // Import existing data generators (no hardcoding)
 import { removalistExample1ServiceData } from './data/services-data';
@@ -39,6 +41,7 @@ export interface FullBusinessSetup {
   services: Service[];
   calendarSettings: CalendarSettings[];
   availabilitySlots: AvailabilitySlots;
+  businessTools: number; // Count of tools added
 }
 
 export class FullBusinessSetupSeeder {
@@ -49,6 +52,8 @@ export class FullBusinessSetupSeeder {
   private calendarSettingsSeeder: CalendarSettingsSeeder;
   private availabilitySlotsSeeder: AvailabilitySlotsSeeder;
   private availabilitySlotsRepository: AvailabilitySlotsRepository;
+  private toolsRepository: ToolsRepository;
+  private businessToolsRepository: BusinessToolsRepository;
 
   constructor() {
     this.businessSeeder = new BusinessSeeder();
@@ -58,6 +63,8 @@ export class FullBusinessSetupSeeder {
     this.calendarSettingsSeeder = new CalendarSettingsSeeder();
     this.availabilitySlotsSeeder = new AvailabilitySlotsSeeder();
     this.availabilitySlotsRepository = new AvailabilitySlotsRepository();
+    this.toolsRepository = new ToolsRepository();
+    this.businessToolsRepository = new BusinessToolsRepository();
   }
 
   /**
@@ -138,6 +145,45 @@ export class FullBusinessSetupSeeder {
       );
       console.log(`✅ Availability slots generated (ID: ${availabilitySlots.id})`);
 
+      // Step 6: Add Business Tools
+      console.log('🔧 Adding business tools...');
+      const toolNames = [
+        'get_service_info',
+        'check_day_availability',
+        'check_user_exists',
+        'create_user',
+        'create_booking',
+        'get_quote'
+      ];
+
+      let businessToolsCount = 0;
+      for (const toolName of toolNames) {
+        try {
+          // Find tool by name and version
+          const tool = await this.toolsRepository.findOne({ name: toolName, version: '1.0.0' });
+
+          if (tool) {
+            // Add to business_tools table
+            await this.businessToolsRepository.create({
+              business_id: business.id,
+              tool_id: tool.id,
+              active: true,
+              optional_parameters: null, // Use tool defaults
+              required_parameters: null  // Use tool defaults
+            });
+
+            businessToolsCount++;
+            console.log(`✅ Added tool: ${toolName} for business ${business.name}`);
+          } else {
+            console.warn(`⚠️ Tool not found: ${toolName} v1.0.0`);
+          }
+        } catch (error) {
+          console.error(`❌ Failed to add tool ${toolName}:`, error);
+        }
+      }
+
+      console.log(`✅ Added ${businessToolsCount} tools to business`);
+
       // Return complete setup
       const setup: FullBusinessSetup = {
         business,
@@ -146,7 +192,8 @@ export class FullBusinessSetupSeeder {
         customer,
         services: [service],
         calendarSettings,
-        availabilitySlots
+        availabilitySlots,
+        businessTools: businessToolsCount
       };
 
       console.log('🎉 Full business setup completed successfully!');
@@ -158,6 +205,7 @@ export class FullBusinessSetupSeeder {
       console.log(`   Services: ${setup.services.length}`);
       console.log(`   Calendar Settings: ${setup.calendarSettings.length}`);
       console.log(`   Availability: ${Object.keys(availabilitySlots.slots).length} days`);
+      console.log(`   Business Tools: ${setup.businessTools}`);
 
       return setup;
 
