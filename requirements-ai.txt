@@ -1,0 +1,12 @@
+# AI/ML Requirements for Customer Service Model
+transformers>=4.21.0
+torch>=1.12.0
+accelerate>=0.12.0
+
+# Optional: For OpenAI API integration
+# openai>=0.27.0
+
+# Optional: For more advanced models
+# sentence-transformers>=2.2.0
+# datasets>=2.0.0
+
