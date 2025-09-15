@@ -8,3 +8,5 @@ export class SessionManager {
   remove(id: string) { this.sessions.delete(id); }
   list() { return Array.from(this.sessions.values()); }
 }
+
+export const sessionManager = new SessionManager();

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebhookSignature } from './signature-verification';
-import { webSocketPool } from '@/features/agent/voice/web-socket-pool';
-import { sessionManager } from '@/features/agent/voice/session-manager';
+import { webSocketPool } from '@/features/agent2/sessions/websocketPool';
+import { SessionService } from '@/features/agent2/sessions/sessionService';
 import { handleCallEvent } from '@/features/agent2/twilio/callHandler';
 
 // Define WebhookEvent locally for type safety
@@ -47,9 +47,7 @@ export async function POST(request: NextRequest) {
     console.log(`📞 Incoming call event: ${callId} (${event.type})`);
 
     // 2️⃣ Get or create session via SessionManager
-    const ws = webSocketPool.getNextAvailableSocket(); // pick WS from pool
-    const session = sessionManager.getOrCreate(callId, ws);
-    session.eventType = event.type; // update last event type
+    const session = await SessionService.createOrGet(callId, event);
 
     // 3️⃣ Pass session and event to MVP handler (async)
     handleCallEvent(session, event).catch((err: unknown) => {

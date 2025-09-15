@@ -10,9 +10,13 @@ export class BusinessRepository extends BaseRepository<Business> {
   async findBusinessesAtMidnight(currentUtcTime?: string): Promise<Business[]> {
     const utcTime = currentUtcTime || DateUtils.nowUTC();
     const allBusinesses = await this.findAll();
-    
-    return allBusinesses.filter(business => 
+
+    return allBusinesses.filter(business =>
       DateUtils.isMidnightInTimezone(utcTime, business.time_zone)
     );
+  }
+
+  async findByTwilioAccountSid(twilioAccountSid: string): Promise<Business | null> {
+    return await this.findOne({ twilio_account_sid: twilioAccountSid });
   }
 }

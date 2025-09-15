@@ -2,17 +2,17 @@ import { Business } from "../../shared/lib/database/types/business";
 import { User } from "../../shared/lib/database/types/user";
 import { Interaction } from "../../shared/lib/database/types/interactions";
 import { TokenSpent } from "../types";
+import WebSocket from "ws";
 
 export interface Session {
   id: string;              // Call SID
-  busisnessId: string;
+  businessId: string;
   businessEntity: Business;
-  customerNumber: string;
+  customerPhoneNumber: string;
   customerId?: string;
   customerEntity?: User;
   status: "active" | "ended";
-  wsIndex: number;
-  ws: WebSocket;
+  ws?: WebSocket;
   channel: "phone" | "whatsapp" | "website";
   interactions: Interaction[];
   tokenUsage: TokenSpent;
