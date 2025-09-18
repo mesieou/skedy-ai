@@ -1,29 +1,40 @@
 import type { CreateToolData } from '../../types/tools';
 
-export const getServiceInfoTool: CreateToolData = {
-  name: 'get_service_info',
-  description: 'Get information about available services',
+export const getServiceDetailsTool: CreateToolData = {
+  name: 'get_service_details',
+  description: 'Get service details when customer asks for more info',
   version: '1.0.0',
   dynamic_parameters: false,
   business_specific: true,
   function_schema: {
     type: 'function',
     function: {
-      name: 'get_service_info',
-      description: 'Get service information',
+      name: 'get_service_details',
+      description: 'Get service details',
       parameters: {
         type: 'object',
-        properties: {},
-        required: [],
+        properties: {
+          service_name: {
+            type: 'string',
+            description: 'Service name'
+          }
+        },
+        required: ['service_name'],
         additionalProperties: false
       }
     }
   },
   output_template: {
-    success_message: 'Here are our services',
-    error_message: 'Service info unavailable',
+    success_message: 'Details for {service_name}',
+    error_message: 'Sorry, system issue',
     data_structure: {
-      services: 'array'
+      service_id: 'string',
+      name: 'string',
+      description: 'string',
+      location_type: 'string',
+      pricing_config: 'object',
+      travel_charging_model: 'string',
+      how_it_works: 'string'
     }
   }
 };
@@ -49,17 +60,22 @@ export const getQuoteTool: CreateToolData = {
   },
   output_template: {
     success_message: 'Quote ready',
-    error_message: 'Quote failed',
+    error_message: 'Sorry, system issue',
     data_structure: {
       quote_id: 'string',
-      total_price: 'number'
+      total_estimate_amount: 'number',
+      total_estimate_time_minutes: 'number',
+      start_at: 'string',
+      end_at: 'string',
+      price_breakdown: 'object',
+      deposit_amount: 'number'
     }
   }
 };
 
 export const checkDayAvailabilityTool: CreateToolData = {
   name: 'check_day_availability',
-  description: 'Check date availability',
+  description: 'Check date availability for a specific date',
   version: '1.0.0',
   dynamic_parameters: false,
   business_specific: true,
@@ -67,7 +83,7 @@ export const checkDayAvailabilityTool: CreateToolData = {
     type: 'function',
     function: {
       name: 'check_day_availability',
-      description: 'Check availability',
+      description: 'Check availability for a specific date',
       parameters: {
         type: 'object',
         properties: {
@@ -82,11 +98,10 @@ export const checkDayAvailabilityTool: CreateToolData = {
     }
   },
   output_template: {
-    success_message: 'Available on {date}',
-    error_message: 'Checking availability',
+    success_message: 'Available {date}',
+    error_message: 'Sorry, system issue',
     data_structure: {
       date: 'string',
-      available: 'boolean',
       available_times: 'array'
     }
   }
@@ -119,7 +134,7 @@ export const createUserTool: CreateToolData = {
   },
   output_template: {
     success_message: 'Profile created',
-    error_message: 'Profile failed',
+    error_message: 'Sorry, system issue',
     data_structure: {
       user_id: 'string',
       customer_name: 'string',
@@ -130,43 +145,47 @@ export const createUserTool: CreateToolData = {
 
 export const createBookingTool: CreateToolData = {
   name: 'create_booking',
-  description: 'Create a booking after quote, user creation, and availability check.',
+  description: 'Create booking after quote, user, availability check',
   version: '1.0.0',
-  dynamic_parameters: false,  // Static schema
-  business_specific: true,    // Bookings are business-specific
+  dynamic_parameters: false,
+  business_specific: true,
   function_schema: {
     type: 'function',
     function: {
       name: 'create_booking',
-      description: 'Create a booking. Use this only after getting a quote, creating a user, and checking availability. Quote data is automatically retrieved from context.',
+      description: 'Create booking after quote, user, availability check',
       parameters: {
         type: 'object',
         properties: {
           preferred_date: {
             type: 'string',
-            description: 'The customer\'s preferred date in YYYY-MM-DD format'
+            description: 'Date YYYY-MM-DD'
           },
           preferred_time: {
             type: 'string',
-            description: 'The customer\'s preferred time in HH:MM format (24-hour)'
+            description: 'Time HH:MM (24-hour)'
           },
           user_id: {
             type: 'string',
-            description: 'The user ID from the create_user function'
+            description: 'User ID from create_user'
+          },
+          quote_id: {
+            type: 'string',
+            description: 'Quote ID from selected quote'
           },
           confirmation_message: {
             type: 'string',
-            description: 'Optional confirmation message or special instructions from the customer'
+            description: 'Optional message/instructions'
           }
         },
-        required: ['preferred_date', 'preferred_time', 'user_id'],
+        required: ['preferred_date', 'preferred_time', 'user_id', 'quote_id'],
         additionalProperties: false
       }
     }
   },
   output_template: {
-    success_message: 'Excellent! Your booking is confirmed for {preferred_date} at {preferred_time}.',
-    error_message: 'I had trouble creating your booking. Let me check the details and try again.',
+    success_message: 'Booking confirmed {preferred_date} at {preferred_time}',
+    error_message: 'Sorry, system issue',
     data_structure: {
       booking_id: 'string',
       confirmation_number: 'string',
@@ -184,57 +203,31 @@ export const createBookingTool: CreateToolData = {
 // ============================================================================
 
 /**
- * All base tools available in the system
+ * All removalist tools (business-specific collection)
  */
-export const allBaseTools: CreateToolData[] = [
-  selectServiceTool,
-  getQuoteTool,
-  selectQuoteTool,
-  checkDayAvailabilityTool,
-  checkUserExistsTool,
-  createUserTool,
-  createBookingTool
-];
-
-/**
- * Core scheduling flow tools (most common)
- */
-export const coreSchedulingTools: CreateToolData[] = [
-  selectServiceTool,
+export const removalistTools: CreateToolData[] = [
+  getServiceDetailsTool,
   getQuoteTool,
   checkDayAvailabilityTool,
-  checkUserExistsTool,
   createUserTool,
   createBookingTool
 ];
 
 /**
- * Tools that require dynamic schema generation
+ * All available tools in the system (for seeding tools table)
+ * This will grow as we add more business types and tool categories
  */
-export const dynamicTools: CreateToolData[] = [
-  selectServiceTool,
-  getQuoteTool
-];
-
-/**
- * Tools that are business-specific
- */
-export const businessSpecificTools: CreateToolData[] = [
-  selectServiceTool,
+export const allAvailableTools: CreateToolData[] = [
+  // Removalist tools
+  getServiceDetailsTool,
   getQuoteTool,
   checkDayAvailabilityTool,
-  checkUserExistsTool,
   createUserTool,
   createBookingTool
-];
 
-/**
- * Tools with static schemas (no dynamic generation needed)
- */
-export const staticTools: CreateToolData[] = [
-  selectQuoteTool,
-  checkDayAvailabilityTool,
-  checkUserExistsTool,
-  createUserTool,
-  createBookingTool
+  // Future tools will be added here:
+  // - Cleaning service tools
+  // - Plumbing tools
+  // - General business tools
+  // - etc.
 ];

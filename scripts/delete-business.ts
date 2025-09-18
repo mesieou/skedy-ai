@@ -22,6 +22,7 @@ import { CalendarSettingsRepository } from '../features/shared/lib/database/repo
 import { AvailabilitySlotsRepository } from '../features/shared/lib/database/repositories/availability-slots-repository';
 import { ChatSessionRepository } from '../features/shared/lib/database/repositories/chat-session-repository';
 import { BusinessToolsRepository } from '../features/shared/lib/database/repositories/business-tools-repository';
+import { BusinessPromptRepository } from '../features/shared/lib/database/repositories/business-prompt-repository';
 
 async function deleteBusiness(businessId: string) {
   console.log(`🗑️ Deleting business: ${businessId}\n`);
@@ -36,6 +37,7 @@ async function deleteBusiness(businessId: string) {
     const availabilityRepo = new AvailabilitySlotsRepository();
     const chatSessionRepo = new ChatSessionRepository();
     const businessToolsRepo = new BusinessToolsRepository();
+    const businessPromptRepo = new BusinessPromptRepository();
 
     // Check if business exists
     const business = await businessRepo.findOne({ id: businessId });
@@ -57,7 +59,15 @@ async function deleteBusiness(businessId: string) {
     }
     console.log(`✅ Deleted ${businessTools.length} business tools`);
 
-    // 2. Delete chat sessions (includes messages via cascade)
+    // 2. Delete business prompts
+    console.log('📝 Deleting business prompts...');
+    const businessPrompts = await businessPromptRepo.findAll({}, { business_id: businessId });
+    for (const prompt of businessPrompts) {
+      await businessPromptRepo.deleteOne({ id: prompt.id });
+    }
+    console.log(`✅ Deleted ${businessPrompts.length} business prompts`);
+
+    // 3. Delete chat sessions (includes messages via cascade)
     console.log('💬 Deleting chat sessions...');
     const chatSessions = await chatSessionRepo.findAll({}, { business_id: businessId });
     for (const session of chatSessions) {
@@ -65,7 +75,7 @@ async function deleteBusiness(businessId: string) {
     }
     console.log(`✅ Deleted ${chatSessions.length} chat sessions`);
 
-    // 3. Delete availability slots
+    // 4. Delete availability slots
     console.log('🕐 Deleting availability slots...');
     const availabilitySlots = await availabilityRepo.findAll({}, { business_id: businessId });
     for (const slots of availabilitySlots) {
@@ -73,7 +83,7 @@ async function deleteBusiness(businessId: string) {
     }
     console.log(`✅ Deleted ${availabilitySlots.length} availability slot records`);
 
-    // 4. Delete calendar settings (for users of this business)
+    // 5. Delete calendar settings (for users of this business)
     console.log('📅 Deleting calendar settings...');
     const users = await userRepo.findAll({}, { business_id: businessId });
     let calendarCount = 0;
@@ -86,7 +96,7 @@ async function deleteBusiness(businessId: string) {
     }
     console.log(`✅ Deleted ${calendarCount} calendar settings`);
 
-    // 5. Delete services
+    // 6. Delete services
     console.log('🛠️ Deleting services...');
     const services = await serviceRepo.findAll({}, { business_id: businessId });
     for (const service of services) {
@@ -94,7 +104,7 @@ async function deleteBusiness(businessId: string) {
     }
     console.log(`✅ Deleted ${services.length} services`);
 
-    // 6. Delete users and their auth records
+    // 7. Delete users and their auth records
     console.log('👥 Deleting users and auth records...');
     for (const user of users) {
       // Delete auth user first (user.id is the auth user ID)
@@ -111,7 +121,7 @@ async function deleteBusiness(businessId: string) {
     }
     console.log(`✅ Deleted ${users.length} users and their auth records`);
 
-    // 7. Finally delete the business
+    // 8. Finally delete the business
     console.log('🏢 Deleting business...');
     await businessRepo.deleteOne({ id: businessId });
     console.log(`✅ Deleted business: ${business.name}`);
@@ -125,6 +135,7 @@ async function deleteBusiness(businessId: string) {
     console.log(`   Calendar Settings: ${calendarCount}`);
     console.log(`   Availability Slots: ${availabilitySlots.length}`);
     console.log(`   Business Tools: ${businessTools.length}`);
+    console.log(`   Business Prompts: ${businessPrompts.length}`);
 
   } catch (error) {
     console.error('❌ Business deletion failed:', error);
@@ -150,7 +161,7 @@ async function main() {
   console.log('   - Services and pricing');
   console.log('   - Chat sessions and messages');
   console.log('   - Availability slots');
-  console.log('   - Business tools configuration\n');
+  console.log('   - Business tools and prompts configuration\n');
 
   await deleteBusiness(businessId);
 }

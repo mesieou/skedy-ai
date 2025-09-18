@@ -14,18 +14,6 @@ export class BaseSeeder<T extends BaseEntity> {
     }
   }
 
-  // Strict test environment check (for cleanup only)
-  private checkTestEnvironment(): void {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('Seeding not allowed in production environment');
-    }
-
-    // Additional protection: Check if we're actually in a Jest test runner
-    if (typeof (global as typeof globalThis & { expect?: unknown }).expect === 'undefined' || typeof jest === 'undefined') {
-      throw new Error('Cleanup operations only allowed within Jest test environment');
-    }
-  }
-
   // Create using repository
   async create(data: Omit<T, 'id' | 'created_at' | 'updated_at'>): Promise<T> {
     this.checkProductionEnvironment();
@@ -42,21 +30,6 @@ export class BaseSeeder<T extends BaseEntity> {
     this.createdIds.push(record.id);
     return record;
   }
-
-  // Cleanup only records created by this seeder instance
-  async cleanup(): Promise<void> {
-    this.checkTestEnvironment();
-
-    if (this.createdIds.length > 0) {
-      console.log(`🧹 [BaseSeeder] Cleaning up ${this.createdIds.length} records created by this test`);
-      await this.repository.deleteMany(this.createdIds);
-      this.createdIds = []; // Clear tracking array
-    } else {
-      console.log(`🧹 [BaseSeeder] No records to cleanup for this test`);
-    }
-  }
-
-
 
   // Create multiple records
   async createMultiple(items: Omit<T, 'id' | 'created_at' | 'updated_at'>[]): Promise<T[]> {
