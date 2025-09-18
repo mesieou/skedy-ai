@@ -1,5 +1,6 @@
 import { BaseRepository } from '../base-repository';
 import type { BusinessTool } from '../types/business-tools';
+import type { OpenAIFunctionSchema } from '../types/tools';
 
 export class BusinessToolsRepository extends BaseRepository<BusinessTool> {
   constructor() {
@@ -7,22 +8,19 @@ export class BusinessToolsRepository extends BaseRepository<BusinessTool> {
   }
 
   /**
-   * Get active tool names for a business in ONE query using JOIN
+   * Get active tool schemas for a business in ONE query using JOIN
    */
-  async getActiveToolNamesForBusiness(businessId: string): Promise<string[]> {
+  async getActiveToolSchemasForBusiness(businessId: string): Promise<OpenAIFunctionSchema[]> {
     const client = await this.getClient();
     const { data, error } = await client
       .from('business_tools')
-      .select('tools(name)')
+      .select('tools(function_schema)')
       .eq('business_id', businessId)
       .eq('active', true);
 
-    if (error) throw new Error(`Failed to get tool names: ${error.message}`);
+    if (error) throw new Error(`Failed to get tool schemas: ${error.message}`);
     return (data || [])
-      .map((row: { tools: { name: string }[] }) => {
-        // Supabase foreign key relations return arrays
-        return row.tools?.[0]?.name;
-      })
-      .filter((name): name is string => Boolean(name));
+      .map((row: { tools: { function_schema: OpenAIFunctionSchema }[] }) => row.tools?.[0]?.function_schema)
+      .filter(Boolean);
   }
 }

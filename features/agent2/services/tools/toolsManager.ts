@@ -1,3 +1,1 @@
-//create static tool schemas
-
-//create dynamic schema - service specific
+//check required parameters for a tool schema

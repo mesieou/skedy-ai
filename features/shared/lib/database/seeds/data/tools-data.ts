@@ -52,8 +52,13 @@ export const getQuoteTool: CreateToolData = {
       description: 'Get quote',
       parameters: {
         type: 'object',
-        properties: {},
-        required: [],
+        properties: {
+          service_id: {
+            type: 'string',
+            description: 'Service id from get_service_details'
+          }
+        },
+        required: ['service_id'],
         additionalProperties: false
       }
     }
