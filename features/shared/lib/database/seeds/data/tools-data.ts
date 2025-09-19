@@ -70,8 +70,6 @@ export const getQuoteTool: CreateToolData = {
       quote_id: 'string',
       total_estimate_amount: 'number',
       total_estimate_time_minutes: 'number',
-      start_at: 'string',
-      end_at: 'string',
       price_breakdown: 'object',
       deposit_amount: 'number'
     }
@@ -95,9 +93,13 @@ export const checkDayAvailabilityTool: CreateToolData = {
           date: {
             type: 'string',
             description: 'Date in YYYY-MM-DD format'
+          },
+          quote_total_estimate_time_minutes: {
+            type: 'string',
+            description: 'Quote total estimate time minutes from get_quote'
           }
         },
-        required: ['date'],
+        required: ['date', 'quote_total_estimate_time_minutes'],
         additionalProperties: false
       }
     }

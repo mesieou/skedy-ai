@@ -24,28 +24,36 @@ export async function getServiceDetails(
   // Search for the service name
   const searchResults = fuse.search(args.service_name);
 
-  if (searchResults.length > 0) {
-    // Found a good match - get the matched service name and fetch full details
-    const matchedServiceName = searchResults[0].item;
+  try {
+    if (searchResults.length > 0) {
+      // Found a good match - get the matched service name and fetch full details
+      const matchedServiceName = searchResults[0].item;
 
-    // Get full service details from database
-    const serviceRepo = new ServiceRepository();
-    const service = await serviceRepo.findOne({
-      name: matchedServiceName,
-      business_id: business.id
-    });
+      // Get full service details from database
+      const serviceRepo = new ServiceRepository();
+      const service = await serviceRepo.findOne({
+        name: matchedServiceName,
+        business_id: business.id
+      });
 
-    if (!service) {
-      throw new Error(`Service found in list but not in database: ${matchedServiceName}`);
+      if (!service) {
+        // This should not happen if services list is in sync, but handle gracefully
+        const suggestions = services.slice(0, 3).join(', ');
+        const errorMessage = `Service "${matchedServiceName}" is temporarily unavailable. Available services: ${suggestions}`;
+        return buildToolResponse(tool, null, errorMessage);
+      }
+
+      // Success: return service data
+      return buildToolResponse(tool, service as unknown as Record<string, unknown>);
+    } else {
+      // User input error - service name not found (fuzzy search failed)
+      const suggestions = services.slice(0, 3).join(', ');
+      const errorMessage = `Sorry, I couldn't find "${args.service_name}". Available services: ${suggestions}`;
+
+      return buildToolResponse(tool, null, errorMessage);
     }
-
-    // Success: return service data (cast to Record for type compatibility)
-    return buildToolResponse(tool, service as unknown as Record<string, unknown>);
-  } else {
-    // Error: return suggestions
-    const suggestions = services.slice(0, 3).join(', ');
-    const errorMessage = `Sorry, I couldn't find "${args.service_name}". Similar services: ${suggestions}`;
-
-    return buildToolResponse(tool, null, errorMessage);
+  } catch (error) {
+    // Internal system errors should still throw (database connection issues, etc.)
+    throw error;
   }
 }
