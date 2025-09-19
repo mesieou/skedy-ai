@@ -7,7 +7,7 @@ import { WebhookEvent } from "@/app/api/voice/twilio-webhook/route";
 
 export class SessionService {
   static async createOrGet(callId: string, event: WebhookEvent) {
-    let session = sessionManager.get(callId);
+    let session = await sessionManager.get(callId);
 
     if (session) {
       // Return existing session
