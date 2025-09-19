@@ -1,4 +1,9 @@
 import { Session } from "../sessions/session";
+import {
+  handleWebSocketOpen,
+  handleWebSocketClose,
+  handleWebSocketError
+} from "./eventHandlers/connectionHandlers";
 
 // Attach handlers to the WebSocket
 export function attachWSHandlers(session: Session) {
@@ -8,15 +13,15 @@ export function attachWSHandlers(session: Session) {
 
   // WebSocket Connection Events
   session.ws.on("open", async () => {
-    // WebSocket connected
+    await handleWebSocketOpen(session);
   });
 
-  session.ws.on("close", async () => {
-    // WebSocket disconnected
+  session.ws.on("close", async (code: number, reason: string) => {
+    await handleWebSocketClose(session, code, reason);
   });
 
-  session.ws.on("error", async () => {
-    // WebSocket connection error
+  session.ws.on("error", async (error: Error) => {
+    await handleWebSocketError(session, error);
   });
 
   session.ws.on("message", async (raw) => {

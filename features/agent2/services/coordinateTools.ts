@@ -1,14 +1,14 @@
-import type { Session, ConversationState } from '../../sessions/session';
-import type { QuoteRequestData } from '../../../scheduling/lib/types/booking-domain';
-import { buildToolResponse } from '../helpers/response-builder';
+import type { Session, ConversationState } from '../sessions/session';
+import type { QuoteRequestData } from '../../scheduling/lib/types/booking-domain';
+import { buildToolResponse } from './helpers/responseBuilder';
 
 // Import tool functions
-import { getServiceDetails } from './getServiceDetails';
-import { getQuote } from './getQuote';
-import { checkDayAvailability } from './checkDayAvailability';
-import { createUser } from './createUser';
-import { createBooking } from './createBooking';
-import { requestTool } from './requestTool';
+import { getServiceDetails } from './tools/getServiceDetails';
+import { getQuote } from './tools/getQuote';
+import { checkDayAvailability } from './tools/checkDayAvailability';
+import { createUser } from './tools/createUser';
+import { createBooking } from './tools/createBooking';
+import { requestTool } from './tools/requestTool';
 
 /**
  * Execute tool function and update session state

@@ -2,7 +2,7 @@ import Fuse from 'fuse.js';
 import { ServiceRepository } from '../../../shared/lib/database/repositories/service-repository';
 import type { Session } from '../../sessions/session';
 import type { Tool } from '../../../shared/lib/database/types/tools';
-import { buildToolResponse } from '../helpers/response-builder';
+import { buildToolResponse } from '../helpers/responseBuilder';
 
 /**
  * Get service details by service name with fuzzy matching
