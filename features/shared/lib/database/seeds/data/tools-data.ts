@@ -64,12 +64,13 @@ export const getQuoteTool: CreateToolData = {
     }
   },
   output_template: {
-    success_message: 'Here\'s your quote - total cost is ${total_estimate_amount}',
+    success_message: 'Here\'s your quote - total estimate cost is ${total_estimate_amount}. Remember the price is an estimate and may vary.',
     error_message: 'I couldn\'t generate a quote for that request. Please check the service details and try again.',
     data_structure: {
       quote_id: 'string',
       total_estimate_amount: 'number',
-      total_estimate_time_minutes: 'number',
+      total_estimate_time_in_minutes: 'number',
+      minimum_charge_applied: 'boolean',
       price_breakdown: 'object',
       deposit_amount: 'number'
     }
@@ -178,10 +179,6 @@ export const createBookingTool: CreateToolData = {
             type: 'string',
             description: 'Time HH:MM (24-hour)'
           },
-          user_id: {
-            type: 'string',
-            description: 'User ID from create_user'
-          },
           quote_id: {
             type: 'string',
             description: 'Quote ID from selected quote'
@@ -191,21 +188,22 @@ export const createBookingTool: CreateToolData = {
             description: 'Optional message/instructions'
           }
         },
-        required: ['preferred_date', 'preferred_time', 'user_id', 'quote_id'],
+        required: ['preferred_date', 'preferred_time', 'quote_id'],
         additionalProperties: false
       }
     }
   },
   output_template: {
-    success_message: 'Booking confirmed {preferred_date} at {preferred_time}',
+    success_message: 'Booking confirmed {preferred_date} at {preferred_time}. Remember the price is an estimate and may vary.',
     error_message: 'Sorry, system issue',
     data_structure: {
       booking_id: 'string',
-      confirmation_number: 'string',
-      scheduled_date: 'string',
+      start_at: 'string',
+      end_at: 'string',
       scheduled_time: 'string',
-      total_price: 'number',
-      deposit_required: 'boolean',
+      total_estimate_amount: 'number',
+      total_estimate_time_in_minutes: 'number',
+      remaining_balance_amount: 'number',
       deposit_amount: 'number'
     }
   }

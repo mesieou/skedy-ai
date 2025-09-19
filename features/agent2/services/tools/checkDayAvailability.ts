@@ -23,12 +23,10 @@ export async function checkDayAvailability(
       return buildToolResponse(tool, null, `Invalid date format. Please use YYYY-MM-DD`);
     }
 
-    // Validate date is not in the past using DateUtils
-    const today = DateUtils.extractDateString(DateUtils.nowUTC());
-    const todayTimestamp = DateUtils.createSlotTimestamp(today, '00:00:00');
-    const requestedTimestamp = DateUtils.createSlotTimestamp(args.date, '00:00:00');
+    // Validate date is not in the past - compare business dates directly
+    const { date: todayInBusinessTimezone } = DateUtils.convertUTCToTimezone(DateUtils.nowUTC(), business.time_zone);
 
-    if (DateUtils.isBeforeUTC(requestedTimestamp, todayTimestamp)) {
+    if (args.date < todayInBusinessTimezone) {
       // User input error - past date
       return buildToolResponse(tool, null, `Cannot check past dates. Please select a future date.`);
     }
@@ -56,7 +54,7 @@ export async function checkDayAvailability(
       return buildToolResponse(tool, null, availabilityResult.formattedMessage);
     }
 
-    // Map result to match tool template exactly
+    // AvailabilityManager already returns times in business timezone
     const availabilityData = {
       date: availabilityResult.date,
       available_times: availabilityResult.availableSlots.map(slot => slot.time)

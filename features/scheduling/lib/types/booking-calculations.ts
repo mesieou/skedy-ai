@@ -94,8 +94,6 @@ export interface QuoteResultInfo {
   total_estimate_time_in_minutes: number;
   minimum_charge_applied: boolean;
   deposit_amount: number;
-  remaining_balance: number;
-  deposit_paid: boolean;
   price_breakdown: PriceBreakdown;
 }
 

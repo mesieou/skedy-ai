@@ -44,17 +44,8 @@ export async function getQuote(
     const calculator = new BookingCalculator();
     const quoteResult = await calculator.calculateBooking(args, service, business);
 
-    // Map quote result to match tool template exactly
-    const quoteData = {
-      quote_id: quoteResult.quote_id,
-      total_estimate_amount: quoteResult.total_estimate_amount,
-      total_estimate_time_minutes: quoteResult.total_estimate_time_in_minutes,
-      price_breakdown: quoteResult.price_breakdown,
-      deposit_amount: quoteResult.deposit_amount
-    };
-
-    // Success - use response builder
-    return buildToolResponse(tool, quoteData as unknown as Record<string, unknown>);
+    // Success - use response builder (now matches tool template exactly)
+    return buildToolResponse(tool, quoteResult as unknown as Record<string, unknown>);
 
   } catch (error) {
     // Internal system errors should still throw (database issues, calculation failures, etc.)

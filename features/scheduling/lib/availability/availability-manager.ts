@@ -104,8 +104,12 @@ export class AvailabilityManager {
         };
       }
 
-      // Get slots for the requested date
-      const daySlots = this.availabilitySlots.slots[dateStr];
+      // Convert business date to UTC context for database lookup
+      const utcDateContext = DateUtils.createSlotTimestamp(dateStr, '00:00:00');
+      const utcDateKey = DateUtils.extractDateString(utcDateContext);
+
+      // Get slots for the UTC date key
+      const daySlots = this.availabilitySlots.slots[utcDateKey];
 
       if (!daySlots) {
         return {
@@ -132,11 +136,16 @@ export class AvailabilityManager {
         };
       }
 
-      // Convert to structured format (slots are already in UTC, convert to business timezone for display)
-      const availableSlots = durationSlots.map(([time, providerCount]) => ({
-        time: this.convertSlotToBusinessTime(dateStr, time + ':00'),
-        providerCount
-      }));
+      // Convert UTC slot times to business timezone for user display
+      const availableSlots = durationSlots.map(([utcTime, providerCount]) => {
+        // utcTime is stored as "14:00" but represents UTC time, convert to business timezone
+        const utcTimestamp = DateUtils.createSlotTimestamp(utcDateKey, utcTime + ':00');
+        const { time: businessTime } = DateUtils.convertUTCToTimezone(utcTimestamp, this.business.time_zone);
+        return {
+          time: businessTime, // Returns HH:MM in business timezone
+          providerCount
+        };
+      });
 
       // Create natural receptionist message
       const formattedMessage = this.formatAvailabilityMessage(dateStr, availableSlots);
