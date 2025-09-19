@@ -87,7 +87,7 @@ export interface PriceBreakdown {
   business_fees: BusinessFeeBreakdown;
 }
 
-// Result of quote calculation - the calculated quote
+// Result of quote calculation - the calculated quote (for tool responses)
 export interface QuoteResultInfo {
   quote_id: string;
   total_estimate_amount: number;
@@ -95,6 +95,12 @@ export interface QuoteResultInfo {
   minimum_charge_applied: boolean;
   deposit_amount: number;
   price_breakdown: PriceBreakdown;
+}
+
+// Complete quote calculation result (internal use)
+export interface QuoteCalculationResult {
+  quoteResult: QuoteResultInfo;
+  quoteRequest: QuoteRequestInfo;
 }
 
 // Business fees

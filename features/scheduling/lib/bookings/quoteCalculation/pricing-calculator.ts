@@ -1,6 +1,6 @@
 import type { Service } from '../../../../shared/lib/database/types/service';
 import type { Business } from '../../../../shared/lib/database/types/business';
-import type { QuoteResultInfo, ServiceWithQuantity } from '../../types/booking-calculations';
+import type { QuoteResultInfo, ServiceWithQuantity, QuoteRequestInfo, QuoteCalculationResult } from '../../types/booking-calculations';
 import type { QuoteRequestData } from '../../types/booking-domain';
 import { DateUtils } from '../../../../shared/utils/date-utils';
 
@@ -39,7 +39,7 @@ export class BookingCalculator {
     service: Service,
     business: Business,
     quoteCounter: number = 1
-  ): Promise<QuoteResultInfo> {
+  ): Promise<QuoteCalculationResult> {
     try {
       // Extract quantity directly from raw args
       const quantity = args.quantity || args.number_of_people || args.number_of_rooms || args.number_of_vehicles || 1;
@@ -95,25 +95,33 @@ export class BookingCalculator {
 
       // Step 7: Calculate deposit
       const deposit_amount = this.businessFeesCalculator.calculateDeposit(total_estimate_amount, business);
-      const remaining_balance = total_estimate_amount; // Full amount for new bookings
-      const deposit_paid = false; // Always false for new bookings
 
       // Step 8: Generate quote ID
       const quote_id = this.quoteIdGenerator.generateQuoteId(quoteCounter, service, quantity);
 
-      return {
+      // Build separate result and request objects
+      const quoteResult: QuoteResultInfo = {
         quote_id,
         total_estimate_amount,
         total_estimate_time_in_minutes,
         minimum_charge_applied,
         deposit_amount,
-        remaining_balance,
-        deposit_paid,
         price_breakdown: {
           service_breakdowns: [breakdown],
           travel_breakdown,
           business_fees,
         },
+      };
+
+      const quoteRequest: QuoteRequestInfo = {
+        services: [serviceWithQuantity],
+        business,
+        addresses,
+      };
+
+      return {
+        quoteResult,
+        quoteRequest,
       };
     } catch (error) {
       throw new Error(

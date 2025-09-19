@@ -1,10 +1,10 @@
 import { CustomerManager } from '../../../scheduling/lib/bookings/customer-manager';
-import type { Business } from '../../../shared/lib/database/types/business';
+import type { Session } from '../../sessions/session';
 import type { Tool } from '../../../shared/lib/database/types/tools';
 import { buildToolResponse } from './helpers/response-builder';
 
 /**
- * Create user - uses response builder for consistency
+ * Create user - uses session injection for minimal dependencies
  */
 export async function createUser(
   args: {
@@ -12,9 +12,8 @@ export async function createUser(
     last_name?: string;
     email?: string;
   },
-  business: Business,
-  tool: Tool,
-  phoneNumber: string
+  session: Session,
+  tool: Tool
 ) {
   try {
     // Validate required fields (user input validation)
@@ -26,8 +25,8 @@ export async function createUser(
     // Prepare user data for creation
     const userData = {
       name: args.first_name.trim(),
-      phone_number: phoneNumber,
-      business_id: business.id,
+      phone_number: session.customerPhoneNumber,
+      business_id: session.businessEntity.id,
       // Optional fields
       last_name: args.last_name?.trim() || undefined,
       email: args.email?.trim() || undefined
@@ -36,6 +35,11 @@ export async function createUser(
     // Use CustomerManager for core user creation logic
     const customerManager = new CustomerManager();
     const result = await customerManager.createOrFindUser(userData);
+
+    // Update session with created user
+    session.customerEntity = result.user;
+    session.customerId = result.user.id;
+    session.conversationState = 'booking';
 
     // Map result to match tool template exactly
     const userData_response = {

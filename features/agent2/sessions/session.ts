@@ -1,6 +1,7 @@
 import { Business } from "../../shared/lib/database/types/business";
 import { User } from "../../shared/lib/database/types/user";
 import { Interaction } from "../../shared/lib/database/types/interactions";
+import { QuoteResultInfo, QuoteRequestInfo } from "../../scheduling/lib/types/booking-calculations";
 import { TokenSpent } from "../types";
 import WebSocket from "ws";
 
@@ -19,4 +20,25 @@ export interface Session {
   startedAt: number;
   endedAt?: number;
   durationInMinutes?: number;
+
+  // === TOOL SYSTEM ADDITIONS ===
+  // Cached entities for tools (minimal dependencies)
+  serviceNames: string[];                 // List of service names for fuzzy search
+
+  // Conversation state for progressive tool injection
+  quotes: QuoteResultInfo[];             // All quotes generated during conversation
+  selectedQuote?: QuoteResultInfo;       // Currently selected quote result
+  selectedQuoteRequest?: QuoteRequestInfo; // Currently selected quote request
+  conversationState: ConversationState;  // Current state for progressive tool injection
 }
+
+/**
+ * Conversation states for progressive tool injection
+ */
+export type ConversationState =
+  | 'service_selection'    // Initial state - can select services
+  | 'quoting'             // Getting quotes for services
+  | 'availability'        // Checking availability for quotes
+  | 'user_management'     // Creating/verifying user
+  | 'booking'             // Ready to create booking
+  | 'completed';          // Booking created

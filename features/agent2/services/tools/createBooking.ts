@@ -1,13 +1,11 @@
 import { BookingOrchestrator } from '../../../scheduling/lib/bookings/booking-orchestrator';
-import type { Business } from '../../../shared/lib/database/types/business';
-import type { User } from '../../../shared/lib/database/types/user';
+import type { Session } from '../../sessions/session';
 import type { Tool } from '../../../shared/lib/database/types/tools';
-import type { QuoteRequestInfo, QuoteResultInfo } from '../../../scheduling/lib/types/booking-calculations';
 import { buildToolResponse } from './helpers/response-builder';
 import { DateUtils } from '../../../shared/utils/date-utils';
 
 /**
- * Create booking - uses response builder for consistency
+ * Create booking - uses session injection for minimal dependencies
  */
 export async function createBooking(
   args: {
@@ -16,11 +14,8 @@ export async function createBooking(
     quote_id: string;
     confirmation_message?: string;
   },
-  business: Business,
-  user: User,
-  tool: Tool,
-  quoteRequestData: QuoteRequestInfo,
-  quoteResultData: QuoteResultInfo
+  session: Session,
+  tool: Tool
 ) {
   try {
     // Validate date format using DateUtils
@@ -36,32 +31,44 @@ export async function createBooking(
     }
 
     // Validate date is not in the past - compare business dates directly
-    const { date: todayInBusinessTimezone } = DateUtils.convertUTCToTimezone(DateUtils.nowUTC(), business.time_zone);
+    const { date: todayInBusinessTimezone } = DateUtils.convertUTCToTimezone(DateUtils.nowUTC(), session.businessEntity.time_zone);
 
     if (args.preferred_date < todayInBusinessTimezone) {
       // User input error - past date
       return buildToolResponse(tool, null, `Cannot book past dates. Please select a future date.`);
     }
 
-    // Validate quote_id matches the quote data
-    if (quoteResultData.quote_id !== args.quote_id) {
+    // Get selected quote and request from session
+    if (!session.selectedQuote || !session.selectedQuoteRequest) {
+      // User input error - no quote selected
+      return buildToolResponse(tool, null, `No quote selected. Please get a quote first.`);
+    }
+
+    // Validate quote_id matches the selected quote
+    if (session.selectedQuote.quote_id !== args.quote_id) {
       // User input error - quote mismatch
       return buildToolResponse(tool, null, `Quote ID mismatch. Please get a fresh quote.`);
     }
 
+    // Validate user exists in session
+    if (!session.customerEntity) {
+      // User input error - no user in session
+      return buildToolResponse(tool, null, `User profile required. Please create a user profile first.`);
+    }
+
     // Add missing fields to quoteResultData before passing to BookingOrchestrator
     const completeQuoteResultData = {
-      ...quoteResultData,
-      remaining_balance: quoteResultData.total_estimate_amount, // Initially same as total
+      ...session.selectedQuote,
+      remaining_balance: session.selectedQuote.total_estimate_amount, // Initially same as total
       deposit_paid: false // Initially false until payment tools handle it
     };
 
     // Use BookingOrchestrator for core booking creation
     const bookingOrchestrator = new BookingOrchestrator();
     const result = await bookingOrchestrator.createBooking({
-      quoteRequestData,
+      quoteRequestData: session.selectedQuoteRequest,
       quoteResultData: completeQuoteResultData,
-      userId: user.id,
+      userId: session.customerEntity.id,
       preferredDate: args.preferred_date,
       preferredTime: args.preferred_time
     });
@@ -71,16 +78,15 @@ export async function createBooking(
       return buildToolResponse(tool, null, result.error || `Booking could not be created. We will contact you shortly.`);
     }
 
-    // Calculate start_at and end_at timestamps
-    const start_at = DateUtils.convertBusinessTimeToUTC(
-      args.preferred_date,
-      args.preferred_time + ':00',
-      business.time_zone
-    );
-    const end_at = DateUtils.calculateEndTimestamp(
-      start_at,
-      quoteResultData.total_estimate_time_in_minutes
-    );
+    // Convert booking UTC timestamps to business timezone for user display
+    const { date: start_date, time: start_time } = DateUtils.convertUTCToTimezone(result.booking.start_at, session.businessEntity.time_zone);
+    const { date: end_date, time: end_time } = DateUtils.convertUTCToTimezone(result.booking.end_at, session.businessEntity.time_zone);
+
+    const start_at = `${start_date} ${start_time}`;
+    const end_at = `${end_date} ${end_time}`;
+
+    // Update session - conversation completed
+    session.conversationState = 'completed';
 
     // Map result to match tool template exactly
     const bookingData = {
@@ -88,10 +94,10 @@ export async function createBooking(
       start_at,
       end_at,
       scheduled_time: args.preferred_time,
-      total_estimate_amount: quoteResultData.total_estimate_amount,
-      total_estimate_time_in_minutes: quoteResultData.total_estimate_time_in_minutes,
-      remaining_balance_amount: quoteResultData.total_estimate_amount, // Initially same as total (no payments yet)
-      deposit_amount: quoteResultData.deposit_amount
+      total_estimate_amount: session.selectedQuote.total_estimate_amount,
+      total_estimate_time_in_minutes: session.selectedQuote.total_estimate_time_in_minutes,
+      remaining_balance_amount: session.selectedQuote.total_estimate_amount, // Initially same as total (no payments yet)
+      deposit_amount: session.selectedQuote.deposit_amount
     };
 
     // Success - use response builder

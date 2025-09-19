@@ -1,19 +1,19 @@
 import { AvailabilitySlotsRepository } from '../../../shared/lib/database/repositories/availability-slots-repository';
 import { AvailabilityManager } from '../../../scheduling/lib/availability/availability-manager';
-import type { Business } from '../../../shared/lib/database/types/business';
+import type { Session } from '../../sessions/session';
 import type { Tool } from '../../../shared/lib/database/types/tools';
 import { buildToolResponse } from './helpers/response-builder';
 import { DateUtils } from '../../../shared/utils/date-utils';
 
 /**
- * Check day availability - uses response builder for consistency
+ * Check day availability - uses session injection for minimal dependencies
  */
 export async function checkDayAvailability(
   args: {
     date: string;
     quote_total_estimate_time_minutes: number;
   },
-  business: Business,
+  session: Session,
   tool: Tool
 ) {
   try {
@@ -24,7 +24,7 @@ export async function checkDayAvailability(
     }
 
     // Validate date is not in the past - compare business dates directly
-    const { date: todayInBusinessTimezone } = DateUtils.convertUTCToTimezone(DateUtils.nowUTC(), business.time_zone);
+    const { date: todayInBusinessTimezone } = DateUtils.convertUTCToTimezone(DateUtils.nowUTC(), session.businessEntity.time_zone);
 
     if (args.date < todayInBusinessTimezone) {
       // User input error - past date
@@ -34,7 +34,7 @@ export async function checkDayAvailability(
     // Get current availability slots for the business
     const availabilitySlotsRepo = new AvailabilitySlotsRepository();
     const currentAvailabilitySlots = await availabilitySlotsRepo.findOne({
-      business_id: business.id
+      business_id: session.businessEntity.id
     });
 
     if (!currentAvailabilitySlots) {
@@ -43,7 +43,7 @@ export async function checkDayAvailability(
     }
 
     // Use AvailabilityManager to check the day with quote duration
-    const availabilityManager = new AvailabilityManager(currentAvailabilitySlots, business);
+    const availabilityManager = new AvailabilityManager(currentAvailabilitySlots, session.businessEntity);
     const availabilityResult = availabilityManager.checkDayAvailability(
       args.date,
       args.quote_total_estimate_time_minutes
