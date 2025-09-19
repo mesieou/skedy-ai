@@ -1,10 +1,9 @@
 import { Session } from "../sessions/session";
-import { RedisClient } from "../redis/redisClient";
 import { attachWSHandlers } from "./handlers";
 import WebSocket from "ws";
 
 
-export async function createWebSocket(apiKey: string, session: Session, redis: RedisClient) {
+export async function createWebSocket(apiKey: string, session: Session) {
 
   // Create WebSocket connection
   const ws = new WebSocket(`wss://api.openai.com/v1/realtime?call_id=${session.id}`, [
@@ -14,7 +13,7 @@ export async function createWebSocket(apiKey: string, session: Session, redis: R
   session.ws = ws as WebSocket;
 
   // Attach handlers to the WebSocket
-  attachWSHandlers(session, redis);
+  attachWSHandlers(session);
 
   // Return the WebSocket connection
   return ws;

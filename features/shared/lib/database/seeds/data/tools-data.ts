@@ -209,6 +209,45 @@ export const createBookingTool: CreateToolData = {
   }
 };
 
+export const requestToolTool: CreateToolData = {
+  name: 'request_tool',
+  description: 'Request access to a tool when customer changes conversation direction',
+  version: '1.0.0',
+  dynamic_parameters: false,
+  business_specific: false,
+  function_schema: {
+    type: 'function',
+    function: {
+      name: 'request_tool',
+      description: 'Request tool access for conversation flow changes',
+      parameters: {
+        type: 'object',
+        properties: {
+          tool_name: {
+            type: 'string',
+            description: 'Tool needed',
+            enum: ['get_service_details', 'get_quote', 'check_day_availability', 'create_user', 'create_booking']
+          },
+          reason: {
+            type: 'string',
+            description: 'Why needed'
+          }
+        },
+        required: ['tool_name'],
+        additionalProperties: false
+      }
+    }
+  },
+  output_template: {
+    success_message: '{tool_name} ready. Continue with your request.',
+    error_message: 'Tool unavailable.',
+    data_structure: {
+      tool_name: 'string',
+      available: 'boolean'
+    }
+  }
+};
+
 // ============================================================================
 // TOOL COLLECTIONS
 // ============================================================================
@@ -221,7 +260,8 @@ export const removalistTools: CreateToolData[] = [
   getQuoteTool,
   checkDayAvailabilityTool,
   createUserTool,
-  createBookingTool
+  createBookingTool,
+  requestToolTool
 ];
 
 /**
@@ -234,7 +274,8 @@ export const allAvailableTools: CreateToolData[] = [
   getQuoteTool,
   checkDayAvailabilityTool,
   createUserTool,
-  createBookingTool
+  createBookingTool,
+  requestToolTool
 
   // Future tools will be added here:
   // - Cleaning service tools

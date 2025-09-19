@@ -1,26 +1,30 @@
-import { BusinessToolsRepository } from '../../../shared/lib/database/repositories/business-tools-repository';
+import { ToolsRepository } from '../../../shared/lib/database/repositories/tools-repository';
 import { BusinessPromptRepository } from '../../../shared/lib/database/repositories/business-prompt-repository';
 import { BusinessRepository } from '../../../shared/lib/database/repositories/business-repository';
 import type { Business } from '../../../shared/lib/database/types/business';
-import type { OpenAIFunctionSchema } from '../../../shared/lib/database/types/tools';
+import type { Tool } from '../../../shared/lib/database/types/tools';
+import type { Session } from '../../sessions/session';
 
 export interface GeneratedPromptAndTools {
   prompt: string;
-  tools: OpenAIFunctionSchema[];
+  tools: Tool[];
 }
 
 /**
  * Generate complete prompt with business tools and information injected
  * Returns both the prompt and the tool schemas for OpenAI
  */
-export async function generatePromptAndTools(business: Business): Promise<GeneratedPromptAndTools> {
-  const businessToolsRepo = new BusinessToolsRepository();
+export async function generatePromptAndTools(business: Business, session?: Session): Promise<GeneratedPromptAndTools> {
+  const toolRepo = new ToolsRepository();
   const businessPromptRepo = new BusinessPromptRepository();
   const businessRepo = new BusinessRepository();
 
-  // Get active tool schemas for business in ONE query using JOIN
-  const tools = await businessToolsRepo.getActiveToolSchemasForBusiness(business.id);
-  const toolsList = tools.length > 0 ? tools.map(t => t.function.name).join(', ') : 'No tools configured';
+  // Get active tools for business
+  const tools = await toolRepo.findAll({}, {
+    business_id: business.id,
+    is_active: true
+  });
+  const toolsList = tools.length > 0 ? tools.map((t: Tool) => t.name).join(', ') : 'No tools configured';
 
   // Get business info string
   const businessInfoString = businessRepo.buildBusinessInfoForCustomers(business);
@@ -38,6 +42,13 @@ export async function generatePromptAndTools(business: Business): Promise<Genera
     (prompt, [placeholder, value]) => prompt!.replace(new RegExp(placeholder, 'g'), value),
     promptContent
   );
+
+  // Set initial active tools in session if provided
+  if (session) {
+    session.aiInstructions = finalPrompt!;
+    session.availableTools = tools; // Store actual Tool objects from database
+    session.activeTools = ['get_service_details', 'request_tool'];
+  }
 
   return {
     prompt: finalPrompt!,

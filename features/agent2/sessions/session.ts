@@ -2,6 +2,7 @@ import { Business } from "../../shared/lib/database/types/business";
 import { User } from "../../shared/lib/database/types/user";
 import { Interaction } from "../../shared/lib/database/types/interactions";
 import { QuoteResultInfo, QuoteRequestInfo } from "../../scheduling/lib/types/booking-calculations";
+import { Tool } from "../../shared/lib/database/types/tools";
 import { TokenSpent } from "../types";
 import WebSocket from "ws";
 
@@ -24,6 +25,11 @@ export interface Session {
   // === TOOL SYSTEM ADDITIONS ===
   // Cached entities for tools (minimal dependencies)
   serviceNames: string[];                 // List of service names for fuzzy search
+
+  // AI & Tools
+  aiInstructions?: string;                    // Generated prompt for OpenAI
+  availableTools: Tool[];                     // All tools for this business
+  activeTools: string[];                     // Currently active tool names
 
   // Conversation state for progressive tool injection
   quotes: QuoteResultInfo[];             // All quotes generated during conversation

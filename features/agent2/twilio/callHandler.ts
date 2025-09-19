@@ -5,8 +5,7 @@ import { WebhookEvent } from '@/app/api/voice/twilio-webhook/route';
 export async function handleCallEvent(session: Session, event: WebhookEvent) {
   switch(event.type) {
     case 'realtime.call.incoming':
-      // 1. Generate business context
-      // 2. Generate ai instructions and tools
+      // 1. Generate promptAndTools
       // 3. Preload business context to redis
       // 4. Create webSocket
       // 5. Connect call

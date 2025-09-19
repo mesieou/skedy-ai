@@ -41,7 +41,9 @@ export class SessionService {
         // Tool system fields
         serviceNames: [],
         quotes: [],
-        conversationState: 'service_selection'
+        conversationState: 'service_selection',
+        availableTools: [],
+        activeTools: []
       } as Session;
 
       sessionManager.add(session);
