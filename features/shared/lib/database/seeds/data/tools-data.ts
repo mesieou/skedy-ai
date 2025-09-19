@@ -129,12 +129,20 @@ export const createUserTool: CreateToolData = {
       parameters: {
         type: 'object',
         properties: {
-          name: {
+          first_name: {
             type: 'string',
             description: 'Customer name'
+          },
+          last_name: {
+            type: 'string',
+            description: 'Customer last name'
+          },
+          email: {
+            type: 'string',
+            description: 'Customer email'
           }
         },
-        required: ['name'],
+        required: ['first_name'],
         additionalProperties: false
       }
     }
@@ -144,8 +152,6 @@ export const createUserTool: CreateToolData = {
     error_message: 'Sorry, system issue',
     data_structure: {
       user_id: 'string',
-      customer_name: 'string',
-      created: 'boolean'
     }
   }
 };
