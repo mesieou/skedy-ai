@@ -25,8 +25,8 @@ export const getServiceDetailsTool: CreateToolData = {
     }
   },
   output_template: {
-    success_message: 'Details for {service_name}',
-    error_message: 'Sorry, system issue',
+    success_message: 'Here are the details for {service_name}',
+    error_message: 'I couldn\'t find that service. Let me show you what\'s available instead.',
     data_structure: {
       service_id: 'string',
       name: 'string',
@@ -64,8 +64,8 @@ export const getQuoteTool: CreateToolData = {
     }
   },
   output_template: {
-    success_message: 'Quote ready',
-    error_message: 'Sorry, system issue',
+    success_message: 'Here\'s your quote - total cost is ${total_estimate_amount}',
+    error_message: 'I couldn\'t generate a quote for that request. Please check the service details and try again.',
     data_structure: {
       quote_id: 'string',
       total_estimate_amount: 'number',

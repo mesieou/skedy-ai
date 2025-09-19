@@ -89,6 +89,7 @@ export interface PriceBreakdown {
 
 // Result of quote calculation - the calculated quote
 export interface QuoteResultInfo {
+  quote_id: string;
   total_estimate_amount: number;
   total_estimate_time_in_minutes: number;
   minimum_charge_applied: boolean;

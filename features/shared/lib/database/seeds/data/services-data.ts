@@ -25,7 +25,7 @@ export const removalistExample1ServiceData: CreateServiceData = {
     components: [
       {
         name: "Labor Cost",
-        pricing_combination: PricingCombination.LABOR_PER_HOUR_PER_PERSON,
+        pricing_combination: PricingCombination.LABOR_PER_HOUR_TEAM_RATE,
         tiers: [
           {
             min_quantity: 1,
@@ -73,7 +73,7 @@ export const removalistExample1ServiceData: CreateServiceData = {
       },
       {
         name: "Travel Cost",
-        pricing_combination: PricingCombination.TRAVEL_PER_HOUR_PER_PERSON,
+        pricing_combination: PricingCombination.TRAVEL_PER_HOUR_TEAM_RATE,
         tiers: [
           {
             min_quantity: 1,
@@ -161,7 +161,7 @@ export const removalistExample3ServiceData: CreateServiceData = {
     components: [
       {
         name: "Labor Cost",
-        pricing_combination: PricingCombination.LABOR_PER_HOUR_PER_PERSON,
+        pricing_combination: PricingCombination.LABOR_PER_HOUR_TEAM_RATE,
         tiers: [
           {
             min_quantity: 1,
@@ -205,7 +205,7 @@ export const removalistExample4ServiceData: CreateServiceData = {
     components: [
       {
         name: "Hourly Labor",
-        pricing_combination: PricingCombination.LABOR_PER_HOUR_PER_PERSON,
+        pricing_combination: PricingCombination.LABOR_PER_HOUR_TEAM_RATE,
         tiers: [
           {
             min_quantity: 1,
@@ -229,7 +229,7 @@ export const removalistExample4ServiceData: CreateServiceData = {
       },
       {
         name: "Per-Minute Labor",
-        pricing_combination: PricingCombination.LABOR_PER_MINUTE_PER_PERSON,
+        pricing_combination: PricingCombination.LABOR_PER_MINUTE_TEAM_RATE,
         tiers: [
           {
             min_quantity: 1,

@@ -24,10 +24,9 @@ export enum TravelChargingModel {
 
 // Pricing combinations enum
 export enum PricingCombination {
-  // Multiple components with multiple tiers
+  // === Multiple components with multiple tiers per person rates ===
   LABOR_PER_HOUR_PER_PERSON = 'labor_per_hour_per_person',
   LABOR_PER_MINUTE_PER_PERSON = 'labor_per_minute_per_person',
-  LABOR_PER_HOUR_PER_ROOM = 'labor_per_hour_per_room',
   TRAVEL_PER_KM_PER_PERSON = 'travel_per_km_per_person',
   TRAVEL_PER_MINUTE_PER_PERSON = 'travel_per_minute_per_person',
   TRAVEL_PER_HOUR_PER_PERSON = 'travel_per_hour_per_person',
@@ -35,21 +34,34 @@ export enum PricingCombination {
   TRAVEL_PER_MINUTE_PER_VEHICLE = 'travel_per_minute_per_vehicle',
   TRAVEL_PER_HOUR_PER_VEHICLE = 'travel_per_hour_per_vehicle',
 
-  // Multiple components with one tier
+  // === Multiple components with multiple tiers Crew rates===
+  LABOR_PER_HOUR_TEAM_RATE = 'labor_per_hour_team_rate',
+  LABOR_PER_MINUTE_TEAM_RATE = 'labor_per_minute_team_rate',
+  TRAVEL_PER_KM_TEAM_RATE = 'travel_per_km_team_rate',
+  TRAVEL_PER_MINUTE_TEAM_RATE = 'travel_per_minute_team_rate',
+  TRAVEL_PER_HOUR_TEAM_RATE = 'travel_per_hour_team_rate',
+
+  // === Multiple components with one tier ===
   TRAVEL_PER_KM = 'travel_per_km',
   TRAVEL_PER_MINUTE = 'travel_per_minute',
+  TRAVEL_PER_HOUR = 'travel_per_hour',
   LABOUR_PER_HOUR = 'labour_per_hour',
   LABOUR_PER_MINUTE = 'labour_per_minute',
 
-  // Only one component with multiple tiers
+  // Only one component with multiple tiers Per person rates
   SERVICE_PER_MINUTE_PER_PERSON = 'service_per_minute_per_person',
   SERVICE_PER_HOUR_PER_PERSON = 'service_per_hour_per_person',
-  SERVICE_PER_ROOM = 'service_per_room',
-  SERVICE_PER_SQM = 'service_per_sqm',
-  SERVICE_PER_MINUTE = 'service_per_minute',
+
+   // Only one component with multiple tiers Team rates
+   SERVICE_PER_MINUTE_TEAM_RATE = 'service_per_minute_team_rate',
+   SERVICE_PER_HOUR_TEAM_RATE = 'service_per_hour_team_rate',
 
   // Only one component with one tier
-  SERVICE_FIXED_PER_SERVICE = 'service_fixed_per_service'
+  SERVICE_FIXED_PER_SERVICE = 'service_fixed_per_service',
+  SERVICE_PER_MINUTE = 'service_per_minute',
+  SERVICE_PER_HOUR = 'service_per_hour',
+  SERVICE_PER_ROOM = 'service_per_room',
+  SERVICE_PER_SQM = 'service_per_sqm'
 }
 
 // Job scope types for duration estimates

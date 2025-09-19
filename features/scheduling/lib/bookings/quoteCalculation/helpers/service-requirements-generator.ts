@@ -5,8 +5,8 @@
  * Used by service repository to populate ai_function_requirements column
  */
 
-import type { Service } from '../types/service';
-import { TravelChargingModel, PricingCombination, isMobileService } from '../types/service';
+import type { Service } from '../../../../../shared/lib/database/types/service';
+import { TravelChargingModel, PricingCombination, isMobileService } from '../../../../../shared/lib/database/types/service';
 
 export class ServiceRequirementsGenerator {
 

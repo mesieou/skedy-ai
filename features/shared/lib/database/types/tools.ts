@@ -61,7 +61,7 @@ export interface ParameterDefinition {
 export interface ToolOutputTemplate {
   success_message?: string;              // Template for success responses
   error_message?: string;                // Template for error responses
-  data_structure?: Record<string, unknown>;  // Expected data structure
+  data_structure?: Record<string, string>;  // Expected data structure (field name -> type description)
 }
 
 

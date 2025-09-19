@@ -1,5 +1,5 @@
 import { ServiceRepository } from '../../../shared/lib/database/repositories/service-repository';
-import { BookingCalculator } from '../../../scheduling/lib/bookings/pricing-calculator';
+import { BookingCalculator } from '../../../scheduling/lib/bookings/quoteCalculation';
 import { AddressValidator } from '../../../scheduling/lib/bookings/address-validator';
 import type { QuoteRequestData } from '../../../scheduling/lib/types/booking-domain';
 import type { Business } from '../../../shared/lib/database/types/business';
@@ -40,6 +40,7 @@ export async function getQuote(
 
   // Format response (simple)
   const response = {
+    quote_id: quoteResult.quote_id,
     service_name: service.name,
     total_amount: quoteResult.total_estimate_amount,
     total_time_minutes: quoteResult.total_estimate_time_in_minutes,
