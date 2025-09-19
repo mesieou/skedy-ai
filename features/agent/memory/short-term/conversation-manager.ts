@@ -7,7 +7,7 @@
  * - Full conversation history preservation
  */
 
-import { voiceRedisClient } from '../redis/redis-client';
+import { voiceRedisClient } from '../../../agent2/sessions/redisClient';
 import { simpleCircuitBreaker } from '../redis/simple-circuit-breaker';
 
 // ============================================================================

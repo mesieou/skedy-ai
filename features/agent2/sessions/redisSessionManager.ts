@@ -1,28 +1,36 @@
-import { VoiceRedisClient } from '../../agent/memory/redis/redis-client';
+import { VoiceRedisClient } from './redisClient';
 import type { Session } from './session';
 
 // Create Redis client instance for sessions
 const redisClient = new VoiceRedisClient();
 
 /**
- * Simple Redis Session Manager - only what we need for current tools
+ * Redis Session Manager with Hash-based Partial Updates
  *
- * Operations based on current tool usage:
- * - Save/load complete sessions
- * - Track session state changes
+ * Uses Redis hashes for efficient field-level updates:
+ * - Only updates changed fields, not entire session
+ * - Reduces network overhead and serialization cost
+ * - Supports field-specific operations
  */
 export class RedisSessionManager {
   private readonly KEY_PREFIX = 'agent2:session:';
   private readonly TTL_SECONDS = 3600; // 1 hour session TTL
 
   /**
-   * Save complete session to Redis with business namespacing
+   * Save complete session to Redis as hash fields
    */
   async saveSession(session: Session): Promise<void> {
     try {
       const key = this.getSessionKey(session);
-      const sessionData = JSON.stringify(session);
-      await redisClient.set(key, sessionData, this.TTL_SECONDS);
+      const hashFields = this.sessionToHashFields(session);
+
+      // Use pipeline for atomic multi-field update
+      const pipeline = redisClient.client.pipeline();
+      for (const [field, value] of Object.entries(hashFields)) {
+        pipeline.hset(key, field, value);
+      }
+      pipeline.expire(key, this.TTL_SECONDS);
+      await pipeline.exec();
     } catch (error) {
       console.error(`❌ [RedisSessionManager] Failed to save session ${session.id}:`, error);
       // Don't throw - let app continue with memory-only session
@@ -30,18 +38,18 @@ export class RedisSessionManager {
   }
 
   /**
-   * Load session from Redis
+   * Load session from Redis hash fields
    */
   async loadSession(sessionId: string, businessId: string): Promise<Session | null> {
     try {
       const key = this.getBusinessSessionKey(businessId, sessionId);
-      const sessionData = await redisClient.get(key);
+      const hashData = await redisClient.hgetall(key);
 
-      if (!sessionData) {
+      if (!hashData || Object.keys(hashData).length === 0) {
         return null;
       }
 
-      return JSON.parse(sessionData) as Session;
+      return this.hashFieldsToSession(hashData);
     } catch (error) {
       console.error(`❌ [RedisSessionManager] Failed to load session ${sessionId}:`, error);
       return null;
@@ -76,6 +84,60 @@ export class RedisSessionManager {
   }
 
   /**
+   * Update specific session field (efficient partial update) with validation
+   */
+  async updateSessionField(sessionId: string, businessId: string, field: string, value: unknown): Promise<void> {
+    if (!sessionId || !businessId || !field) {
+      throw new Error('Invalid parameters: sessionId, businessId, and field are required');
+    }
+
+    try {
+      const key = this.getBusinessSessionKey(businessId, sessionId);
+      const serializedValue = this.serializeFieldValue(value);
+      await redisClient.hset(key, field, serializedValue);
+    } catch (error) {
+      console.error(`❌ [RedisSessionManager] Failed to update field ${field} for session ${sessionId}:`, error);
+      throw error; // Re-throw to allow caller to handle
+    }
+  }
+
+  /**
+   * Update multiple session fields atomically with validation
+   */
+  async updateSessionFields(sessionId: string, businessId: string, fields: Record<string, unknown>): Promise<void> {
+    if (!sessionId || !businessId || !fields || Object.keys(fields).length === 0) {
+      throw new Error('Invalid parameters: sessionId, businessId, and non-empty fields are required');
+    }
+
+    try {
+      const key = this.getBusinessSessionKey(businessId, sessionId);
+      const pipeline = redisClient.client.pipeline();
+
+      for (const [field, value] of Object.entries(fields)) {
+        if (!field) {
+          console.warn(`⚠️ [RedisSessionManager] Skipping empty field name for session ${sessionId}`);
+          continue;
+        }
+        const serializedValue = this.serializeFieldValue(value);
+        pipeline.hset(key, field, serializedValue);
+      }
+
+      const results = await pipeline.exec();
+
+      // Check for pipeline errors
+      if (results) {
+        const errors = results.filter(([error]) => error !== null);
+        if (errors.length > 0) {
+          throw new Error(`Pipeline errors: ${errors.map(([error]) => error?.message).join(', ')}`);
+        }
+      }
+    } catch (error) {
+      console.error(`❌ [RedisSessionManager] Failed to update fields for session ${sessionId}:`, error);
+      throw error; // Re-throw to allow caller to handle
+    }
+  }
+
+  /**
    * Extend session TTL (useful for active sessions)
    */
   async extendSessionTTL(sessionId: string, businessId: string, ttlSeconds: number = this.TTL_SECONDS): Promise<void> {
@@ -99,6 +161,126 @@ export class RedisSessionManager {
    */
   private getBusinessSessionKey(businessId: string, sessionId: string): string {
     return `agent2:business:${businessId}:session:${sessionId}`;
+  }
+
+  /**
+   * Convert session object to Redis hash fields with error handling
+   */
+  private sessionToHashFields(session: Session): Record<string, string> {
+    const safeStringify = (obj: unknown, fallback: string = 'null'): string => {
+      try {
+        return JSON.stringify(obj);
+      } catch (error) {
+        console.error(`❌ [RedisSessionManager] Failed to serialize object for session ${session.id}:`, error);
+        return fallback;
+      }
+    };
+
+    return {
+      // Core session data (using native Redis types where possible)
+      id: session.id,
+      businessId: session.businessId,
+      customerPhoneNumber: session.customerPhoneNumber,
+      customerId: session.customerId || '',
+      status: session.status,
+      channel: session.channel,
+      startedAt: session.startedAt.toString(),
+      endedAt: session.endedAt?.toString() || '',
+      durationInMinutes: session.durationInMinutes?.toString() || '',
+      eventType: (session as Session & { eventType?: string }).eventType || '',
+
+      // Complex objects as JSON strings with error handling
+      businessEntity: safeStringify(session.businessEntity, '{}'),
+      customerEntity: safeStringify(session.customerEntity || null),
+      interactions: safeStringify(session.interactions, '[]'),
+      tokenUsage: safeStringify(session.tokenUsage, '{}'),
+
+      // Tool system fields
+      serviceNames: safeStringify(session.serviceNames, '[]'),
+      quotes: safeStringify(session.quotes, '[]'),
+      selectedQuote: safeStringify(session.selectedQuote || null),
+      selectedQuoteRequest: safeStringify(session.selectedQuoteRequest || null),
+      conversationState: session.conversationState,
+      availableTools: safeStringify(session.availableTools, '[]'),
+      activeTools: safeStringify(session.activeTools, '[]'),
+      aiInstructions: session.aiInstructions || ''
+    };
+  }
+
+  /**
+   * Convert Redis hash fields back to session object with validation and error handling
+   */
+  private hashFieldsToSession(hashData: Record<string, string>): Session {
+    const safeParse = <T>(jsonString: string, fallback: T, fieldName: string): T => {
+      try {
+        if (!jsonString || jsonString === 'null') {
+          return fallback;
+        }
+        return JSON.parse(jsonString) as T;
+      } catch (error) {
+        console.error(`❌ [RedisSessionManager] Failed to parse ${fieldName}, using fallback:`, error);
+        return fallback;
+      }
+    };
+
+    // Validate required fields
+    if (!hashData.id || !hashData.businessId) {
+      throw new Error(`Invalid session data: missing required fields (id: ${hashData.id}, businessId: ${hashData.businessId})`);
+    }
+
+    return {
+      // Core session data with validation
+      id: hashData.id,
+      businessId: hashData.businessId,
+      customerPhoneNumber: hashData.customerPhoneNumber || '',
+      customerId: hashData.customerId || undefined,
+      status: (hashData.status as 'active' | 'ended') || 'active',
+      channel: (hashData.channel as 'phone' | 'whatsapp' | 'website') || 'phone',
+      startedAt: parseInt(hashData.startedAt) || Date.now(),
+      endedAt: hashData.endedAt ? parseInt(hashData.endedAt) : undefined,
+      durationInMinutes: hashData.durationInMinutes ? parseInt(hashData.durationInMinutes) : undefined,
+
+      // Complex objects from JSON strings with error handling
+      businessEntity: safeParse(hashData.businessEntity, {} as Session['businessEntity'], 'businessEntity'),
+      customerEntity: safeParse(hashData.customerEntity, undefined, 'customerEntity'),
+      interactions: safeParse(hashData.interactions, [], 'interactions'),
+      tokenUsage: safeParse(hashData.tokenUsage, {} as Session['tokenUsage'], 'tokenUsage'),
+
+      // Tool system fields
+      serviceNames: safeParse(hashData.serviceNames, [], 'serviceNames'),
+      quotes: safeParse(hashData.quotes, [], 'quotes'),
+      selectedQuote: safeParse(hashData.selectedQuote, undefined, 'selectedQuote'),
+      selectedQuoteRequest: safeParse(hashData.selectedQuoteRequest, undefined, 'selectedQuoteRequest'),
+      conversationState: (hashData.conversationState as Session['conversationState']) || 'service_selection',
+      availableTools: safeParse(hashData.availableTools, [], 'availableTools'),
+      activeTools: safeParse(hashData.activeTools, [], 'activeTools'),
+      aiInstructions: hashData.aiInstructions || undefined
+    } as Session;
+  }
+
+  /**
+   * Serialize field value for Redis storage with error handling
+   */
+  private serializeFieldValue(value: unknown): string {
+    if (typeof value === 'string') {
+      return value;
+    }
+    if (typeof value === 'number') {
+      return value.toString();
+    }
+    if (typeof value === 'boolean') {
+      return value.toString();
+    }
+    if (value === null || value === undefined) {
+      return 'null';
+    }
+
+    try {
+      return JSON.stringify(value);
+    } catch (error) {
+      console.error(`❌ [RedisSessionManager] Failed to serialize field value:`, error);
+      return 'null';
+    }
   }
 
 }

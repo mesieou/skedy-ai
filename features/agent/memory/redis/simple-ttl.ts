@@ -7,7 +7,7 @@
  * - Simple, reliable, focused on voice call lifecycle
  */
 
-import { voiceRedisClient } from './redis-client';
+import { voiceRedisClient } from '../../../agent2/sessions/redisClient';
 
 export class SimpleTTL {
   private defaultTTLSeconds: number;

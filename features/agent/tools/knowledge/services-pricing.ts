@@ -4,7 +4,7 @@
  * Handles specific questions about service pricing, what's included, how services work
  */
 
-import { voiceRedisClient } from '../../memory/redis/redis-client';
+import { voiceRedisClient } from '../../../agent2/sessions/redisClient';
 import type { FunctionCallResult } from '../types';
 
 export interface GetServicesPricingArgs {

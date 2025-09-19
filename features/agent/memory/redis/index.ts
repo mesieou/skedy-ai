@@ -8,7 +8,7 @@
  */
 
 // Core Redis infrastructure
-export { VoiceRedisClient, voiceRedisClient } from './redis-client';
+export { VoiceRedisClient, voiceRedisClient } from '../../../agent2/sessions/redisClient';
 export { SimpleCircuitBreaker, simpleCircuitBreaker } from './simple-circuit-breaker';
 export { VoiceEventBus, createVoiceEventBus } from './event-bus';
 export { SimpleTTL, simpleTTL } from './simple-ttl';
@@ -16,11 +16,11 @@ export { KnowledgeCacheManager } from './knowledge-cache-manager';
 
 // Export Redis stats for monitoring
 export const getRedisStats = async () => {
-  const { voiceRedisClient } = await import('./redis-client');
+  const { voiceRedisClient } = await import('../../../agent2/sessions/redisClient');
   return voiceRedisClient.getOperationStats();
 };
 export const resetRedisStats = async () => {
-  const { voiceRedisClient } = await import('./redis-client');
+  const { voiceRedisClient } = await import('../../../agent2/sessions/redisClient');
   return voiceRedisClient.resetOperationStats();
 };
 
@@ -35,7 +35,7 @@ export type {
 
 // Utility function to initialize all Redis infrastructure
 export async function initializeVoiceRedis(): Promise<void> {
-  const { voiceRedisClient } = await import('./redis-client');
+  const { voiceRedisClient } = await import('../../../agent2/sessions/redisClient');
 
   try {
     console.log('🔧 [Redis] Initializing voice Redis infrastructure...');
@@ -60,7 +60,7 @@ export async function initializeVoiceRedis(): Promise<void> {
 
 // Utility function for graceful shutdown
 export async function shutdownVoiceRedis(): Promise<void> {
-  const { voiceRedisClient } = await import('./redis-client');
+  const { voiceRedisClient } = await import('../../../agent2/sessions/redisClient');
 
   try {
     console.log('🛑 [Redis] Shutting down voice Redis infrastructure...');

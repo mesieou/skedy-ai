@@ -4,7 +4,7 @@
  * Handles questions about business operations, policies, hours, areas served
  */
 
-import { voiceRedisClient } from '../../memory/redis/redis-client';
+import { voiceRedisClient } from '../../../agent2/sessions/redisClient';
 import type { FunctionCallResult } from '../types';
 
 export interface GetBusinessInformationArgs {

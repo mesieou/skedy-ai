@@ -4,7 +4,7 @@ import { AddressValidator } from '../../../scheduling/lib/bookings/address-valid
 import type { QuoteRequestData } from '../../../scheduling/lib/types/booking-domain';
 import type { Session } from '../../sessions/session';
 import type { Tool } from '../../../shared/lib/database/types/tools';
-import { buildToolResponse } from './helpers/response-builder';
+import { buildToolResponse } from '../helpers/response-builder';
 
 /**
  * Get quote for a service - uses session injection for minimal dependencies

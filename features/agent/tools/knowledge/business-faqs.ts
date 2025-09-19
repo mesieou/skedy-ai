@@ -5,7 +5,7 @@
  * Only use when services_pricing and business_information don't fit
  */
 
-import { voiceRedisClient } from '../../memory/redis/redis-client';
+import { voiceRedisClient } from '../../../agent2/sessions/redisClient';
 import type { FunctionCallResult } from '../types';
 import type { FrequentQuestion } from '../../../shared/lib/database/types/frequent-questions';
 

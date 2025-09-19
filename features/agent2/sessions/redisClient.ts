@@ -9,7 +9,7 @@
  */
 
 import Redis from 'ioredis';
-import { simpleCircuitBreaker } from './simple-circuit-breaker';
+import { simpleCircuitBreaker } from '../../agent/memory/redis/simple-circuit-breaker';
 
 interface VoiceRedisConfig {
   host: string;

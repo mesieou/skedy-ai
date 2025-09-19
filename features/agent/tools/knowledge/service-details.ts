@@ -4,7 +4,7 @@
  * Provides detailed service information from Redis cache
  */
 
-import { voiceRedisClient } from '../../memory/redis/redis-client';
+import { voiceRedisClient } from '../../../agent2/sessions/redisClient';
 import type { FunctionCallResult } from '../types';
 
 export interface GetServiceDetailsArgs {

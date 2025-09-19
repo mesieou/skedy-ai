@@ -6,7 +6,7 @@
  */
 
 import type { BusinessContext } from '../../../shared/lib/database/types/business-context';
-import { voiceRedisClient } from './redis-client';
+import { voiceRedisClient } from '../../../agent2/sessions/redisClient';
 
 export class KnowledgeCacheManager {
   private static readonly KNOWLEDGE_TTL = 3600; // 1 hour TTL

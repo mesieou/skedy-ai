@@ -11,6 +11,8 @@ import { RedisSessionManager } from './redisSessionManager';
  */
 export class SessionSyncManager extends EventEmitter {
   private sessionProxies = new Map<string, Session>();
+  private readonly MAX_RETRIES = 3;
+  private readonly RETRY_DELAY_MS = 1000;
 
   constructor(
     private memoryManager: SessionManager,
@@ -33,7 +35,7 @@ export class SessionSyncManager extends EventEmitter {
     // Store proxy reference
     this.sessionProxies.set(session.id, proxiedSession);
 
-    // Initial save to Redis
+    // Initial save to Redis (full session)
     this.redisManager.saveSession(session);
 
   }
@@ -64,18 +66,24 @@ export class SessionSyncManager extends EventEmitter {
   }
 
   /**
-   * Remove session from both memory and Redis with business context
+   * Remove session from both memory and Redis with business context and proper cleanup
    */
   remove(sessionId: string, businessId?: string): void {
     const session = this.memoryManager.get(sessionId);
     const actualBusinessId = businessId || session?.businessId;
 
+    // Remove from memory
     this.memoryManager.remove(sessionId);
+
+    // Clean up proxy reference to prevent memory leaks
     this.sessionProxies.delete(sessionId);
 
     // Only delete from Redis if we have business context
     if (actualBusinessId) {
-      this.redisManager.deleteSession(sessionId, actualBusinessId);
+      this.redisManager.deleteSession(sessionId, actualBusinessId).catch(error => {
+        console.error(`❌ [SessionSync] Failed to delete session ${sessionId} from Redis:`, error);
+        // Continue despite Redis cleanup failure
+      });
     }
   }
 
@@ -88,6 +96,7 @@ export class SessionSyncManager extends EventEmitter {
 
   /**
    * Create a proxy that auto-saves to Redis when session properties change
+   * Uses field-specific updates for better performance
    */
   private createAutoSyncProxy(session: Session): Session {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -106,9 +115,18 @@ export class SessionSyncManager extends EventEmitter {
         ];
 
         if (syncProperties.includes(String(property))) {
-          // Async save (don't block the tool)
-          syncManager.redisManager.saveSession(target).catch(error => {
-            console.error(`❌ [SessionSync] Auto-save failed for ${target.id}:`, error);
+          // Use field-specific update for better performance with retry logic
+          syncManager.retryOperation(
+            () => syncManager.redisManager.updateSessionField(
+              target.id,
+              target.businessId,
+              String(property),
+              value
+            ),
+            `field update for ${target.id}.${String(property)}`
+          ).catch(error => {
+            console.error(`❌ [SessionSync] Field update failed after retries for ${target.id}.${String(property)}:`, error);
+            // Note: Memory is already updated, Redis is eventually consistent
           });
 
           // Auto-cleanup ended sessions from memory after delay
@@ -133,12 +151,66 @@ export class SessionSyncManager extends EventEmitter {
   }
 
   /**
-   * Manual save for critical operations
+   * Retry operation with exponential backoff
+   */
+  private async retryOperation<T>(
+    operation: () => Promise<T>,
+    operationName: string,
+    maxRetries: number = this.MAX_RETRIES
+  ): Promise<T> {
+    let lastError: Error;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error as Error;
+
+        if (attempt === maxRetries) {
+          console.error(`❌ [SessionSync] ${operationName} failed after ${maxRetries} attempts:`, lastError);
+          throw lastError;
+        }
+
+        const delay = this.RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+        console.warn(`⚠️ [SessionSync] ${operationName} failed (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms:`, lastError.message);
+
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+
+    throw lastError!;
+  }
+
+  /**
+   * Manual save for critical operations (still saves full session)
    */
   async forceSave(sessionId: string): Promise<void> {
     const session = this.memoryManager.get(sessionId);
     if (session) {
       await this.redisManager.saveSession(session);
+    }
+  }
+
+  /**
+   * Update multiple session fields efficiently with proper error handling
+   */
+  async updateFields(sessionId: string, fields: Record<string, unknown>): Promise<void> {
+    const session = this.memoryManager.get(sessionId);
+    if (!session) {
+      console.error(`❌ [SessionSync] Cannot update fields: session ${sessionId} not found in memory`);
+      return;
+    }
+
+    try {
+      // Update Redis first to ensure consistency
+      await this.redisManager.updateSessionFields(sessionId, session.businessId, fields);
+
+      // Only update memory after Redis succeeds
+      Object.assign(session, fields);
+    } catch (error) {
+      console.error(`❌ [SessionSync] Failed to update fields for session ${sessionId}:`, error);
+      // Don't update memory if Redis failed
+      throw error;
     }
   }
 

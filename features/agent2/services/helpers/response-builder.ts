@@ -1,4 +1,4 @@
-import type { Tool } from '../../../../shared/lib/database/types/tools';
+import type { Tool } from '../../../shared/lib/database/types/tools';
 
 /**
  * Simple, elegant, dynamic response builder for all tools

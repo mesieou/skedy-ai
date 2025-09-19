@@ -1,7 +1,7 @@
 import { CustomerManager } from '../../../scheduling/lib/bookings/customer-manager';
 import type { Session } from '../../sessions/session';
 import type { Tool } from '../../../shared/lib/database/types/tools';
-import { buildToolResponse } from './helpers/response-builder';
+import { buildToolResponse } from '../helpers/response-builder';
 
 /**
  * Create user - uses session injection for minimal dependencies

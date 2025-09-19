@@ -1,6 +1,6 @@
 import type { Session, ConversationState } from '../../sessions/session';
 import type { QuoteRequestData } from '../../../scheduling/lib/types/booking-domain';
-import { buildToolResponse } from './helpers/response-builder';
+import { buildToolResponse } from '../helpers/response-builder';
 
 // Import tool functions
 import { getServiceDetails } from './getServiceDetails';

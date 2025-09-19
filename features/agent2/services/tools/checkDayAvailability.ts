@@ -2,7 +2,7 @@ import { AvailabilitySlotsRepository } from '../../../shared/lib/database/reposi
 import { AvailabilityManager } from '../../../scheduling/lib/availability/availability-manager';
 import type { Session } from '../../sessions/session';
 import type { Tool } from '../../../shared/lib/database/types/tools';
-import { buildToolResponse } from './helpers/response-builder';
+import { buildToolResponse } from '../helpers/response-builder';
 import { DateUtils } from '../../../shared/utils/date-utils';
 
 /**

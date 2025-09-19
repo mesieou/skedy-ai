@@ -8,7 +8,7 @@
  * - TTL management for ended calls
  */
 
-import { voiceRedisClient } from '../redis/redis-client';
+import { voiceRedisClient } from '../../../agent2/sessions/redisClient';
 import { simpleCircuitBreaker } from '../redis/simple-circuit-breaker';
 import type { Service } from '../../../shared/lib/database/types/service';
 import type { User } from '../../../shared/lib/database/types/user';

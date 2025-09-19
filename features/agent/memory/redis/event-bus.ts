@@ -7,7 +7,7 @@
  * - Production-ready with error handling and reconnection
  */
 
-import { voiceRedisClient } from './redis-client';
+import { voiceRedisClient } from '../../../agent2/sessions/redisClient';
 
 // ============================================================================
 // EVENT TYPES

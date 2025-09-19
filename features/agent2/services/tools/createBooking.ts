@@ -1,7 +1,7 @@
 import { BookingOrchestrator } from '../../../scheduling/lib/bookings/booking-orchestrator';
 import type { Session } from '../../sessions/session';
 import type { Tool } from '../../../shared/lib/database/types/tools';
-import { buildToolResponse } from './helpers/response-builder';
+import { buildToolResponse } from '../helpers/response-builder';
 import { DateUtils } from '../../../shared/utils/date-utils';
 
 /**
