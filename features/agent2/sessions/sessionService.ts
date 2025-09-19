@@ -37,7 +37,11 @@ export class SessionService {
         interactions: [],
         tokenUsage: {} as TokenSpent,
         startedAt: Date.now(),
-        eventType: event.type
+        eventType: event.type,
+        // Tool system fields
+        serviceNames: [],
+        quotes: [],
+        conversationState: 'service_selection'
       } as Session;
 
       sessionManager.add(session);
