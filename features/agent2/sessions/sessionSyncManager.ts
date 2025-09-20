@@ -2,6 +2,7 @@ import { EventEmitter } from 'events';
 import type { Session } from './session';
 import { SessionManager } from './sessionManager';
 import { RedisSessionManager } from './redisSessionManager';
+import { sentry } from '@/features/shared/utils/sentryService';
 
 /**
  * Session Sync Manager - Auto-sync between memory and Redis
@@ -34,6 +35,13 @@ export class SessionSyncManager extends EventEmitter {
 
     // Store proxy reference
     this.sessionProxies.set(session.id, proxiedSession);
+
+    // Add breadcrumb for session creation
+    sentry.addBreadcrumb(`Session added to sync manager`, 'session-sync', {
+      sessionId: session.id,
+      businessId: session.businessId,
+      status: session.status
+    });
 
     // Initial save to Redis (full session)
     this.redisManager.saveSession(session);
@@ -78,10 +86,28 @@ export class SessionSyncManager extends EventEmitter {
     // Clean up proxy reference to prevent memory leaks
     this.sessionProxies.delete(sessionId);
 
+    // Add breadcrumb for session removal
+    sentry.addBreadcrumb(`Session removed from sync manager`, 'session-sync', {
+      sessionId: sessionId,
+      businessId: actualBusinessId,
+      hadProxyReference: this.sessionProxies.has(sessionId)
+    });
+
     // Only delete from Redis if we have business context
     if (actualBusinessId) {
       this.redisManager.deleteSession(sessionId, actualBusinessId).catch(error => {
         console.error(`❌ [SessionSync] Failed to delete session ${sessionId} from Redis:`, error);
+
+        // Track Redis cleanup failure in Sentry
+        sentry.trackError(error as Error, {
+          sessionId: sessionId,
+          businessId: actualBusinessId,
+          operation: 'session_sync_redis_cleanup',
+          metadata: {
+            operation: 'delete_session_on_remove'
+          }
+        });
+
         // Continue despite Redis cleanup failure
       });
     }
@@ -126,6 +152,19 @@ export class SessionSyncManager extends EventEmitter {
             `field update for ${target.id}.${String(property)}`
           ).catch(error => {
             console.error(`❌ [SessionSync] Field update failed after retries for ${target.id}.${String(property)}:`, error);
+
+            // Track field update failure in Sentry
+            sentry.trackError(error as Error, {
+              sessionId: target.id,
+              businessId: target.businessId,
+              operation: 'session_sync_field_update',
+              metadata: {
+                fieldName: String(property),
+                valueType: typeof value,
+                maxRetriesReached: true
+              }
+            });
+
             // Note: Memory is already updated, Redis is eventually consistent
           });
 
@@ -168,6 +207,19 @@ export class SessionSyncManager extends EventEmitter {
 
         if (attempt === maxRetries) {
           console.error(`❌ [SessionSync] ${operationName} failed after ${maxRetries} attempts:`, lastError);
+
+          // Track retry exhaustion in Sentry
+          sentry.trackError(lastError, {
+            sessionId: 'unknown', // Context not available in generic retry function
+            businessId: 'unknown',
+            operation: 'session_sync_retry_exhausted',
+            metadata: {
+              operationName: operationName,
+              maxRetries: maxRetries,
+              finalAttempt: attempt
+            }
+          });
+
           throw lastError;
         }
 
@@ -209,6 +261,18 @@ export class SessionSyncManager extends EventEmitter {
       Object.assign(session, fields);
     } catch (error) {
       console.error(`❌ [SessionSync] Failed to update fields for session ${sessionId}:`, error);
+
+      // Track field update failure in Sentry
+      sentry.trackError(error as Error, {
+        sessionId: sessionId,
+        businessId: session.businessId,
+        operation: 'session_sync_update_fields',
+        metadata: {
+          fieldsCount: Object.keys(fields).length,
+          fieldNames: Object.keys(fields)
+        }
+      });
+
       // Don't update memory if Redis failed
       throw error;
     }

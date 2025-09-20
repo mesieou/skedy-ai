@@ -1,6 +1,7 @@
 import type { Session, ConversationState } from '../sessions/session';
 import type { QuoteRequestData } from '../../scheduling/lib/types/booking-domain';
 import { buildToolResponse } from './helpers/responseBuilder';
+import { sentry } from '@/features/shared/utils/sentryService';
 
 // Import tool functions
 import { getServiceDetails } from './tools/getServiceDetails';
@@ -18,15 +19,40 @@ export async function executeToolFunction(
   args: Record<string, unknown>,
   session: Session
 ): Promise<Record<string, unknown>> {
+  const startTime = Date.now();
+
   try {
+    // Add breadcrumb for tool execution start
+    sentry.addBreadcrumb(`Executing tool ${toolName}`, 'tool-execution', {
+      sessionId: session.id,
+      businessId: session.businessId,
+      toolName: toolName,
+      conversationState: session.conversationState,
+      argsKeys: Object.keys(args)
+    });
+
     // Find the tool
     const tool = session.availableTools?.find(t => t.name === toolName);
     if (!tool) {
-      return {
+      const errorResult = {
         success: false,
         error: `${toolName} unavailable`,
         message: "Tool not configured for your business."
       };
+
+      // Track tool not found error
+      sentry.trackError(new Error(`Tool not found: ${toolName}`), {
+        sessionId: session.id,
+        businessId: session.businessId,
+        operation: 'tool_execution_not_found',
+        metadata: {
+          toolName: toolName,
+          availableTools: session.availableTools?.map(t => t.name) || [],
+          conversationState: session.conversationState
+        }
+      });
+
+      return errorResult;
     }
 
     // State progression and active tools mapping
@@ -83,17 +109,64 @@ export async function executeToolFunction(
         break;
       default:
         result = buildToolResponse(tool, null, `Unknown tool: ${toolName}`);
+
+        // Track unknown tool error
+        sentry.trackError(new Error(`function called from Unknown tool: ${toolName}`), {
+          sessionId: session.id,
+          businessId: session.businessId,
+          operation: 'tool_execution_unknown',
+          metadata: {
+            toolName: toolName,
+            availableTools: session.availableTools?.map(t => t.name) || []
+          }
+        });
     }
 
     // Update state and active tools after execution
     if (stateMap[toolName]) {
+      const oldState = session.conversationState;
       session.conversationState = stateMap[toolName];
       const newStageTools = stageTools[stateMap[toolName]] || [];
       session.activeTools = [...newStageTools, 'request_tool'];
+
+      // Add breadcrumb for state transition
+      sentry.addBreadcrumb(`Conversation state updated`, 'tool-execution', {
+        sessionId: session.id,
+        toolName: toolName,
+        oldState: oldState,
+        newState: session.conversationState,
+        activeTools: session.activeTools
+      });
     }
+
+    const duration = Date.now() - startTime;
+
+    // Add success breadcrumb
+    sentry.addBreadcrumb(`Tool execution completed successfully`, 'tool-execution', {
+      sessionId: session.id,
+      toolName: toolName,
+      duration: duration,
+      resultSuccess: (result as { success?: boolean }).success !== false
+    });
 
     return result;
   } catch (error) {
+    const duration = Date.now() - startTime;
+
+    // Track tool execution error
+    sentry.trackError(error as Error, {
+      sessionId: session.id,
+      businessId: session.businessId,
+      operation: 'tool_execution_error',
+      metadata: {
+        toolName: toolName,
+        duration: duration,
+        conversationState: session.conversationState,
+        argsKeys: Object.keys(args),
+        errorName: (error as Error).name
+      }
+    });
+
     throw error;
   }
 }

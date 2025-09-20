@@ -10,6 +10,7 @@
 
 import Redis from 'ioredis';
 import { simpleCircuitBreaker } from '../../agent/memory/redis/simple-circuit-breaker';
+import { sentry } from '@/features/shared/utils/sentryService';
 
 interface VoiceRedisConfig {
   host: string;
@@ -93,6 +94,22 @@ export class VoiceRedisClient {
     this.client.on('error', (error: Error) => {
       console.error('❌ [Redis] Voice client error:', error.message);
       this.isConnecting = false;
+
+      // Track Redis client error in Sentry
+      sentry.trackError(error, {
+        sessionId: 'redis_client',
+        businessId: 'system',
+        operation: 'redis_client_error',
+        metadata: {
+          clientType: 'main',
+          connectionStatus: this.client.status,
+          config: {
+            host: this.config.host,
+            port: this.config.port,
+            db: this.config.db
+          }
+        }
+      });
     });
 
     this.client.on('close', () => {
@@ -292,6 +309,18 @@ export class VoiceRedisClient {
             callback(message);
           } catch (error) {
             console.error(`❌ [Redis] Error in channel callback for ${channel}:`, error);
+
+            // Track callback error in Sentry
+            sentry.trackError(error as Error, {
+              sessionId: 'redis_pubsub',
+              businessId: 'system',
+              operation: 'redis_channel_callback_error',
+              metadata: {
+                channel: channel,
+                callbackIndex: callbacks.indexOf(callback),
+                totalCallbacks: callbacks.length
+              }
+            });
           }
         });
       }
@@ -306,6 +335,19 @@ export class VoiceRedisClient {
             callback(channel, message);
           } catch (error) {
             console.error(`❌ [Redis] Error in pattern callback ${index + 1} for ${pattern}:`, error);
+
+            // Track pattern callback error in Sentry
+            sentry.trackError(error as Error, {
+              sessionId: 'redis_pubsub',
+              businessId: 'system',
+              operation: 'redis_pattern_callback_error',
+              metadata: {
+                pattern: pattern,
+                channel: channel,
+                callbackIndex: index,
+                totalCallbacks: callbacks.length
+              }
+            });
           }
         });
       } else {
@@ -355,6 +397,26 @@ export class VoiceRedisClient {
     } catch (error) {
       this.isConnecting = false;
       console.error('❌ [Redis] Connection failed:', error);
+
+      // Track connection failure in Sentry
+      sentry.trackError(error as Error, {
+        sessionId: 'redis_client',
+        businessId: 'system',
+        operation: 'redis_connection_failed',
+        metadata: {
+          config: {
+            host: this.config.host,
+            port: this.config.port,
+            db: this.config.db
+          },
+          clientStatuses: {
+            main: this.client.status,
+            pub: this.pubClient.status,
+            sub: this.subClient.status
+          }
+        }
+      });
+
       throw error;
     }
   }

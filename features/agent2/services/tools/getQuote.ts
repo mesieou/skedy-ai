@@ -5,6 +5,7 @@ import type { QuoteRequestData } from '../../../scheduling/lib/types/booking-dom
 import type { Session } from '../../sessions/session';
 import type { Tool } from '../../../shared/lib/database/types/tools';
 import { buildToolResponse } from '../helpers/responseBuilder';
+import { sentry } from '@/features/shared/utils/sentryService';
 
 /**
  * Get quote for a service - uses session injection for minimal dependencies
@@ -14,7 +15,18 @@ export async function getQuote(
   session: Session,
   tool: Tool
 ) {
+  const startTime = Date.now();
+
   try {
+    // Add breadcrumb for quote calculation start
+    sentry.addBreadcrumb(`Calculating quote`, 'tool-get-quote', {
+      sessionId: session.id,
+      businessId: session.businessId,
+      serviceId: args.service_id,
+      hasPickupAddresses: !!(args.pickup_addresses || args.pickup_address),
+      hasDropoffAddresses: !!(args.dropoff_addresses || args.dropoff_address),
+      hasCustomerAddress: !!(args.customer_addresses || args.service_address)
+    });
     // Get service
     const serviceRepo = new ServiceRepository();
     const service = await serviceRepo.findOne({ id: args.service_id });
@@ -49,10 +61,40 @@ export async function getQuote(
     session.selectedQuoteRequest = quoteRequest;
     session.conversationState = 'availability';
 
+    const duration = Date.now() - startTime;
+
+    // Success breadcrumb
+    sentry.addBreadcrumb(`Quote calculated successfully`, 'tool-get-quote', {
+      sessionId: session.id,
+      businessId: session.businessId,
+      serviceId: args.service_id,
+      serviceName: service.name,
+      duration: duration,
+      totalAmount: quoteResult.total_estimate_amount,
+      totalTimeMinutes: quoteResult.total_estimate_time_in_minutes
+    });
+
     // Return only the quote result (clean response for user)
     return buildToolResponse(tool, quoteResult as unknown as Record<string, unknown>);
 
   } catch (error) {
+    const duration = Date.now() - startTime;
+
+    // Track quote calculation error
+    sentry.trackError(error as Error, {
+      sessionId: session.id,
+      businessId: session.businessId,
+      operation: 'tool_get_quote',
+      metadata: {
+        duration: duration,
+        serviceId: args.service_id,
+        hasPickupAddresses: !!(args.pickup_addresses || args.pickup_address),
+        hasDropoffAddresses: !!(args.dropoff_addresses || args.dropoff_address),
+        hasCustomerAddress: !!(args.customer_addresses || args.service_address),
+        errorName: (error as Error).name
+      }
+    });
+
     // Internal system errors should still throw (database issues, calculation failures, etc.)
     throw error;
   }

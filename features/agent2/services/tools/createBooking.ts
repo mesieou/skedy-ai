@@ -3,6 +3,7 @@ import type { Session } from '../../sessions/session';
 import type { Tool } from '../../../shared/lib/database/types/tools';
 import { buildToolResponse } from '../helpers/responseBuilder';
 import { DateUtils } from '../../../shared/utils/date-utils';
+import { sentry } from '@/features/shared/utils/sentryService';
 
 /**
  * Create booking - uses session injection for minimal dependencies
@@ -17,7 +18,18 @@ export async function createBooking(
   session: Session,
   tool: Tool
 ) {
+  const startTime = Date.now();
+
   try {
+    // Add breadcrumb for booking creation start
+    sentry.addBreadcrumb(`Creating booking`, 'tool-create-booking', {
+      sessionId: session.id,
+      businessId: session.businessId,
+      preferredDate: args.preferred_date,
+      preferredTime: args.preferred_time,
+      quoteId: args.quote_id,
+      hasSelectedQuote: !!session.selectedQuote
+    });
     // Validate date format using DateUtils
     if (!DateUtils.isValidDateFormat(args.preferred_date)) {
       // User input error - invalid date format
@@ -100,10 +112,39 @@ export async function createBooking(
       deposit_amount: session.selectedQuote.deposit_amount
     };
 
+    const duration = Date.now() - startTime;
+
+    // Success breadcrumb
+    sentry.addBreadcrumb(`Booking created successfully`, 'tool-create-booking', {
+      sessionId: session.id,
+      businessId: session.businessId,
+      bookingId: result.booking.id,
+      duration: duration,
+      totalAmount: session.selectedQuote.total_estimate_amount
+    });
+
     // Success - use response builder
     return buildToolResponse(tool, bookingData as unknown as Record<string, unknown>);
 
   } catch (error) {
+    const duration = Date.now() - startTime;
+
+    // Track booking creation error
+    sentry.trackError(error as Error, {
+      sessionId: session.id,
+      businessId: session.businessId,
+      operation: 'tool_create_booking',
+      metadata: {
+        duration: duration,
+        preferredDate: args.preferred_date,
+        preferredTime: args.preferred_time,
+        quoteId: args.quote_id,
+        hasSelectedQuote: !!session.selectedQuote,
+        hasCustomerEntity: !!session.customerEntity,
+        errorName: (error as Error).name
+      }
+    });
+
     // Internal system errors should still throw (database issues, etc.)
     throw error;
   }

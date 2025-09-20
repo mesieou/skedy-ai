@@ -1,5 +1,6 @@
 import { VoiceRedisClient } from './redisClient';
 import type { Session } from './session';
+import { sentry } from '@/features/shared/utils/sentryService';
 
 // Create Redis client instance for sessions
 const redisClient = new VoiceRedisClient();
@@ -33,6 +34,18 @@ export class RedisSessionManager {
       await pipeline.exec();
     } catch (error) {
       console.error(`❌ [RedisSessionManager] Failed to save session ${session.id}:`, error);
+
+      // Track error in Sentry
+      sentry.trackError(error as Error, {
+        sessionId: session.id,
+        businessId: session.businessId,
+        operation: 'redis_save_session',
+        metadata: {
+          sessionStatus: session.status,
+          interactionsCount: session.interactions.length
+        }
+      });
+
       // Don't throw - let app continue with memory-only session
     }
   }
@@ -52,6 +65,17 @@ export class RedisSessionManager {
       return this.hashFieldsToSession(hashData);
     } catch (error) {
       console.error(`❌ [RedisSessionManager] Failed to load session ${sessionId}:`, error);
+
+      // Track error in Sentry
+      sentry.trackError(error as Error, {
+        sessionId: sessionId,
+        businessId: businessId,
+        operation: 'redis_load_session',
+        metadata: {
+          key: this.getBusinessSessionKey(businessId, sessionId)
+        }
+      });
+
       return null;
     }
   }
@@ -65,6 +89,17 @@ export class RedisSessionManager {
       await redisClient.del(key);
     } catch (error) {
       console.error(`❌ [RedisSessionManager] Failed to delete session ${sessionId}:`, error);
+
+      // Track error in Sentry
+      sentry.trackError(error as Error, {
+        sessionId: sessionId,
+        businessId: businessId,
+        operation: 'redis_delete_session',
+        metadata: {
+          key: this.getBusinessSessionKey(businessId, sessionId)
+        }
+      });
+
       // Don't throw - session cleanup is not critical
     }
   }
@@ -79,6 +114,17 @@ export class RedisSessionManager {
       return exists === 1;
     } catch (error) {
       console.error(`❌ [RedisSessionManager] Failed to check session existence ${sessionId}:`, error);
+
+      // Track error in Sentry
+      sentry.trackError(error as Error, {
+        sessionId: sessionId,
+        businessId: businessId,
+        operation: 'redis_session_exists',
+        metadata: {
+          key: this.getBusinessSessionKey(businessId, sessionId)
+        }
+      });
+
       return false;
     }
   }
@@ -146,6 +192,17 @@ export class RedisSessionManager {
       await redisClient.expire(key, ttlSeconds);
     } catch (error) {
       console.error(`❌ [RedisSessionManager] Failed to extend TTL for session ${sessionId}:`, error);
+
+      // Track error in Sentry
+      sentry.trackError(error as Error, {
+        sessionId: sessionId,
+        businessId: businessId,
+        operation: 'redis_extend_ttl',
+        metadata: {
+          ttlSeconds: ttlSeconds,
+          key: this.getBusinessSessionKey(businessId, sessionId)
+        }
+      });
     }
   }
 
@@ -172,6 +229,18 @@ export class RedisSessionManager {
         return JSON.stringify(obj);
       } catch (error) {
         console.error(`❌ [RedisSessionManager] Failed to serialize object for session ${session.id}:`, error);
+
+        // Track serialization error in Sentry
+        sentry.trackError(error as Error, {
+          sessionId: session.id,
+          businessId: session.businessId,
+          operation: 'redis_serialize_object',
+          metadata: {
+            objectType: typeof obj,
+            fallbackUsed: fallback
+          }
+        });
+
         return fallback;
       }
     };
@@ -219,6 +288,19 @@ export class RedisSessionManager {
         return JSON.parse(jsonString) as T;
       } catch (error) {
         console.error(`❌ [RedisSessionManager] Failed to parse ${fieldName}, using fallback:`, error);
+
+        // Track parsing error in Sentry
+        sentry.trackError(error as Error, {
+          sessionId: 'unknown', // We don't have session context here
+          businessId: 'unknown',
+          operation: 'redis_parse_field',
+          metadata: {
+            fieldName: fieldName,
+            jsonString: jsonString?.substring(0, 100), // First 100 chars for debugging
+            fallbackType: typeof fallback
+          }
+        });
+
         return fallback;
       }
     };
@@ -254,7 +336,10 @@ export class RedisSessionManager {
       conversationState: (hashData.conversationState as Session['conversationState']) || 'service_selection',
       availableTools: safeParse(hashData.availableTools, [], 'availableTools'),
       activeTools: safeParse(hashData.activeTools, [], 'activeTools'),
-      aiInstructions: hashData.aiInstructions || undefined
+      aiInstructions: hashData.aiInstructions || undefined,
+
+      // Interaction tracking initialization - required field
+      isFirstAiResponse: true
     } as Session;
   }
 
@@ -279,6 +364,18 @@ export class RedisSessionManager {
       return JSON.stringify(value);
     } catch (error) {
       console.error(`❌ [RedisSessionManager] Failed to serialize field value:`, error);
+
+      // Track serialization error in Sentry
+      sentry.trackError(error as Error, {
+        sessionId: 'unknown', // We don't have session context here
+        businessId: 'unknown',
+        operation: 'redis_serialize_field_value',
+        metadata: {
+          valueType: typeof value,
+          valueConstructor: value?.constructor?.name
+        }
+      });
+
       return 'null';
     }
   }

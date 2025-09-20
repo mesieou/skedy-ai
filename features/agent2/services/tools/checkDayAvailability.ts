@@ -4,6 +4,7 @@ import type { Session } from '../../sessions/session';
 import type { Tool } from '../../../shared/lib/database/types/tools';
 import { buildToolResponse } from '../helpers/responseBuilder';
 import { DateUtils } from '../../../shared/utils/date-utils';
+import { sentry } from '@/features/shared/utils/sentryService';
 
 /**
  * Check day availability - uses session injection for minimal dependencies
@@ -16,7 +17,17 @@ export async function checkDayAvailability(
   session: Session,
   tool: Tool
 ) {
+  const startTime = Date.now();
+
   try {
+    // Add breadcrumb for availability check start
+    sentry.addBreadcrumb(`Checking day availability`, 'tool-check-availability', {
+      sessionId: session.id,
+      businessId: session.businessId,
+      date: args.date,
+      estimatedTimeMinutes: args.quote_total_estimate_time_minutes,
+      businessTimezone: session.businessEntity.time_zone
+    });
     // Validate date format using DateUtils
     if (!DateUtils.isValidDateFormat(args.date)) {
       // User input error - invalid date format
@@ -60,10 +71,38 @@ export async function checkDayAvailability(
       available_times: availabilityResult.availableSlots.map(slot => slot.time)
     };
 
+    const duration = Date.now() - startTime;
+
+    // Success breadcrumb
+    sentry.addBreadcrumb(`Availability check completed successfully`, 'tool-check-availability', {
+      sessionId: session.id,
+      businessId: session.businessId,
+      date: args.date,
+      duration: duration,
+      availableSlotsCount: availabilityResult.availableSlots.length,
+      firstAvailableTime: availabilityResult.availableSlots[0]?.time
+    });
+
     // Success - use response builder
     return buildToolResponse(tool, availabilityData as unknown as Record<string, unknown>);
 
   } catch (error) {
+    const duration = Date.now() - startTime;
+
+    // Track availability check error
+    sentry.trackError(error as Error, {
+      sessionId: session.id,
+      businessId: session.businessId,
+      operation: 'tool_check_day_availability',
+      metadata: {
+        duration: duration,
+        date: args.date,
+        estimatedTimeMinutes: args.quote_total_estimate_time_minutes,
+        businessTimezone: session.businessEntity.time_zone,
+        errorName: (error as Error).name
+      }
+    });
+
     // Internal system errors should still throw (database issues, etc.)
     throw error;
   }

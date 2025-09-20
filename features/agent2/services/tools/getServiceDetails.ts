@@ -3,6 +3,7 @@ import { ServiceRepository } from '../../../shared/lib/database/repositories/ser
 import type { Session } from '../../sessions/session';
 import type { Tool } from '../../../shared/lib/database/types/tools';
 import { buildToolResponse } from '../helpers/responseBuilder';
+import { sentry } from '@/features/shared/utils/sentryService';
 
 /**
  * Get service details by service name with fuzzy matching
@@ -13,17 +14,26 @@ export async function getServiceDetails(
   session: Session,
   tool: Tool
 ) {
-  // Configure Fuse.js for fuzzy searching service names from session
-  const fuse = new Fuse(session.serviceNames, {
-    threshold: 0.4, // 0.0 = exact match, 1.0 = match anything
-    includeScore: true,
-    minMatchCharLength: 2
-  });
-
-  // Search for the service name
-  const searchResults = fuse.search(args.service_name);
+  const startTime = Date.now();
 
   try {
+    // Add breadcrumb for service search start
+    sentry.addBreadcrumb(`Searching for service`, 'tool-get-service-details', {
+      sessionId: session.id,
+      businessId: session.businessId,
+      serviceName: args.service_name,
+      availableServicesCount: session.serviceNames.length
+    });
+
+    // Configure Fuse.js for fuzzy searching service names from session
+    const fuse = new Fuse(session.serviceNames, {
+      threshold: 0.4, // 0.0 = exact match, 1.0 = match anything
+      includeScore: true,
+      minMatchCharLength: 2
+    });
+
+    // Search for the service name
+    const searchResults = fuse.search(args.service_name);
     if (searchResults.length > 0) {
       // Found a good match - get the matched service name and fetch full details
       const matchedServiceName = searchResults[0].item;
@@ -42,6 +52,19 @@ export async function getServiceDetails(
         return buildToolResponse(tool, null, errorMessage);
       }
 
+      const duration = Date.now() - startTime;
+
+      // Success breadcrumb
+      sentry.addBreadcrumb(`Service found successfully`, 'tool-get-service-details', {
+        sessionId: session.id,
+        businessId: session.businessId,
+        serviceName: args.service_name,
+        matchedServiceName: matchedServiceName,
+        serviceId: service.id,
+        duration: duration,
+        searchScore: searchResults[0].score
+      });
+
       // Success: return service data
       return buildToolResponse(tool, service as unknown as Record<string, unknown>);
     } else {
@@ -52,6 +75,21 @@ export async function getServiceDetails(
       return buildToolResponse(tool, null, errorMessage);
     }
   } catch (error) {
+    const duration = Date.now() - startTime;
+
+    // Track service search error
+    sentry.trackError(error as Error, {
+      sessionId: session.id,
+      businessId: session.businessId,
+      operation: 'tool_get_service_details',
+      metadata: {
+        duration: duration,
+        serviceName: args.service_name,
+        availableServicesCount: session.serviceNames.length,
+        errorName: (error as Error).name
+      }
+    });
+
     // Internal system errors should still throw (database connection issues, etc.)
     throw error;
   }
