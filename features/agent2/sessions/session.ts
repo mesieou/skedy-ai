@@ -6,6 +6,15 @@ import { Tool } from "../../shared/lib/database/types/tools";
 import { TokenSpent } from "../types";
 import WebSocket from "ws";
 
+/**
+ * OpenAI Realtime API session information
+ */
+export interface OpenAiSession {
+  conversation_id: string;
+  type?: string;
+  tools?: Array<{ name?: string }>;
+}
+
 export interface Session {
   id: string;              // Call SID
   businessId: string;
@@ -16,6 +25,9 @@ export interface Session {
   status: "active" | "ended";
   ws?: WebSocket;
   channel: "phone" | "whatsapp" | "website";
+
+  // OpenAI Realtime API
+  openAiConversationId?: string;
   interactions: Interaction[];
   tokenUsage: TokenSpent;
   startedAt: number;

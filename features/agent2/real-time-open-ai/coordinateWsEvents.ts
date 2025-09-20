@@ -4,6 +4,7 @@ import {
   handleWebSocketClose,
   handleWebSocketError
 } from "./eventHandlers/connectionHandlers";
+import { saveOpenAiConversationId, SessionCreatedMessage } from "./eventHandlers/saveOpenAiConversationId";
 
 // Lean event router - just routes events to handlers
 export function attachWSHandlers(session: Session) {
@@ -31,6 +32,7 @@ export function attachWSHandlers(session: Session) {
       // Connection Events
       case "session.created":
         // Session established with OpenAI
+        await saveOpenAiConversationId(session, event as SessionCreatedMessage);
         break;
 
       case "session.updated":
