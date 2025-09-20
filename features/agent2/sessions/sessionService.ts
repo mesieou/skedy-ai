@@ -43,7 +43,9 @@ export class SessionService {
         quotes: [],
         conversationState: 'service_selection',
         availableTools: [],
-        activeTools: []
+        activeTools: [],
+        // Interaction tracking initialization
+        isFirstAiResponse: true
       } as Session;
 
       sessionManager.add(session);

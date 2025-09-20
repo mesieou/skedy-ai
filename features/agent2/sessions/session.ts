@@ -40,8 +40,20 @@ export interface Session {
 
   // AI & Tools
   aiInstructions?: string;                    // Generated prompt for OpenAI
+  promptName?: string;                        // Name of the prompt template used
+  promptVersion?: string;                     // Version of the prompt for A/B testing
   availableTools: Tool[];                     // All tools for this business
   activeTools: string[];                     // Currently active tool names
+
+  // Interaction tracking (simple flags)
+  isFirstAiResponse: boolean;                 // Track if this is the initial greeting
+  pendingCustomerInput?: string;              // Store user input until AI responds
+  pendingToolExecution?: {                    // Store tool execution until AI responds
+    name: string;
+    result: string;
+    schema: string;
+    schemaVersion: string;
+  };
 
   // Conversation state for progressive tool injection
   quotes: QuoteResultInfo[];             // All quotes generated during conversation

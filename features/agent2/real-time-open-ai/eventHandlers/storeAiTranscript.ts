@@ -1,0 +1,65 @@
+import { Session } from "../../sessions/session";
+import { sentry } from "@/features/shared/utils/sentryService";
+import { ServerResponseOutputAudioTranscriptDoneEvent } from "../types/server/events/response/serverResponseOutputAudioTranscriptDoneTypes";
+import { Interaction, InteractionType, CreateInteractionData } from "@/features/shared/lib/database/types/interactions";
+
+export async function storeAiTranscript(
+  session: Session,
+  event: ServerResponseOutputAudioTranscriptDoneEvent
+): Promise<void> {
+  try {
+    const { transcript, item_id } = event;
+
+    console.log(`🤖 [AI Transcript] AI said: "${transcript}"`);
+
+    // Add breadcrumb for AI transcript
+    sentry.addBreadcrumb(`AI transcript received`, 'ai-transcript', {
+      sessionId: session.id,
+      businessId: session.businessId,
+      conversationId: session.openAiConversationId,
+      itemId: item_id,
+      transcriptLength: transcript.length
+    });
+
+    // Create interaction immediately when AI responds
+    const interactionData: CreateInteractionData = {
+      session_id: session.id,
+      business_id: session.businessId,
+      user_id: session.customerId || null,
+      type: session.isFirstAiResponse ? InteractionType.INITIAL : InteractionType.NORMAL,
+      customer_input: session.isFirstAiResponse ? null : (session.pendingCustomerInput || null),
+      prompt: session.aiInstructions || (() => { throw new Error('aiInstructions required for interactions'); })(),
+      prompt_name: session.promptName || (() => { throw new Error('promptName required for interactions'); })(),
+      prompt_version: session.promptVersion || (() => { throw new Error('promptVersion required for interactions'); })(),
+      model_output: transcript,
+      generated_from_tool_calling: false // Start with false, updated by function calls if needed
+    };
+
+    // Add interaction to session (will be auto-synced to Redis)
+    session.interactions.push(interactionData as Interaction);
+
+    // Reset flags for next cycle
+    if (session.isFirstAiResponse) {
+      session.isFirstAiResponse = false;
+      console.log(`🎯 [AI Transcript] Created INITIAL interaction for session ${session.id}`);
+    } else {
+      session.pendingCustomerInput = undefined;
+      console.log(`🎯 [AI Transcript] Created NORMAL interaction for session ${session.id}`);
+    }
+
+  } catch (error) {
+    console.error(`❌ [AI Transcript] Failed to store AI transcript for session ${session.id}:`, error);
+
+    // Track error in Sentry
+    sentry.trackError(error as Error, {
+      sessionId: session.id,
+      businessId: session.businessId,
+      operation: 'store_ai_transcript',
+      metadata: {
+        eventType: 'response.output_audio_transcript.done',
+        conversationId: session.openAiConversationId,
+        itemId: event.item_id
+      }
+    });
+  }
+}

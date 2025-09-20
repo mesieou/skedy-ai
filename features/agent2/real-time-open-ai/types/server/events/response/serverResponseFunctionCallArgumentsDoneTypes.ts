@@ -12,6 +12,7 @@ export interface ServerResponseFunctionCallArgumentsDoneEvent {
   call_id: string;
   event_id: string;
   item_id: string;
+  name: string;
   output_index: number;
   response_id: string;
   type: string;
