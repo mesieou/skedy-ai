@@ -8,6 +8,12 @@ import { saveOpenAiConversationId, SessionCreatedMessage } from "./eventHandlers
 import { executeFunctionCall } from "./eventHandlers/executeFunctionCall";
 import { storeAiTranscript } from "./eventHandlers/storeAiTranscript";
 import { storeUserTranscript } from "./eventHandlers/storeUserTranscript";
+import { logToolsUpdated, SessionUpdatedEvent } from "./eventHandlers/logToolsUpdated";
+import { logFunctionProcessed, ConversationItemDoneEvent } from "./eventHandlers/logFunctionProcessed";
+import { logErrorReceived, ErrorEvent } from "./eventHandlers/logErrorReceived";
+import { requestResponseAfterFunction, ResponseDoneEvent } from "./eventHandlers/requestResponseAfterFunction";
+import { logRateLimits } from "./eventHandlers/logRateLimits";
+import { ServerRateLimitsUpdatedEvent } from "./types/server/events/rateLimints/serverRateLimitsUpdatedTypes";
 import { ServerResponseFunctionCallArgumentsDoneEvent } from "./types/server/events/response/serverResponseFunctionCallArgumentsDoneTypes";
 import { ServerResponseOutputAudioTranscriptDoneEvent } from "./types/server/events/response/serverResponseOutputAudioTranscriptDoneTypes";
 import { ServerInputAudioTranscriptionCompletedEvent } from "./types/server/events/conversation/serverInputAudioTranscriptionCompletedTypes";
@@ -42,12 +48,14 @@ export function attachWSHandlers(session: Session) {
         break;
 
       case "session.updated":
-        // Tools/configuration updated
+        // Tools/configuration updated - log confirmed tools
+        await logToolsUpdated(session, event as SessionUpdatedEvent);
         break;
 
       // Response Events
       case "response.done":
-        // Response complete - handle final cleanup only
+        // Response complete - clear pending data and request next response if functions were called
+        await requestResponseAfterFunction(session, event as ResponseDoneEvent);
         break;
 
       case "response.function_call_arguments.done":
@@ -67,13 +75,20 @@ export function attachWSHandlers(session: Session) {
         break;
 
       case "conversation.item.done":
-        // Function result processed by OpenAI
+        // Function result processed by OpenAI - log confirmation
+        await logFunctionProcessed(session, event as ConversationItemDoneEvent);
+        break;
+
+      case "rate_limits.updated":
+        // Rate limits updated - log current limits
+        await logRateLimits(session, event as ServerRateLimitsUpdatedEvent);
         break;
 
       // Error Events
       default:
         if (event.type.includes('error') || event.type.includes('failed')) {
-          // Handle error events
+          // Handle error events with comprehensive logging
+          await logErrorReceived(session, event as ErrorEvent);
         }
         break;
     }
