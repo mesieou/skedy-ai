@@ -5,7 +5,7 @@ import {
   handleWebSocketError
 } from "./eventHandlers/connectionHandlers";
 
-// Attach handlers to the WebSocket
+// Lean event router - just routes events to handlers
 export function attachWSHandlers(session: Session) {
   if (!session.ws) {
     throw new Error('WebSocket not initialized in session');

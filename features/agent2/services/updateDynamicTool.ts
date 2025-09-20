@@ -1,5 +1,5 @@
-import { ServiceRepository } from '../../../shared/lib/database/repositories/service-repository';
-import type { OpenAIFunctionSchema, ParameterDefinition } from '../../../shared/lib/database/types/tools';
+import { ServiceRepository } from '../../shared/lib/database/repositories/service-repository';
+import type { OpenAIFunctionSchema, ParameterDefinition } from '../../shared/lib/database/types/tools';
 
 /**
  * Update tool schema with service-specific parameters

@@ -1,5 +1,10 @@
 // Event handlers for WebSocket events
-export * from './connectionHandlers';
+export {
+  createAndConnectWebSocket,
+  handleWebSocketOpen,
+  handleWebSocketClose,
+  handleWebSocketError
+} from './connectionHandlers';
 // TODO: Add other handlers as needed
 // export * from './sessionHandlers';
 // export * from './responseHandlers';

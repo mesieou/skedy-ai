@@ -9,6 +9,7 @@ export * from './crawl-sessions';
 export * from './frequent-questions';
 export * from './calendar-settings';
 export * from './chat-sessions';
+export * from './session';
 export * from './bookings';
 export * from './notifications';
 export * from './service';
