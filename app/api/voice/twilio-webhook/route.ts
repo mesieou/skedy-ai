@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebhookSignature } from './signature-verification';
-import { webSocketPool } from '@/features/agent2/sessions/websocketPool';
 import { SessionService } from '@/features/agent2/sessions/sessionService';
-import { handleCallEvent } from '@/features/agent2/twilio/callHandler';
+import { handleCallEvent } from '@/features/agent2/twilio/callRouter';
+import { sentry } from '@/features/shared/utils/sentryService';
+import assert from 'assert';
 
 // Define WebhookEvent locally for type safety
 export interface WebhookEvent {
@@ -25,6 +26,12 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
+    // Add breadcrumb for webhook processing
+    sentry.addBreadcrumb('Processing Twilio webhook', 'webhook', {
+      url: request.url,
+      method: request.method
+    });
+
     const headersList = request.headers;
     const signature = headersList.get('webhook-signature') || '';
     const timestamp = headersList.get('webhook-timestamp') || '';
@@ -34,35 +41,77 @@ export async function POST(request: NextRequest) {
     const event: WebhookEvent = JSON.parse(body);
     const callId = event.data?.call_id;
 
-    if (!callId) {
-      return NextResponse.json({ error: 'Missing call_id' }, { status: 400 });
-    }
+    // Validate required fields
+    assert(callId, 'Missing call_id in webhook event');
+    assert(event.type, 'Missing event type in webhook');
+
+    // Add breadcrumb for call event
+    sentry.addBreadcrumb(`Processing call event: ${event.type}`, 'webhook', {
+      callId: callId,
+      eventType: event.type
+    });
 
     // 1️⃣ Verify webhook signature
     const verified = await verifyWebhookSignature(body, signature, timestamp, webhookId);
-    if (!verified) {
-      return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
-    }
+    assert(verified, 'Invalid webhook signature');
 
     console.log(`📞 Incoming call event: ${callId} (${event.type})`);
 
     // 2️⃣ Get or create session via SessionManager
     const session = await SessionService.createOrGet(callId, event);
+    assert(session, 'Failed to create or get session');
 
-    // 3️⃣ Pass session and event to MVP handler (async)
+    // Add success breadcrumb
+    sentry.addBreadcrumb('Session created/retrieved successfully', 'webhook', {
+      callId: callId,
+      sessionId: session.id,
+      businessId: session.businessId
+    });
+
+    // 3️⃣ Pass session and event to handler (async)
     handleCallEvent(session, event).catch((err: unknown) => {
       console.error('❌ Async processing error:', err);
+
+      // Track async processing error
+      sentry.trackError(err as Error, {
+        sessionId: session.id,
+        businessId: session.businessId,
+        operation: 'async_call_event_processing',
+        metadata: {
+          eventType: event.type,
+          callId: callId
+        }
+      });
     });
 
     // 4️⃣ Return fast to Twilio/OpenAI
+    const processingTime = Date.now() - startTime;
+    console.log(`✅ Webhook processed in ${processingTime}ms`);
+
     return NextResponse.json({
       success: true,
-      agent_mode: 'mvp',
-      processing_time_ms: Date.now() - startTime,
+      agent_mode: 'agent2',
+      processing_time_ms: processingTime,
     });
 
   } catch (error) {
+    const processingTime = Date.now() - startTime;
     console.error('❌ Webhook processing error:', error);
+
+    // Track webhook error in Sentry
+    sentry.trackError(error as Error, {
+      sessionId: 'unknown',
+      businessId: 'unknown',
+      operation: 'twilio_webhook_processing',
+      metadata: {
+        processingTime,
+        url: request.url,
+        method: request.method,
+        hasHeaders: !!request.headers,
+        errorName: (error as Error).name
+      }
+    });
+
     return NextResponse.json({ error: 'Webhook failed' }, { status: 500 });
   }
 }

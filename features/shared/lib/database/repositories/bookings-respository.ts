@@ -9,7 +9,7 @@ import type {
   ServiceWithQuantity
 } from '../../../../scheduling/lib/types/booking-calculations';
 import type { Business } from '../types/business';
-import { BookingCalculator } from '../../../../scheduling/lib/bookings/pricing-calculator';
+import { BookingCalculator } from '../../../../scheduling/lib/bookings/quoteCalculation/pricing-calculator';
 import { AddressRepository } from './address-repository';
 import { ServiceRepository } from './service-repository';
 import { BookingServiceRepository } from './booking-service-repository';
