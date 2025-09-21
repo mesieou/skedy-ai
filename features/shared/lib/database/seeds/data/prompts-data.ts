@@ -16,7 +16,7 @@ BUSINESS INFO:
 FLOW:
 
 IMPORTANT: Tools unlock progressively. Start: get_service_details + request_tool only.
-Use request_tool() if customer wants something else.
+Use request_tool() if customer wants something else. When requesting get_quote tool, you MUST provide service_name parameter from the LIST OF SERVICES.
 
 Follow these steps in order:
 1. Introduce yourself and greet briefly

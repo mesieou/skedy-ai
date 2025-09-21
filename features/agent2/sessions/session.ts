@@ -2,7 +2,7 @@ import { Business } from "../../shared/lib/database/types/business";
 import { User } from "../../shared/lib/database/types/user";
 import { Interaction } from "../../shared/lib/database/types/interactions";
 import { QuoteResultInfo, QuoteRequestInfo } from "../../scheduling/lib/types/booking-calculations";
-import { Tool, ConversationState } from "../../shared/lib/database/types/tools";
+import { Tool } from "../../shared/lib/database/types/tools";
 import { TokenSpent } from "../types";
 import WebSocket from "ws";
 
@@ -38,10 +38,9 @@ export interface Session {
   // Cached entities for tools (minimal dependencies)
   serviceNames: string[];                 // List of service names for fuzzy search
 
-  // Stage-based tool management
-  currentStage: ConversationState;        // Current conversation stage
-  allAvailableToolNames: string[];           // All tool names available for this business (for reference)
-  availableToolsForStage: Tool[];         // Current stage tools only (loaded dynamically)
+  // AI-driven tool management
+  allAvailableToolNames: string[];        // All tool names available for this business (for prompt reference)
+  currentTools: Tool[];                   // Currently available tools (grows via addToolsToSession)
 
   // AI & Tools
   aiInstructions?: string;                    // Generated prompt for OpenAI
@@ -58,9 +57,9 @@ export interface Session {
     schemaVersion: string;
   };
 
-  // Conversation state for progressive tool injection
+  // Conversation data
   quotes: QuoteResultInfo[];             // All quotes generated during conversation
   selectedQuote?: QuoteResultInfo;       // Currently selected quote result
   selectedQuoteRequest?: QuoteRequestInfo; // Currently selected quote request
-  conversationState: ConversationState;  // Current state for progressive tool injection
+
 }

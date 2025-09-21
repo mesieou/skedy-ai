@@ -4,17 +4,21 @@ import assert from 'assert';
 
 /**
  * Update tool schema with service-specific parameters
- * Takes existing tool schema and service ID, returns updated schema with dynamic parameters
+ * Takes existing tool schema and service name, returns updated schema with dynamic parameters
  */
 export async function updateDynamicTool(
   toolSchema: OpenAIFunctionSchema,
-  serviceId: string
+  businessId: string,
+  serviceName: string
 ): Promise<OpenAIFunctionSchema> {
   const serviceRepo = new ServiceRepository();
 
   // Get service with requirements
-  const service = await serviceRepo.findOne({ id: serviceId });
-  assert(service, `Service not found: ${serviceId}`);
+  const service = await serviceRepo.findOne({
+    business_id: businessId,
+    name: serviceName
+  });
+  assert(service, `Service not found: ${serviceName}`);
 
   // Get service requirements and job scopes
   const serviceRequirements = service.ai_function_requirements || [];

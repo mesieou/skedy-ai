@@ -1,4 +1,4 @@
-import type { Session, ConversationState } from '../sessions/session';
+import type { Session } from '../sessions/session';
 import type { QuoteRequestData } from '../../scheduling/lib/types/booking-domain';
 import { buildToolResponse } from './helpers/responseBuilder';
 import { sentry } from '@/features/shared/utils/sentryService';
@@ -33,17 +33,17 @@ export async function executeToolFunction(
       sessionId: session.id,
       businessId: session.businessId,
       toolName: toolName,
-      conversationState: session.conversationState,
+      currentToolsCount: session.currentTools?.length || 0,
       argsKeys: Object.keys(args)
     });
 
-    // Find the tool
-    const tool = session.availableTools?.find(t => t.name === toolName);
+    // Find the tool in currently available tools
+    const tool = session.currentTools?.find(t => t.name === toolName);
     if (!tool) {
       const errorResult = {
         success: false,
         error: `${toolName} unavailable`,
-        message: "Tool not configured for your business."
+        message: "Tool not currently available. Use 'request_tool' to request additional tools."
       };
 
       // Track tool not found error
@@ -53,31 +53,13 @@ export async function executeToolFunction(
         operation: 'tool_execution_not_found',
         metadata: {
           toolName: toolName,
-          availableTools: session.availableTools?.map(t => t.name) || [],
-          conversationState: session.conversationState
+          currentTools: session.currentTools?.map(t => t.name) || [],
+          allAvailableTools: session.allAvailableToolNames
         }
       });
 
       return errorResult;
     }
-
-    // State progression and active tools mapping
-    const stateMap: Record<string, ConversationState> = {
-      'get_service_details': 'quoting',
-      'get_quote': 'availability',
-      'check_day_availability': 'user_management',
-      'create_user': 'booking',
-      'create_booking': 'completed'
-    };
-
-    const stageTools: Record<ConversationState, string[]> = {
-      'service_selection': ['get_service_details'],
-      'quoting': ['get_quote'],
-      'availability': ['check_day_availability'],
-      'user_management': ['create_user'],
-      'booking': ['create_booking'],
-      'completed': []
-    };
 
     let result: Record<string, unknown>;
 
@@ -111,7 +93,7 @@ export async function executeToolFunction(
         );
         break;
       case 'request_tool':
-        result = await requestTool(args as { tool_name: string; reason?: string }, session, tool);
+        result = await requestTool(args as { tool_name: string; service_name?: string; reason?: string }, session, tool);
         break;
       default:
         result = buildToolResponse(tool, null, `Unknown tool: ${toolName}`);
@@ -121,28 +103,11 @@ export async function executeToolFunction(
           sessionId: session.id,
           businessId: session.businessId,
           operation: 'tool_execution_unknown',
-          metadata: {
-            toolName: toolName,
-            availableTools: session.availableTools?.map(t => t.name) || []
-          }
+        metadata: {
+          toolName: toolName,
+          currentTools: session.currentTools?.map(t => t.name) || []
+        }
         });
-    }
-
-    // Update state and active tools after execution
-    if (stateMap[toolName]) {
-      const oldState = session.conversationState;
-      session.conversationState = stateMap[toolName];
-      const newStageTools = stageTools[stateMap[toolName]] || [];
-      session.activeTools = [...newStageTools, 'request_tool'];
-
-      // Add breadcrumb for state transition
-      sentry.addBreadcrumb(`Conversation state updated`, 'tool-execution', {
-        sessionId: session.id,
-        toolName: toolName,
-        oldState: oldState,
-        newState: session.conversationState,
-        activeTools: session.activeTools
-      });
     }
 
     const duration = Date.now() - startTime;
@@ -167,7 +132,7 @@ export async function executeToolFunction(
       metadata: {
         toolName: toolName,
         duration: duration,
-        conversationState: session.conversationState,
+        currentToolsCount: session.currentTools?.length || 0,
         argsKeys: Object.keys(args),
         errorName: (error as Error).name
       }

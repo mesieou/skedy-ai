@@ -105,7 +105,7 @@ export async function acceptCall(session: Session): Promise<CallAcceptResponse> 
     // Create call configuration using constants
     const callConfig = createCallConfig(
       session.aiInstructions,
-      session.availableToolsForStage
+      session.currentTools
     );
 
     // Make API call to OpenAI
@@ -162,7 +162,7 @@ export async function acceptCall(session: Session): Promise<CallAcceptResponse> 
       metadata: {
         duration,
         hasInstructions: !!session.aiInstructions,
-        toolsCount: session.availableToolsForStage?.length || 0
+        toolsCount: session.currentTools?.length || 0
       }
     });
 

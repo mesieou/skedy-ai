@@ -1,5 +1,5 @@
 import { Session } from "../../sessions/session";
-import { executeToolFunction } from "../../services/coordinateTools";
+import { executeToolFunction } from "../../services/executeTool";
 import { sentry } from "@/features/shared/utils/sentryService";
 import { ServerResponseFunctionCallArgumentsDoneEvent } from "../types/server/events/response/serverResponseFunctionCallArgumentsDoneTypes";
 import { ConversationItemCreateEvent, RealtimeFunctionCallOutputItem } from "../types/client/events/clientConversationItemCreateTypes";

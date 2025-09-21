@@ -99,39 +99,22 @@ export function isDynamicTool(tool: Tool): boolean {
 }
 
 /**
- * Conversation stages with their associated tools - single source of truth
+ * Tools that are always available throughout the session
+ * These cannot be removed and are always accessible to the AI
  */
-export const CONVERSATION_STAGES = {
-  service_selection: {
-    description: 'Initial state - can select services',
-    tools: ['get_service_details', 'request_tool']
-  },
-  quoting: {
-    description: 'Getting quotes for services',
-    tools: ['get_quote', 'request_tool']
-  },
-  availability: {
-    description: 'Checking availability for quotes',
-    tools: ['check_day_availability', 'request_tool']
-  },
-  user_management: {
-    description: 'Creating/verifying user',
-    tools: ['create_user', 'request_tool']
-  },
-  booking: {
-    description: 'Ready to create booking',
-    tools: ['create_booking', 'request_tool']
-  },
-  completed: {
-    description: 'Booking created',
-    tools: []
-  }
-} as const;
+export const PERMANENT_TOOLS = ['request_tool'] as const;
 
-// Derived types from the single source of truth
-export type ConversationState = keyof typeof CONVERSATION_STAGES;
+/**
+ * Initial requested tools available at conversation start
+ * AI can request additional tools via 'request_tool' as needed
+ */
+export const INITIAL_REQUESTED_TOOLS = ['get_service_details'] as const;
 
-// Helper to get tools for a stage
-export const getStageTools = (stage: ConversationState): readonly string[] => {
-  return CONVERSATION_STAGES[stage].tools;
+// Helper functions
+export const getPermanentTools = (): readonly string[] => {
+  return PERMANENT_TOOLS;
+};
+
+export const getInitialRequestedTools = (): readonly string[] => {
+  return INITIAL_REQUESTED_TOOLS;
 };

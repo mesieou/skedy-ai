@@ -228,6 +228,10 @@ export const requestToolTool: CreateToolData = {
             description: 'Tool needed',
             enum: ['get_service_details', 'get_quote', 'check_day_availability', 'create_user', 'create_booking']
           },
+          service_name: {
+            type: 'string',
+            description: 'Service name (required when requesting get_quote tool)'
+          },
           reason: {
             type: 'string',
             description: 'Why needed'

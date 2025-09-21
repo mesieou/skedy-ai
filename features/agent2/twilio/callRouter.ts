@@ -1,17 +1,21 @@
 // services/callEventHandler.ts
 import { Session } from '../sessions/session';
 import { WebhookEvent } from '@/app/api/voice/twilio-webhook/route';
-import { generatePromptAndTools } from '../services/generatePromptAndTools';
 import { acceptCall, persistSessionAndInteractions } from './callHandlers';
 import { createAndConnectWebSocket } from '../real-time-open-ai/eventHandlers/connectionHandlers';
 import { sentry } from '@/features/shared/utils/sentryService';
+import { addPromptToSession } from '../services/addPromptToSession';
+import { updateToolsToSession } from '../services/updateToolsToSession';
+import { getInitialRequestedTools } from '@/features/shared/lib/database/types/tools';
 
 export async function handleCallEvent(session: Session, event: WebhookEvent) {
   try {
     switch(event.type) {
       case 'realtime.call.incoming':
-        // Generate prompt and tools
-        await generatePromptAndTools(session);
+        // Generate prompt with all loaded tools
+        await addPromptToSession(session);
+        // Add initial requested tools
+        await updateToolsToSession(session, [...getInitialRequestedTools()]);
         // Accept call with OpenAI
         await acceptCall(session);
         // Create WebSocket connection (with automatic API key assignment and handler attachment)

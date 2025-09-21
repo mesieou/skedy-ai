@@ -1,13 +1,14 @@
 import type { Session } from '../../sessions/session';
 import type { Tool } from '../../../shared/lib/database/types/tools';
 import { buildToolResponse } from '../helpers/responseBuilder';
+import { updateToolsToSession } from '../updateToolsToSession';
 import { sentry } from '@/features/shared/utils/sentryService';
 
 /**
  * Request tool - inject requested tool into session
  */
 export async function requestTool(
-  args: { tool_name: string; reason?: string },
+  args: { tool_name: string; service_name?: string; reason?: string },
   session: Session,
   tool: Tool
 ) {
@@ -20,24 +21,28 @@ export async function requestTool(
       businessId: session.businessId,
       requestedToolName: args.tool_name,
       reason: args.reason,
-      currentActiveTools: session.activeTools
+      currentActiveTools: session.currentTools?.map(t => t.name) || []
     });
-    const { tool_name } = args;
+    const { tool_name, service_name } = args;
 
-    // Find the requested tool in available tools
-    const requestedTool = session.availableTools?.find(t => t.name === tool_name);
-    if (!requestedTool) {
+    // Check if get_quote is requested without service_name
+    if (tool_name === 'get_quote' && !service_name) {
+      return buildToolResponse(tool, null, 'service_name is required when requesting get_quote tool. Please specify which service you need a quote for based on the customer conversation.');
+    }
+
+    // Check if tool exists in all available tool names
+    if (!session.allAvailableToolNames?.includes(tool_name)) {
       return buildToolResponse(tool, null, `${tool_name} does not exist`);
     }
 
     // Check if tool is already active
-    const isAlreadyActive = session.activeTools?.includes(tool_name);
+    const isAlreadyActive = session.currentTools?.some(t => t.name === tool_name);
     if (isAlreadyActive) {
       return buildToolResponse(tool, { tool_name, available: true }, `${tool_name} already available`);
     }
 
-    // Update session state and inject the tool
-    // TODO: Implement stage management logic here
+    // Update session tools with the requested tool
+    await updateToolsToSession(session, [tool_name], service_name);
 
     const duration = Date.now() - startTime;
 
@@ -64,8 +69,8 @@ export async function requestTool(
         duration: duration,
         requestedToolName: args.tool_name,
         reason: args.reason,
-        currentActiveTools: session.activeTools,
-        availableToolsCount: session.availableTools?.length || 0,
+        currentActiveTools: session.currentTools?.map(t => t.name) || [],
+        currentToolsCount: session.currentTools?.length || 0,
         errorName: (error as Error).name
       }
     });
