@@ -97,3 +97,41 @@ export function hasBusinessConfig(tool: Tool): boolean {
 export function isDynamicTool(tool: Tool): boolean {
   return tool.dynamic_parameters;
 }
+
+/**
+ * Conversation stages with their associated tools - single source of truth
+ */
+export const CONVERSATION_STAGES = {
+  service_selection: {
+    description: 'Initial state - can select services',
+    tools: ['get_service_details', 'request_tool']
+  },
+  quoting: {
+    description: 'Getting quotes for services',
+    tools: ['get_quote', 'request_tool']
+  },
+  availability: {
+    description: 'Checking availability for quotes',
+    tools: ['check_day_availability', 'request_tool']
+  },
+  user_management: {
+    description: 'Creating/verifying user',
+    tools: ['create_user', 'request_tool']
+  },
+  booking: {
+    description: 'Ready to create booking',
+    tools: ['create_booking', 'request_tool']
+  },
+  completed: {
+    description: 'Booking created',
+    tools: []
+  }
+} as const;
+
+// Derived types from the single source of truth
+export type ConversationState = keyof typeof CONVERSATION_STAGES;
+
+// Helper to get tools for a stage
+export const getStageTools = (stage: ConversationState): readonly string[] => {
+  return CONVERSATION_STAGES[stage].tools;
+};

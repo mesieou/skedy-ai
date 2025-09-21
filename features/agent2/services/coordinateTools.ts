@@ -2,6 +2,7 @@ import type { Session, ConversationState } from '../sessions/session';
 import type { QuoteRequestData } from '../../scheduling/lib/types/booking-domain';
 import { buildToolResponse } from './helpers/responseBuilder';
 import { sentry } from '@/features/shared/utils/sentryService';
+import assert from 'assert';
 
 // Import tool functions
 import { getServiceDetails } from './tools/getServiceDetails';
@@ -19,6 +20,11 @@ export async function executeToolFunction(
   args: Record<string, unknown>,
   session: Session
 ): Promise<Record<string, unknown>> {
+  assert(toolName && typeof toolName === 'string', 'executeToolFunction: toolName must be a non-empty string');
+  assert(args && typeof args === 'object', 'executeToolFunction: args must be an object');
+  assert(session && session.id, 'executeToolFunction: session must have an id');
+  assert(session.businessId, 'executeToolFunction: session must have a businessId');
+
   const startTime = Date.now();
 
   try {

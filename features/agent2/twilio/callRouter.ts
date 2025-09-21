@@ -11,7 +11,7 @@ export async function handleCallEvent(session: Session, event: WebhookEvent) {
     switch(event.type) {
       case 'realtime.call.incoming':
         // Generate prompt and tools
-        await generatePromptAndTools(session.businessEntity!, session);
+        await generatePromptAndTools(session);
         // Accept call with OpenAI
         await acceptCall(session);
         // Create WebSocket connection (with automatic API key assignment and handler attachment)

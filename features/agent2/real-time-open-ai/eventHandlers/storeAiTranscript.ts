@@ -2,6 +2,7 @@ import { Session } from "../../sessions/session";
 import { sentry } from "@/features/shared/utils/sentryService";
 import { ServerResponseOutputAudioTranscriptDoneEvent } from "../types/server/events/response/serverResponseOutputAudioTranscriptDoneTypes";
 import { Interaction, InteractionType, CreateInteractionData } from "@/features/shared/lib/database/types/interactions";
+import assert from "assert";
 
 export async function storeAiTranscript(
   session: Session,
@@ -21,6 +22,11 @@ export async function storeAiTranscript(
       transcriptLength: transcript.length
     });
 
+    // Validate required session data
+    assert(session.aiInstructions, 'aiInstructions required for interactions');
+    assert(session.promptName, 'promptName required for interactions');
+    assert(session.promptVersion, 'promptVersion required for interactions');
+
     // Create interaction immediately when AI responds
     const interactionData: CreateInteractionData = {
       session_id: session.id,
@@ -28,9 +34,9 @@ export async function storeAiTranscript(
       user_id: session.customerId || null,
       type: session.isFirstAiResponse ? InteractionType.INITIAL : InteractionType.NORMAL,
       customer_input: session.isFirstAiResponse ? null : (session.pendingCustomerInput || null),
-      prompt: session.aiInstructions || (() => { throw new Error('aiInstructions required for interactions'); })(),
-      prompt_name: session.promptName || (() => { throw new Error('promptName required for interactions'); })(),
-      prompt_version: session.promptVersion || (() => { throw new Error('promptVersion required for interactions'); })(),
+      prompt: session.aiInstructions,
+      prompt_name: session.promptName,
+      prompt_version: session.promptVersion,
       model_output: transcript,
       generated_from_tool_calling: false // Start with false, updated by function calls if needed
     };

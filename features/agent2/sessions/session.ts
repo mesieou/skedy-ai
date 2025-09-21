@@ -2,7 +2,7 @@ import { Business } from "../../shared/lib/database/types/business";
 import { User } from "../../shared/lib/database/types/user";
 import { Interaction } from "../../shared/lib/database/types/interactions";
 import { QuoteResultInfo, QuoteRequestInfo } from "../../scheduling/lib/types/booking-calculations";
-import { Tool } from "../../shared/lib/database/types/tools";
+import { Tool, ConversationState } from "../../shared/lib/database/types/tools";
 import { TokenSpent } from "../types";
 import WebSocket from "ws";
 
@@ -38,12 +38,15 @@ export interface Session {
   // Cached entities for tools (minimal dependencies)
   serviceNames: string[];                 // List of service names for fuzzy search
 
+  // Stage-based tool management
+  currentStage: ConversationState;        // Current conversation stage
+  allAvailableToolNames: string[];           // All tool names available for this business (for reference)
+  availableToolsForStage: Tool[];         // Current stage tools only (loaded dynamically)
+
   // AI & Tools
   aiInstructions?: string;                    // Generated prompt for OpenAI
   promptName?: string;                        // Name of the prompt template used
   promptVersion?: string;                     // Version of the prompt for A/B testing
-  availableTools: Tool[];                     // All tools for this business
-  activeTools: string[];                     // Currently active tool names
 
   // Interaction tracking (simple flags)
   isFirstAiResponse: boolean;                 // Track if this is the initial greeting
@@ -61,14 +64,3 @@ export interface Session {
   selectedQuoteRequest?: QuoteRequestInfo; // Currently selected quote request
   conversationState: ConversationState;  // Current state for progressive tool injection
 }
-
-/**
- * Conversation states for progressive tool injection
- */
-export type ConversationState =
-  | 'service_selection'    // Initial state - can select services
-  | 'quoting'             // Getting quotes for services
-  | 'availability'        // Checking availability for quotes
-  | 'user_management'     // Creating/verifying user
-  | 'booking'             // Ready to create booking
-  | 'completed';          // Booking created

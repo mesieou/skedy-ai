@@ -4,6 +4,7 @@ import {
   handleWebSocketClose,
   handleWebSocketError
 } from "./eventHandlers/connectionHandlers";
+import assert from "assert";
 import { saveOpenAiConversationId, SessionCreatedMessage } from "./eventHandlers/saveOpenAiConversationId";
 import { executeFunctionCall } from "./eventHandlers/executeFunctionCall";
 import { storeAiTranscript } from "./eventHandlers/storeAiTranscript";
@@ -20,9 +21,7 @@ import { ServerInputAudioTranscriptionCompletedEvent } from "./types/server/even
 
 // Lean event router - just routes events to handlers
 export function attachWSHandlers(session: Session) {
-  if (!session.ws) {
-    throw new Error('WebSocket not initialized in session');
-  }
+  assert(session.ws, 'WebSocket not initialized in session');
 
   // WebSocket Connection Events
   session.ws.on("open", async () => {

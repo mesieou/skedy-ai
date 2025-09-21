@@ -5,6 +5,7 @@ import { UserRepository } from "@/features/shared/lib/database/repositories/user
 import { TokenSpent } from "../types";
 import { WebhookEvent } from "@/app/api/voice/twilio-webhook/route";
 import { sentry } from "@/features/shared/utils/sentryService";
+import assert from "assert";
 
 export class SessionService {
   static async createOrGet(callId: string, event: WebhookEvent) {
@@ -32,9 +33,7 @@ export class SessionService {
         const twilioAccountSid = this.extractTwilioAccountSid(sipHeaders);
         const phoneNumber = this.extractPhoneNumber(sipHeaders);
 
-        if (!twilioAccountSid) {
-          throw new Error('Twilio Account SID not found in SIP headers');
-        }
+        assert(twilioAccountSid, 'Twilio Account SID not found in SIP headers');
 
         const businessRepository = new BusinessRepository();
         const userRepository = new UserRepository();
@@ -45,15 +44,13 @@ export class SessionService {
           })
         ]);
 
-        if (!business) {
-          throw new Error(`Business not found for Twilio Account SID: ${twilioAccountSid}`);
-        }
+        assert(business, `Business not found for Twilio Account SID: ${twilioAccountSid}`);
 
         session = {
           id: callId,
           businessId: business.id,
           businessEntity: business,
-          customerPhoneNumber: phoneNumber,
+          customerPhoneNumber: phoneNumber || '',
           customerId: customer?.id,
           customerEntity: customer || undefined,
           status: "active",
@@ -69,7 +66,10 @@ export class SessionService {
           availableTools: [],
           activeTools: [],
           // Interaction tracking initialization
-          isFirstAiResponse: true
+          isFirstAiResponse: true,
+          // Stage management fields (defaults)
+          currentStage: 'service_selection',
+          availableToolNames: []
         } as Session;
 
         sessionManager.add(session);

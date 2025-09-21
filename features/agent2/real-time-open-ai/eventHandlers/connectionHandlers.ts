@@ -3,6 +3,7 @@ import { sentry } from "@/features/shared/utils/sentryService";
 import { webSocketPool } from "../../sessions/websocketPool";
 import { attachWSHandlers } from "../coordinateWsEvents";
 import WebSocket from "ws";
+import assert from "assert";
 
 // Extend session type for API key tracking
 type SessionWithApiKey = Session & { apiKeyIndex?: number };
@@ -36,9 +37,7 @@ export async function createAndConnectWebSocket(session: Session): Promise<WebSo
     console.log(`🔑 [ConnectionHandlers] Assigned API key ${index + 1} for session: ${session.id}`);
 
     // Validate API key
-    if (!apiKey) {
-      throw new Error('No API key available from pool');
-    }
+    assert(apiKey, 'No API key available from pool');
 
     // Create WebSocket connection using constants
     const wsUrl = `${WEBSOCKET_CONFIG.BASE_URL}?call_id=${session.id}`;

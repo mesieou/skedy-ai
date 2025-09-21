@@ -23,8 +23,8 @@ export const ADMIN_ROLES = [
 
 // Role hierarchy helpers
 export const isSuperAdmin = (role: UserRole): boolean => role === UserRole.SUPER_ADMIN;
-export const isAdmin = (role: UserRole): boolean => ADMIN_ROLES.includes(role as any);
-export const isProvider = (role: UserRole): boolean => PROVIDER_ROLES.includes(role as any);
+export const isAdmin = (role: UserRole): boolean => (ADMIN_ROLES as readonly UserRole[]).includes(role);
+export const isProvider = (role: UserRole): boolean => (PROVIDER_ROLES as readonly UserRole[]).includes(role);
 
 export interface User extends BaseEntity {
   role: UserRole;

@@ -1,5 +1,6 @@
 import { ServiceRepository } from '../../shared/lib/database/repositories/service-repository';
 import type { OpenAIFunctionSchema, ParameterDefinition } from '../../shared/lib/database/types/tools';
+import assert from 'assert';
 
 /**
  * Update tool schema with service-specific parameters
@@ -13,9 +14,7 @@ export async function updateDynamicTool(
 
   // Get service with requirements
   const service = await serviceRepo.findOne({ id: serviceId });
-  if (!service) {
-    throw new Error(`Service not found: ${serviceId}`);
-  }
+  assert(service, `Service not found: ${serviceId}`);
 
   // Get service requirements and job scopes
   const serviceRequirements = service.ai_function_requirements || [];

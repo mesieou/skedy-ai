@@ -9,6 +9,7 @@ import axios from "axios";
 import { sentry } from "@/features/shared/utils/sentryService";
 import type { Session } from "../../sessions/session";
 import type { Tool } from "@/features/shared/lib/database/types/tools";
+import assert from "assert";
 
 // Constants for OpenAI API
 const OPENAI_CONFIG = {
@@ -97,19 +98,14 @@ export async function acceptCall(session: Session): Promise<CallAcceptResponse> 
       sessionId: session.id
     });
 
-    // Validate required data
-    if (!session.aiInstructions) {
-      throw new Error('AI instructions not generated - call generatePromptAndTools first');
-    }
-
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY environment variable not set');
-    }
+    // Validate required data with type narrowing
+    assert(session.aiInstructions, 'AI instructions not generated - call generatePromptAndTools first');
+    assert(process.env.OPENAI_API_KEY, 'OPENAI_API_KEY environment variable not set');
 
     // Create call configuration using constants
     const callConfig = createCallConfig(
       session.aiInstructions,
-      session.availableTools
+      session.availableToolsForStage
     );
 
     // Make API call to OpenAI
@@ -166,7 +162,7 @@ export async function acceptCall(session: Session): Promise<CallAcceptResponse> 
       metadata: {
         duration,
         hasInstructions: !!session.aiInstructions,
-        toolsCount: session.availableTools?.length || 0
+        toolsCount: session.availableToolsForStage?.length || 0
       }
     });
 

@@ -3,6 +3,7 @@ import { executeToolFunction } from "../../services/coordinateTools";
 import { sentry } from "@/features/shared/utils/sentryService";
 import { ServerResponseFunctionCallArgumentsDoneEvent } from "../types/server/events/response/serverResponseFunctionCallArgumentsDoneTypes";
 import { ConversationItemCreateEvent, RealtimeFunctionCallOutputItem } from "../types/client/events/clientConversationItemCreateTypes";
+import assert from "assert";
 
 export async function executeFunctionCall(
   session: Session,
@@ -31,17 +32,9 @@ export async function executeFunctionCall(
     // Find the tool schema for this function
     const tool = session.availableTools.find(t => t.name === name);
 
-    if (!tool) {
-      throw new Error(`Tool ${name} not found in session.availableTools`);
-    }
-
-    if (!tool.function_schema) {
-      throw new Error(`Tool ${name} missing function_schema`);
-    }
-
-    if (!tool.version) {
-      throw new Error(`Tool ${name} missing version`);
-    }
+    assert(tool, `Tool ${name} not found in session.availableTools`);
+    assert(tool.function_schema, `Tool ${name} missing function_schema`);
+    assert(tool.version, `Tool ${name} missing version`);
 
     // Store tool execution info for the current interaction (only if not first AI response)
     if (!session.isFirstAiResponse) {

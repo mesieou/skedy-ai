@@ -1,6 +1,7 @@
 import { VoiceRedisClient } from './redisClient';
 import type { Session } from './session';
 import { sentry } from '@/features/shared/utils/sentryService';
+import assert from 'assert';
 
 // Create Redis client instance for sessions
 const redisClient = new VoiceRedisClient();
@@ -133,9 +134,7 @@ export class RedisSessionManager {
    * Update specific session field (efficient partial update) with validation
    */
   async updateSessionField(sessionId: string, businessId: string, field: string, value: unknown): Promise<void> {
-    if (!sessionId || !businessId || !field) {
-      throw new Error('Invalid parameters: sessionId, businessId, and field are required');
-    }
+    assert(sessionId && businessId && field, 'updateSessionField: sessionId, businessId, and field are required');
 
     try {
       const key = this.getBusinessSessionKey(businessId, sessionId);
@@ -151,9 +150,7 @@ export class RedisSessionManager {
    * Update multiple session fields atomically with validation
    */
   async updateSessionFields(sessionId: string, businessId: string, fields: Record<string, unknown>): Promise<void> {
-    if (!sessionId || !businessId || !fields || Object.keys(fields).length === 0) {
-      throw new Error('Invalid parameters: sessionId, businessId, and non-empty fields are required');
-    }
+    assert(sessionId && businessId && fields && Object.keys(fields).length > 0, 'updateSessionFields: sessionId, businessId, and non-empty fields are required');
 
     try {
       const key = this.getBusinessSessionKey(businessId, sessionId);
@@ -173,9 +170,7 @@ export class RedisSessionManager {
       // Check for pipeline errors
       if (results) {
         const errors = results.filter(([error]) => error !== null);
-        if (errors.length > 0) {
-          throw new Error(`Pipeline errors: ${errors.map(([error]) => error?.message).join(', ')}`);
-        }
+        assert(errors.length === 0, `Pipeline errors detected: ${errors.map(([error]) => error?.message).join(', ')}`);
       }
     } catch (error) {
       console.error(`❌ [RedisSessionManager] Failed to update fields for session ${sessionId}:`, error);
@@ -306,9 +301,7 @@ export class RedisSessionManager {
     };
 
     // Validate required fields
-    if (!hashData.id || !hashData.businessId) {
-      throw new Error(`Invalid session data: missing required fields (id: ${hashData.id}, businessId: ${hashData.businessId})`);
-    }
+    assert(hashData.id && hashData.businessId, `Invalid session data: missing required fields (id: ${hashData.id}, businessId: ${hashData.businessId})`);
 
     return {
       // Core session data with validation
@@ -339,7 +332,11 @@ export class RedisSessionManager {
       aiInstructions: hashData.aiInstructions || undefined,
 
       // Interaction tracking initialization - required field
-      isFirstAiResponse: true
+      isFirstAiResponse: true,
+
+      // Stage management fields (defaults)
+      currentStage: 'service_selection',
+      availableToolNames: []
     } as Session;
   }
 
