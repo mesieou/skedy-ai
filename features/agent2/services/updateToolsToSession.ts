@@ -6,25 +6,25 @@ import type { Session } from '../sessions/session';
 import assert from 'assert';
 
 /**
- * Add specific tools to session (for AI requests or initial setup)
+ * Update session tools (for AI requests or initial setup)
  */
 export async function updateToolsToSession(session: Session, toolNames: string[], serviceName?: string): Promise<void> {
-  assert(session && session.id, 'addToolsToSession: session must have an id');
-  assert(session.businessId, 'addToolsToSession: session must have a businessId');
-  assert(Array.isArray(toolNames) && toolNames.length > 0, 'addToolsToSession: toolNames must be a non-empty array');
+  assert(session && session.id, 'updateToolsToSession: session must have an id');
+  assert(session.businessId, 'updateToolsToSession: session must have a businessId');
+  assert(Array.isArray(toolNames) && toolNames.length > 0, 'updateToolsToSession: toolNames must be a non-empty array');
 
   const startTime = Date.now();
 
   try {
     // Add breadcrumb
-    sentry.addBreadcrumb(`Adding tools to session`, 'tool-management', {
+    sentry.addBreadcrumb(`Updating session tools`, 'tool-management', {
       sessionId: session.id,
       businessId: session.businessId,
       requestedTools: toolNames
     });
 
     // Validate session has all available tool names loaded
-    assert(session.allAvailableToolNames && session.allAvailableToolNames.length > 0, 'Session must have allAvailableToolNames loaded before adding tools');
+    assert(session.allAvailableToolNames && session.allAvailableToolNames.length > 0, 'Session must have allAvailableToolNames loaded before updating tools');
 
     // Always include permanent tools + requested tools
     const allToolNames = [...PERMANENT_TOOLS, ...toolNames];
@@ -60,14 +60,14 @@ export async function updateToolsToSession(session: Session, toolNames: string[]
       }
     }
 
-    // Add tools to session
+    // Update session tools
     session.currentTools = allValidTools;
 
     const duration = Date.now() - startTime;
-    console.log(`✅ [SessionTools] Set ${allValidTools.length} tools (${duration}ms): ${allValidTools.map(t => t.name).join(', ')}`);
+    console.log(`✅ [SessionTools] Updated ${allValidTools.length} tools (${duration}ms): ${allValidTools.map(t => t.name).join(', ')}`);
 
     // Success breadcrumb
-    sentry.addBreadcrumb(`Tools set successfully`, 'tool-management', {
+    sentry.addBreadcrumb(`Tools updated successfully`, 'tool-management', {
       sessionId: session.id,
       businessId: session.businessId,
       setTools: allValidTools.map(t => t.name),
@@ -77,13 +77,13 @@ export async function updateToolsToSession(session: Session, toolNames: string[]
 
   } catch (error) {
     const duration = Date.now() - startTime;
-    console.error(`❌ [SessionTools] Failed to add tools to session ${session.id}:`, error);
+    console.error(`❌ [SessionTools] Failed to update tools in session ${session.id}:`, error);
 
     // Track error in Sentry
     sentry.trackError(error as Error, {
       sessionId: session.id,
       businessId: session.businessId,
-      operation: 'add_tools_to_session',
+      operation: 'update_tools_session',
       metadata: {
         requestedTools: toolNames,
         duration

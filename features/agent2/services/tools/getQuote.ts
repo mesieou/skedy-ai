@@ -59,7 +59,6 @@ export async function getQuote(
     session.quotes.push(quoteResult);
     session.selectedQuote = quoteResult;
     session.selectedQuoteRequest = quoteRequest;
-    session.conversationState = 'availability';
 
     const duration = Date.now() - startTime;
 

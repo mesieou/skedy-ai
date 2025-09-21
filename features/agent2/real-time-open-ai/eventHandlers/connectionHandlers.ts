@@ -2,6 +2,7 @@ import { Session } from "../../sessions/session";
 import { sentry } from "@/features/shared/utils/sentryService";
 import { webSocketPool } from "../../sessions/websocketPool";
 import { attachWSHandlers } from "../coordinateWsEvents";
+import { updateOpenAiSession } from "./updateOpenAiSession";
 import WebSocket from "ws";
 import assert from "assert";
 
@@ -142,12 +143,10 @@ export async function handleWebSocketOpen(session: Session): Promise<void> {
     // Add breadcrumb for debugging
     sentry.addBreadcrumb(`WebSocket open event for session ${session.id}`, 'websocket-open');
 
-    // Update session status
-    if (session.ws) {
-      // TODO: Initialize session tools if available
-      // TODO: Send initial session configuration to OpenAI
-      // TODO: Request first AI response to start conversation
-
+    // Send initial session configuration to OpenAI (tools configured at session level)
+    if (session.ws && session.currentTools && session.currentTools.length > 0) {
+      console.log(`🔧 [ConnectionHandlers] Sending initial tools to OpenAI for session ${session.id}`);
+      await updateOpenAiSession(session);
       console.log(`🎯 [ConnectionHandlers] Session ${session.id} ready for interaction`);
     }
   } catch (error) {

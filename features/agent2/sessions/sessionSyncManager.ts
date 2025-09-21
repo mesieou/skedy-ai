@@ -136,7 +136,7 @@ export class SessionSyncManager extends EventEmitter {
         // Auto-save to Redis for key properties that tools modify
         const syncProperties = [
           'quotes', 'selectedQuote', 'selectedQuoteRequest',
-          'conversationState', 'customerEntity', 'customerId',
+          'customerEntity', 'customerId', 'currentTools',
           'interactions', 'tokenUsage', 'status'
         ];
 

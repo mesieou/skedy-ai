@@ -62,14 +62,11 @@ export class SessionService {
           // Tool system fields
           serviceNames: [],
           quotes: [],
-          conversationState: 'service_selection',
-          availableTools: [],
-          activeTools: [],
           // Interaction tracking initialization
           isFirstAiResponse: true,
-          // Stage management fields (defaults)
-          currentStage: 'service_selection',
-          availableToolNames: []
+          // AI-driven tool management
+          allAvailableToolNames: [],
+          currentTools: []
         } as Session;
 
         sessionManager.add(session);

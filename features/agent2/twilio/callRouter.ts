@@ -5,8 +5,8 @@ import { acceptCall, persistSessionAndInteractions } from './callHandlers';
 import { createAndConnectWebSocket } from '../real-time-open-ai/eventHandlers/connectionHandlers';
 import { sentry } from '@/features/shared/utils/sentryService';
 import { addPromptToSession } from '../services/addPromptToSession';
-import { updateToolsToSession } from '../services/updateToolsToSession';
 import { getInitialRequestedTools } from '@/features/shared/lib/database/types/tools';
+import { updateToolsToSession } from '../services/updateToolsToSession';
 
 export async function handleCallEvent(session: Session, event: WebhookEvent) {
   try {

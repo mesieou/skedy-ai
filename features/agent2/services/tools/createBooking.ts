@@ -97,9 +97,6 @@ export async function createBooking(
     const start_at = `${start_date} ${start_time}`;
     const end_at = `${end_date} ${end_time}`;
 
-    // Update session - conversation completed
-    session.conversationState = 'completed';
-
     // Map result to match tool template exactly
     const bookingData = {
       booking_id: result.booking.id,

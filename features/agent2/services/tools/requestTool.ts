@@ -1,8 +1,8 @@
 import type { Session } from '../../sessions/session';
 import type { Tool } from '../../../shared/lib/database/types/tools';
 import { buildToolResponse } from '../helpers/responseBuilder';
-import { updateToolsToSession } from '../updateToolsToSession';
 import { sentry } from '@/features/shared/utils/sentryService';
+import { updateToolsToSession } from '../updateToolsToSession';
 
 /**
  * Request tool - inject requested tool into session

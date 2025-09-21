@@ -1,5 +1,6 @@
 import { Session } from "../../sessions/session";
 import { executeToolFunction } from "../../services/executeTool";
+import { updateOpenAiSession } from "./updateOpenAiSession";
 import { sentry } from "@/features/shared/utils/sentryService";
 import { ServerResponseFunctionCallArgumentsDoneEvent } from "../types/server/events/response/serverResponseFunctionCallArgumentsDoneTypes";
 import { ConversationItemCreateEvent, RealtimeFunctionCallOutputItem } from "../types/client/events/clientConversationItemCreateTypes";
@@ -26,13 +27,19 @@ export async function executeFunctionCall(
     // Parse function arguments
     const args = JSON.parse(argsString);
 
-    // Execute the function using existing coordinateTools service
+    // Execute the function using executeTool service
     const result = await executeToolFunction(name, args, session);
 
-    // Find the tool schema for this function
-    const tool = session.availableTools.find(t => t.name === name);
+    // Update OpenAI session with current tools BEFORE sending result (if request_tool was executed)
+    if (name === 'request_tool' && session.currentTools && session.currentTools.length > 0) {
+      console.log(`🔧 [FunctionCall] Updating OpenAI session with new tools before sending result`);
+      await updateOpenAiSession(session);
+    }
 
-    assert(tool, `Tool ${name} not found in session.availableTools`);
+    // Find the tool schema for this function
+    const tool = session.currentTools?.find(t => t.name === name);
+
+    assert(tool, `Tool ${name} not found in session.currentTools`);
     assert(tool.function_schema, `Tool ${name} missing function_schema`);
     assert(tool.version, `Tool ${name} missing version`);
 
@@ -56,7 +63,7 @@ export async function executeFunctionCall(
       }
     }
 
-    // Send function result back to OpenAI
+    // Send function result back to OpenAI AFTER tools are updated
     await sendFunctionResult(session, call_id, JSON.stringify(result));
 
     console.log(`✅ [FunctionCall] Function ${name} executed successfully`);

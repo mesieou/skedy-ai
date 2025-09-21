@@ -51,7 +51,6 @@ export async function createUser(
     // Update session with created user
     session.customerEntity = result.user;
     session.customerId = result.user.id;
-    session.conversationState = 'booking';
 
     // Map result to match tool template exactly
     const userData_response = {

@@ -264,9 +264,8 @@ export class RedisSessionManager {
       quotes: safeStringify(session.quotes, '[]'),
       selectedQuote: safeStringify(session.selectedQuote || null),
       selectedQuoteRequest: safeStringify(session.selectedQuoteRequest || null),
-      conversationState: session.conversationState,
-      availableTools: safeStringify(session.availableTools, '[]'),
-      activeTools: safeStringify(session.activeTools, '[]'),
+      allAvailableToolNames: safeStringify(session.allAvailableToolNames, '[]'),
+      currentTools: safeStringify(session.currentTools, '[]'),
       aiInstructions: session.aiInstructions || ''
     };
   }
@@ -326,17 +325,12 @@ export class RedisSessionManager {
       quotes: safeParse(hashData.quotes, [], 'quotes'),
       selectedQuote: safeParse(hashData.selectedQuote, undefined, 'selectedQuote'),
       selectedQuoteRequest: safeParse(hashData.selectedQuoteRequest, undefined, 'selectedQuoteRequest'),
-      conversationState: (hashData.conversationState as Session['conversationState']) || 'service_selection',
-      availableTools: safeParse(hashData.availableTools, [], 'availableTools'),
-      activeTools: safeParse(hashData.activeTools, [], 'activeTools'),
+      allAvailableToolNames: safeParse(hashData.allAvailableToolNames, [], 'allAvailableToolNames'),
+      currentTools: safeParse(hashData.currentTools, [], 'currentTools'),
       aiInstructions: hashData.aiInstructions || undefined,
 
       // Interaction tracking initialization - required field
-      isFirstAiResponse: true,
-
-      // Stage management fields (defaults)
-      currentStage: 'service_selection',
-      availableToolNames: []
+      isFirstAiResponse: true
     } as Session;
   }
 

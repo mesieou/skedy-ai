@@ -8,7 +8,6 @@
 import axios from "axios";
 import { sentry } from "@/features/shared/utils/sentryService";
 import type { Session } from "../../sessions/session";
-import type { Tool } from "@/features/shared/lib/database/types/tools";
 import assert from "assert";
 
 // Constants for OpenAI API
@@ -46,8 +45,8 @@ const AUDIO_CONFIG = {
   }
 } as const;
 
-// Constant function to create call config
-const createCallConfig = (instructions: string, tools?: Tool[]) => ({
+// Constant function to create call config (no tools - sent via session.update)
+const createCallConfig = (instructions: string) => ({
   type: "realtime" as const,
   instructions,
   model: process.env.OPENAI_REALTIME_MODEL || OPENAI_CONFIG.MODEL,
@@ -57,18 +56,7 @@ const createCallConfig = (instructions: string, tools?: Tool[]) => ({
       ...AUDIO_CONFIG.output,
       voice: process.env.OPENAI_VOICE || OPENAI_CONFIG.VOICE
     }
-  },
-  ...(tools && tools.length > 0 && {
-    tools: tools.map(tool => ({
-      type: "function" as const,
-      function: {
-        name: tool.function_schema.function.name,
-        description: tool.function_schema.function.description,
-        strict: tool.function_schema.function.strict,
-        parameters: tool.function_schema.function.parameters
-      }
-    }))
-  })
+  }
 });
 
 // Response interface (needed for return type)
@@ -99,20 +87,19 @@ export async function acceptCall(session: Session): Promise<CallAcceptResponse> 
     });
 
     // Validate required data with type narrowing
-    assert(session.aiInstructions, 'AI instructions not generated - call generatePromptAndTools first');
+    assert(session.aiInstructions, 'AI instructions not generated - call addPromptToSession first');
     assert(process.env.OPENAI_API_KEY, 'OPENAI_API_KEY environment variable not set');
 
-    // Create call configuration using constants
+    // Create call configuration using constants (no tools - sent via session.update later)
     const callConfig = createCallConfig(
-      session.aiInstructions,
-      session.currentTools
+      session.aiInstructions
     );
 
     // Make API call to OpenAI
     const acceptUrl = `${OPENAI_CONFIG.BASE_URL}/${session.id}/accept`;
 
     console.log(`🔗 [AcceptCall] Accept URL: ${acceptUrl}`);
-    console.log(`🔧 [AcceptCall] Config: Model=${callConfig.model}, Voice=${callConfig.audio.output.voice}, Tools=${callConfig.tools?.length || 0}`);
+    console.log(`🔧 [AcceptCall] Config: Model=${callConfig.model}, Voice=${callConfig.audio.output.voice}`);
 
     const response = await axios.post(acceptUrl, callConfig, {
       headers: {
