@@ -8,20 +8,19 @@ export const getServiceDetailsTool: CreateToolData = {
   business_specific: true,
   function_schema: {
     type: 'function',
-    function: {
-      name: 'get_service_details',
-      description: 'Get service details',
-      parameters: {
-        type: 'object',
-        properties: {
-          service_name: {
-            type: 'string',
-            description: 'Service name'
-          }
-        },
-        required: ['service_name'],
-        additionalProperties: false
-      }
+    name: 'get_service_details',
+    description: 'Get service details',
+    parameters: {
+      type: 'object',
+      strict: true,
+      properties: {
+        service_name: {
+          type: 'string',
+          description: 'Service name'
+        }
+      },
+      required: ['service_name'],
+      additionalProperties: false
     }
   },
   output_template: {
@@ -47,20 +46,19 @@ export const getQuoteTool: CreateToolData = {
   business_specific: true,
   function_schema: {
     type: 'function',
-    function: {
-      name: 'get_quote',
-      description: 'Get quote',
-      parameters: {
-        type: 'object',
-        properties: {
-          service_id: {
-            type: 'string',
-            description: 'Service id from get_service_details'
-          }
-        },
-        required: ['service_id'],
-        additionalProperties: false
-      }
+    name: 'get_quote',
+    description: 'Get quote',
+    parameters: {
+      type: 'object',
+      strict: true,
+      properties: {
+        service_id: {
+          type: 'string',
+          description: 'Service id from get_service_details'
+        }
+      },
+      required: ['service_id'],
+      additionalProperties: false
     }
   },
   output_template: {
@@ -85,24 +83,23 @@ export const checkDayAvailabilityTool: CreateToolData = {
   business_specific: true,
   function_schema: {
     type: 'function',
-    function: {
-      name: 'check_day_availability',
-      description: 'Check availability for a specific date',
-      parameters: {
-        type: 'object',
-        properties: {
-          date: {
-            type: 'string',
-            description: 'Date in YYYY-MM-DD format'
-          },
-          quote_total_estimate_time_minutes: {
-            type: 'string',
-            description: 'Quote total estimate time minutes from get_quote'
-          }
+    name: 'check_day_availability',
+    description: 'Check availability for a specific date',
+    parameters: {
+      type: 'object',
+      strict: true,
+      properties: {
+        date: {
+          type: 'string',
+          description: 'Date in YYYY-MM-DD format'
         },
-        required: ['date', 'quote_total_estimate_time_minutes'],
-        additionalProperties: false
-      }
+        quote_total_estimate_time_minutes: {
+          type: 'string',
+          description: 'Quote total estimate time minutes from get_quote'
+        }
+      },
+      required: ['date', 'quote_total_estimate_time_minutes'],
+      additionalProperties: false
     }
   },
   output_template: {
@@ -124,28 +121,27 @@ export const createUserTool: CreateToolData = {
   business_specific: true,
   function_schema: {
     type: 'function',
-    function: {
-      name: 'create_user',
-      description: 'Create customer',
-      parameters: {
-        type: 'object',
-        properties: {
-          first_name: {
-            type: 'string',
-            description: 'Customer name'
-          },
-          last_name: {
-            type: 'string',
-            description: 'Customer last name'
-          },
-          email: {
-            type: 'string',
-            description: 'Customer email'
-          }
+    name: 'create_user',
+    description: 'Create customer',
+    parameters: {
+      type: 'object',
+      strict: true,
+      properties: {
+        first_name: {
+          type: 'string',
+          description: 'Customer name'
         },
-        required: ['first_name'],
-        additionalProperties: false
-      }
+        last_name: {
+          type: 'string',
+          description: 'Customer last name'
+        },
+        email: {
+          type: 'string',
+          description: 'Customer email'
+        }
+      },
+      required: ['first_name'],
+      additionalProperties: false
     }
   },
   output_template: {
@@ -165,32 +161,31 @@ export const createBookingTool: CreateToolData = {
   business_specific: true,
   function_schema: {
     type: 'function',
-    function: {
-      name: 'create_booking',
-      description: 'Create booking after quote, user, availability check',
-      parameters: {
-        type: 'object',
-        properties: {
-          preferred_date: {
-            type: 'string',
-            description: 'Date YYYY-MM-DD'
-          },
-          preferred_time: {
-            type: 'string',
-            description: 'Time HH:MM (24-hour)'
-          },
-          quote_id: {
-            type: 'string',
-            description: 'Quote ID from selected quote'
-          },
-          confirmation_message: {
-            type: 'string',
-            description: 'Optional message/instructions'
-          }
+    name: 'create_booking',
+    description: 'Create booking after quote, user, availability check',
+    parameters: {
+      type: 'object',
+      strict: true,
+      properties: {
+        preferred_date: {
+          type: 'string',
+          description: 'Date YYYY-MM-DD'
         },
-        required: ['preferred_date', 'preferred_time', 'quote_id'],
-        additionalProperties: false
-      }
+        preferred_time: {
+          type: 'string',
+          description: 'Time HH:MM (24-hour)'
+        },
+        quote_id: {
+          type: 'string',
+          description: 'Quote ID from selected quote'
+        },
+        confirmation_message: {
+          type: 'string',
+          description: 'Optional message/instructions'
+        }
+      },
+      required: ['preferred_date', 'preferred_time', 'quote_id'],
+      additionalProperties: false
     }
   },
   output_template: {
@@ -217,29 +212,28 @@ export const requestToolTool: CreateToolData = {
   business_specific: false,
   function_schema: {
     type: 'function',
-    function: {
-      name: 'request_tool',
-      description: 'Request tool access for conversation flow changes',
-      parameters: {
-        type: 'object',
-        properties: {
-          tool_name: {
-            type: 'string',
-            description: 'Tool needed',
-            enum: ['get_service_details', 'get_quote', 'check_day_availability', 'create_user', 'create_booking']
-          },
-          service_name: {
-            type: 'string',
-            description: 'Service name (required when requesting get_quote tool)'
-          },
-          reason: {
-            type: 'string',
-            description: 'Why needed'
-          }
+    name: 'request_tool',
+    description: 'Request tool access for conversation flow changes',
+    parameters: {
+      type: 'object',
+      strict: true,
+      properties: {
+        tool_name: {
+          type: 'string',
+          description: 'Tool needed',
+          enum: ['get_service_details', 'get_quote', 'check_day_availability', 'create_user', 'create_booking']
         },
-        required: ['tool_name'],
-        additionalProperties: false
-      }
+        service_name: {
+          type: 'string',
+          description: 'Service name (required when requesting get_quote tool)'
+        },
+        reason: {
+          type: 'string',
+          description: 'Why needed'
+        }
+      },
+      required: ['tool_name'],
+      additionalProperties: false
     }
   },
   output_template: {

@@ -1,5 +1,6 @@
 import { sessionManager } from "./sessionSyncManager";
 import { Session } from "./session";
+import { webSocketPool } from "./websocketPool";
 import { BusinessRepository } from "@/features/shared/lib/database/repositories/business-repository";
 import { UserRepository } from "@/features/shared/lib/database/repositories/user-repository";
 import { TokenSpent } from "../types";
@@ -9,6 +10,8 @@ import assert from "assert";
 
 export class SessionService {
   static async createOrGet(callId: string, event: WebhookEvent) {
+    let assignedApiKeyIndex: number;
+
     try {
       let session = await sessionManager.get(callId);
 
@@ -46,6 +49,10 @@ export class SessionService {
 
         assert(business, `Business not found for Twilio Account SID: ${twilioAccountSid}`);
 
+        // Assign API key index from pool when creating session
+        const poolAssignment = webSocketPool.assign();
+        assignedApiKeyIndex = poolAssignment.index;
+
         session = {
           id: callId,
           businessId: business.id,
@@ -59,6 +66,8 @@ export class SessionService {
           tokenUsage: {} as TokenSpent,
           startedAt: Date.now(),
           eventType: event.type,
+          // API key assignment
+          assignedApiKeyIndex,
           // Tool system fields
           serviceNames: [],
           quotes: [],
@@ -95,6 +104,11 @@ export class SessionService {
           hasSipHeaders: !!(event.data?.sip_headers)
         }
       });
+      assert(assignedApiKeyIndex!, 'Assigned API key index not found');
+
+      // Release API key if it was assigned but session creation failed
+      webSocketPool.release(assignedApiKeyIndex);
+      console.log(`🔄 [SessionService] Released API key ${assignedApiKeyIndex + 1} due to session creation failure`);
 
       throw error; // Re-throw so caller can handle
     }

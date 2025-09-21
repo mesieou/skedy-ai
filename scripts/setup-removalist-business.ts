@@ -25,7 +25,6 @@ import { ToolsSeeder } from '../features/shared/lib/database/seeds/tools-seeder'
 import { PromptsSeeder } from '../features/shared/lib/database/seeds/prompts-seeder';
 import { removalistExample1ServiceData } from '../features/shared/lib/database/seeds/data/services-data';
 import { weekdayCalendarSettingsData, weekendCalendarSettingsData } from '../features/shared/lib/database/seeds/data/calendar-settings-data';
-import { removalistPrompt } from '../features/shared/lib/database/seeds/data/prompts-data';
 import { DateUtils } from '../features/shared/utils/date-utils';
 import { initializeTestDatabase } from '../features/shared/lib/test-setup';
 
@@ -126,15 +125,22 @@ async function main() {
     }
     console.log(`✅ Added ${businessToolsCount} tools to business`);
 
-    // Step 7: Create Prompt Template and Link to Business
-    console.log('📝 Creating business prompt...');
-    const prompt = await promptsSeeder.create(removalistPrompt);
-    await businessPromptRepository.create({
-      business_id: business.id,
-      prompt_id: prompt.id,
-      is_active: true
+    // Step 7: Link Existing Removalist Prompts to Business
+    console.log('📝 Linking removalist prompts to business...');
+    const removalistPrompts = await promptsSeeder.findAll({
+      business_category: 'removalist'
     });
-    console.log(`✅ Business prompt linked: v${prompt.prompt_version} (ID: ${prompt.id})`);
+
+    let businessPromptsCount = 0;
+    for (const prompt of removalistPrompts) {
+      await businessPromptRepository.create({
+        business_id: business.id,
+        prompt_id: prompt.id,
+        is_active: true
+      });
+      businessPromptsCount++;
+    }
+    console.log(`✅ Linked ${businessPromptsCount} prompts to business`);
 
     console.log('\n🎉 Removalist business setup completed!');
     console.log('📋 Setup Summary:');
@@ -145,7 +151,7 @@ async function main() {
     console.log(`   Services: 1`);
     console.log(`   Calendar Settings: ${calendarSettings.length}`);
     console.log(`   Business Tools: ${businessToolsCount}`);
-    console.log(`   Prompt: v${prompt.prompt_version}`);
+    console.log(`   Business Prompts: ${businessPromptsCount}`);
 
   } catch (error) {
     console.error('❌ Setup failed:', error);

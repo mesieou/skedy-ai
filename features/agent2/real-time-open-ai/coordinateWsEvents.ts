@@ -28,8 +28,8 @@ export function attachWSHandlers(session: Session) {
     await handleWebSocketOpen(session);
   });
 
-  session.ws.on("close", async (code: number, reason: string) => {
-    await handleWebSocketClose(session, code, reason);
+  session.ws.on("close", async (code: number, reason: Buffer) => {
+    await handleWebSocketClose(session, code, reason.toString());
   });
 
   session.ws.on("error", async (error: Error) => {
@@ -85,6 +85,7 @@ export function attachWSHandlers(session: Session) {
 
       // Error Events
       default:
+        console.log(`[WS] Unhandled event: ${event.type}`, event);
         if (event.type.includes('error') || event.type.includes('failed')) {
           // Handle error events with comprehensive logging
           await logErrorReceived(session, event as ErrorEvent);

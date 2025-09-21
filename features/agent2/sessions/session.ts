@@ -26,7 +26,11 @@ export interface Session {
   ws?: WebSocket;
   channel: "phone" | "whatsapp" | "website";
 
+  // API key management
+  assignedApiKeyIndex: number;
+
   // OpenAI Realtime API
+  openAiCallId?: string;              // OpenAI call ID from acceptCall response
   openAiConversationId?: string;
   interactions: Interaction[];
   tokenUsage: TokenSpent;

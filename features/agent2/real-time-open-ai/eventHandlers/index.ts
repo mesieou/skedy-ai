@@ -5,6 +5,9 @@ export {
   handleWebSocketClose,
   handleWebSocketError
 } from './connectionHandlers';
+
+export { requestInitialResponse } from './requestInitialResponse';
+
 // TODO: Add other handlers as needed
 // export * from './sessionHandlers';
 // export * from './responseHandlers';

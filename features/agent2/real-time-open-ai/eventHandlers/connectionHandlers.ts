@@ -3,11 +3,11 @@ import { sentry } from "@/features/shared/utils/sentryService";
 import { webSocketPool } from "../../sessions/websocketPool";
 import { attachWSHandlers } from "../coordinateWsEvents";
 import { updateOpenAiSession } from "./updateOpenAiSession";
+import { requestInitialResponse } from "./requestInitialResponse";
 import WebSocket from "ws";
 import assert from "assert";
 
-// Extend session type for API key tracking
-type SessionWithApiKey = Session & { apiKeyIndex?: number };
+// Remove extended type - use session.assignedApiKeyIndex consistently
 
 // Constants for WebSocket connection
 const WEBSOCKET_CONFIG = {
@@ -20,7 +20,7 @@ const WEBSOCKET_CONFIG = {
  */
 export async function createAndConnectWebSocket(session: Session): Promise<WebSocket> {
   const startTime = Date.now();
-  let poolAssignment: { apiKey: string; index: number } | null = null;
+  const apiKey = webSocketPool.getApiKeyByIndex(session.assignedApiKeyIndex);
 
   try {
     console.log(`🌐 [ConnectionHandlers] Creating WebSocket connection for session: ${session.id}`);
@@ -30,12 +30,6 @@ export async function createAndConnectWebSocket(session: Session): Promise<WebSo
       businessId: session.businessId,
       sessionId: session.id
     });
-
-    // Get API key from pool for load balancing
-    poolAssignment = webSocketPool.assign();
-    const { apiKey, index } = poolAssignment;
-
-    console.log(`🔑 [ConnectionHandlers] Assigned API key ${index + 1} for session: ${session.id}`);
 
     // Validate API key
     assert(apiKey, 'No API key available from pool');
@@ -50,49 +44,8 @@ export async function createAndConnectWebSocket(session: Session): Promise<WebSo
       }
     });
 
-    // Set timeout for connection
-    const connectionTimeout = setTimeout(() => {
-      if (ws.readyState === WebSocket.CONNECTING) {
-        ws.terminate();
-        throw new Error('WebSocket connection timeout');
-      }
-    }, WEBSOCKET_CONFIG.TIMEOUT);
-
-    // Wait for connection to open
-    await new Promise<void>((resolve, reject) => {
-      ws.once('open', () => {
-        clearTimeout(connectionTimeout);
-        const duration = Date.now() - startTime;
-
-        console.log(`✅ [ConnectionHandlers] WebSocket connected successfully (${duration}ms)`);
-
-        // Add success breadcrumb
-        sentry.addBreadcrumb(`WebSocket connected successfully`, 'websocket-create', {
-          sessionId: session.id,
-          duration
-        });
-
-        resolve();
-      });
-
-      ws.once('error', (error) => {
-        clearTimeout(connectionTimeout);
-        reject(error);
-      });
-
-      ws.once('close', (code, reason) => {
-        clearTimeout(connectionTimeout);
-        if (ws.readyState === WebSocket.CONNECTING) {
-          reject(new Error(`WebSocket closed during connection: ${code} - ${reason}`));
-        }
-      });
-    });
-
     // Attach the WebSocket to the session
     session.ws = ws;
-
-    // Store API key index for cleanup (add to session metadata)
-    (session as SessionWithApiKey).apiKeyIndex = index;
 
     // Attach event handlers automatically
     attachWSHandlers(session);
@@ -105,12 +58,6 @@ export async function createAndConnectWebSocket(session: Session): Promise<WebSo
     const duration = Date.now() - startTime;
     console.error(`❌ [ConnectionHandlers] Failed to create WebSocket for session ${session.id}:`, error);
 
-    // Release API key back to pool on error
-    if (poolAssignment) {
-      webSocketPool.release(poolAssignment.index);
-      console.log(`🔄 [ConnectionHandlers] Released API key ${poolAssignment.index + 1} back to pool`);
-    }
-
     // Track error in Sentry
     sentry.trackError(error as Error, {
       sessionId: session.id,
@@ -119,7 +66,6 @@ export async function createAndConnectWebSocket(session: Session): Promise<WebSo
       metadata: {
         duration,
         wsUrl: `${WEBSOCKET_CONFIG.BASE_URL}?call_id=${session.id}`,
-        apiKeyIndex: poolAssignment?.index
       }
     });
 
@@ -148,6 +94,9 @@ export async function handleWebSocketOpen(session: Session): Promise<void> {
       console.log(`🔧 [ConnectionHandlers] Sending initial tools to OpenAI for session ${session.id}`);
       await updateOpenAiSession(session);
       console.log(`🎯 [ConnectionHandlers] Session ${session.id} ready for interaction`);
+
+      // Request initial AI response to start the conversation
+      await requestInitialResponse(session);
     }
   } catch (error) {
     console.error(`❌ [ConnectionHandlers] Failed to handle open event for session ${session.id}:`, error);
@@ -184,9 +133,8 @@ export async function handleWebSocketClose(
 
     // Clean up WebSocket reference
     session.ws = undefined;
-
     // Release API key back to pool
-    const apiKeyIndex = (session as SessionWithApiKey).apiKeyIndex;
+    const apiKeyIndex = session.assignedApiKeyIndex;
     if (typeof apiKeyIndex === 'number') {
       webSocketPool.release(apiKeyIndex);
       console.log(`🔄 [ConnectionHandlers] Released API key ${apiKeyIndex + 1} back to pool`);
@@ -241,11 +189,8 @@ export async function handleWebSocketError(session: Session, error: Error): Prom
       }
     });
 
-    // Update session status if needed
-    if (session.status === 'active') {
-      console.log(`📊 [WebSocket] Updating session ${session.id} status due to error`);
-      // Don't end the session immediately - let the close handler do that
-    }
+    // Log error but don't change session status - let close handler manage state
+    console.log(`📊 [WebSocket] Error in session ${session.id}, close handler will manage status`);
 
   } catch (handlingError) {
     console.error(`❌ [WebSocket] Failed to handle error event for session ${session.id}:`, handlingError);

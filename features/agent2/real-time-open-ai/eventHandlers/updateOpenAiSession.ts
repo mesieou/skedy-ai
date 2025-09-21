@@ -21,26 +21,33 @@ export async function updateOpenAiSession(session: Session): Promise<void> {
       toolNames: session.currentTools.map(t => t.name)
     });
 
-    // Convert tools to OpenAI format
-    const openAiTools = session.currentTools.map(tool => ({
-      type: "function" as const,
-      function: {
-        name: tool.function_schema.function.name,
-        description: tool.function_schema.function.description,
-        strict: tool.function_schema.function.strict,
-        parameters: tool.function_schema.function.parameters
-      }
-    }));
+    // Use tools directly (no transformation needed - schema already in Realtime API format)
+    const openAiTools = session.currentTools.map(tool => {
+      console.log(`🔍 [UpdateOpenAI] Processing tool:`, {
+        toolName: tool.name,
+        hasSchema: !!tool.function_schema,
+        schemaName: tool.function_schema?.name,
+        schemaStrict: tool.function_schema?.parameters?.strict
+      });
 
-    // Create session update message
+      return tool.function_schema;
+    });
+
+    // Generate unique event ID
+    const eventId = `event_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+
+    // Create session update message (strict OpenAI Realtime format)
     const sessionUpdate = {
       type: "session.update",
       session: {
         type: "realtime",
         tools: openAiTools,
         tool_choice: "auto"
-      }
+      },
+      event_id: eventId
     };
+
+    console.log(`📤 [UpdateOpenAI] Sending to OpenAI:`, JSON.stringify(sessionUpdate, null, 2));
 
     // Send to OpenAI
     session.ws.send(JSON.stringify(sessionUpdate));

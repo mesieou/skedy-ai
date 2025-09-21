@@ -22,21 +22,19 @@ export interface Tool extends BaseEntity {
 }
 
 /**
- * OpenAI Function Schema - matches OpenAI's expected format
+ * OpenAI Function Schema - matches OpenAI Realtime API format
  */
 export interface OpenAIFunctionSchema {
   type: "function";
-  function: {
-    name: string;
-    description: string;
-    strict?: boolean;
-    parameters: {
-      type: "object";
-      description?: string;
-      properties: Record<string, ParameterDefinition>;
-      required?: string[];
-      additionalProperties?: boolean;
-    };
+  name: string;
+  description: string;
+  parameters: {
+    type: "object";
+    strict: boolean;
+    description?: string;
+    properties: Record<string, ParameterDefinition>;
+    required?: string[];
+    additionalProperties?: boolean;
   };
 }
 

@@ -1,7 +1,8 @@
-import type { Prompt } from '../../types/prompt';
+import { PROMPTS_NAMES, type Prompt } from '../../types/prompt';
 
 export const removalistPrompt: Omit<Prompt, 'id' | 'created_at' | 'updated_at'> = {
   business_category: 'removalist',
+  prompt_name: PROMPTS_NAMES.MAIN_CONVERSATION,
   prompt_version: 'v1.0.0',
   prompt_content: `You are Rachel, AI receptionist for removalist services. Mission: book appointments.
 

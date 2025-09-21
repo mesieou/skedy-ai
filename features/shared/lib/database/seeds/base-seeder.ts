@@ -48,6 +48,10 @@ export class BaseSeeder<T extends BaseEntity> {
     return await this.repository.findOne(conditions);
   }
 
+  async findAll(conditions?: import('../types/base').QueryConditions): Promise<T[]> {
+    return await this.repository.findAll(conditions);
+  }
+
   async updateOne(conditions: import('../types/base').QueryConditions, updates: Partial<T>): Promise<T> {
     return await this.repository.updateOne(conditions, updates);
   }

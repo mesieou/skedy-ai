@@ -16,9 +16,9 @@ export async function handleCallEvent(session: Session, event: WebhookEvent) {
         await addPromptToSession(session);
         // Add initial requested tools
         await updateToolsToSession(session, [...getInitialRequestedTools()]);
-        // Accept call with OpenAI
+        // Accept call with OpenAI using session's assigned API key
         await acceptCall(session);
-        // Create WebSocket connection (with automatic API key assignment and handler attachment)
+        // Create WebSocket connection using session's assigned API key
         await createAndConnectWebSocket(session);
         break;
 

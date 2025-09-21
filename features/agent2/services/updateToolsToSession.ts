@@ -1,4 +1,4 @@
-import { ToolsRepository } from '../../shared/lib/database/repositories/tools-repository';
+import { BusinessToolsRepository } from '../../shared/lib/database/repositories/business-tools-repository';
 import { sentry } from '../../shared/utils/sentryService';
 import { PERMANENT_TOOLS } from '../../shared/lib/database/types/tools';
 import { updateDynamicTool } from './updateDynamicTool';
@@ -42,13 +42,9 @@ export async function updateToolsToSession(session: Session, toolNames: string[]
       return;
     }
 
-    // Get tools from database
-    const toolRepo = new ToolsRepository();
-    const allValidTools = await toolRepo.findAll({}, {
-      business_id: session.businessId,
-      is_active: true,
-      name: validToolNames
-    });
+    // Get tools from database using business_tools junction table
+    const businessToolsRepo = new BusinessToolsRepository();
+    const allValidTools = await businessToolsRepo.getActiveToolsByNamesForBusiness(session.businessId, validToolNames);
 
     // Update dynamic tool schemas if needed
     if (serviceName && toolNames.includes('get_quote')) {

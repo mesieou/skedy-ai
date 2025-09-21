@@ -1,4 +1,5 @@
 import { BusinessPromptRepository } from '../../shared/lib/database/repositories/business-prompt-repository';
+import { PROMPTS_NAMES } from '../../shared/lib/database/types/prompt';
 import { BusinessRepository } from '../../shared/lib/database/repositories/business-repository';
 import { BusinessToolsRepository } from '../../shared/lib/database/repositories/business-tools-repository';
 import { sentry } from '../../shared/utils/sentryService';
@@ -32,10 +33,10 @@ export async function addPromptToSession(session: Session): Promise<void> {
     // Get business info string
     const businessInfoString = businessRepo.buildBusinessInfoForCustomers(business);
 
-    // Get active prompt content for business in ONE query using JOIN
-    const promptContent = await businessPromptRepo.getActivePromptContentForBusiness(business.id);
+    // Get active prompt data for business in ONE query using JOIN
+    const promptData = await businessPromptRepo.getActivePromptByNameForBusiness(business.id, PROMPTS_NAMES.MAIN_CONVERSATION);
 
-    assert(promptContent, `No active prompt found for business ${business.id}`);
+    assert(promptData, `${PROMPTS_NAMES.MAIN_CONVERSATION} prompt not found for business ${business.id}`);
 
     // Create tool list for prompt (all available tools for AI reference)
     const allToolsList = activeToolNames.join(', ');
@@ -48,11 +49,13 @@ export async function addPromptToSession(session: Session): Promise<void> {
 
     const finalPrompt = Object.entries(replacements).reduce(
       (prompt, [placeholder, value]) => prompt!.replace(new RegExp(placeholder, 'g'), value),
-      promptContent
+      promptData.prompt_content
     );
 
     // Store prompt and tool names in session
     session.aiInstructions = finalPrompt!;
+    session.promptName = promptData.prompt_name;
+    session.promptVersion = promptData.prompt_version;
     session.allAvailableToolNames = activeToolNames;
 
     const duration = Date.now() - startTime;

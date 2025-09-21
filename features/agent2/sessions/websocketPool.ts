@@ -25,6 +25,13 @@ export class WebSocketPool {
     assert(this.counters[index] > 0, `WebSocketPool.release: counter for index ${index} is already at zero`);
     this.counters[index]--;
   }
+
+  // Get API key by index
+  getApiKeyByIndex(index: number): string {
+    assert(typeof index === 'number' && index >= 0 && index < this.apiKeys.length, `WebSocketPool.getApiKeyByIndex: invalid index ${index}`);
+    return this.apiKeys[index];
+  }
 }
 
-export const webSocketPool = new WebSocketPool([process.env.OPENAI_API_KEY!, process.env.OPENAI_API_KEY_2!]);
+// Use only the primary API key to avoid mismatches between call accept and WebSocket
+export const webSocketPool = new WebSocketPool([process.env.OPENAI_API_KEY!]);
