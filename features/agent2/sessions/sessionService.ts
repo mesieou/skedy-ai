@@ -1,4 +1,4 @@
-import { sessionManager } from "./sessionManager";
+import { sessionManager } from "./sessionSyncManager";
 import { Session } from "./session";
 import { BusinessRepository } from "@/features/shared/lib/database/repositories/business-repository";
 import { UserRepository } from "@/features/shared/lib/database/repositories/user-repository";

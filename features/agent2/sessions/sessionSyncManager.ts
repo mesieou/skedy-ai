@@ -280,7 +280,7 @@ export class SessionSyncManager extends EventEmitter {
 
 }
 
-// Create the sync-enabled session manager
+// Create and export the session manager
 const memoryManager = new SessionManager();
 const redisManager = new RedisSessionManager();
-export const sessionSyncManager = new SessionSyncManager(memoryManager, redisManager);
+export const sessionManager = new SessionSyncManager(memoryManager, redisManager);

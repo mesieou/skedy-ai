@@ -1,5 +1,4 @@
 import { Session } from "./session";
-import { sessionSyncManager } from "./sessionSyncManager";
 import assert from "assert";
 
 export class SessionManager {
@@ -20,7 +19,3 @@ export class SessionManager {
   }
   list() { return Array.from(this.sessions.values()); }
 }
-
-// Export the sync-enabled session manager instead of the basic one
-// Note: sessionSyncManager has async get() method for Redis fallback
-export const sessionManager = sessionSyncManager;

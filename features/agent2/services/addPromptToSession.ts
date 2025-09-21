@@ -1,6 +1,6 @@
 import { BusinessPromptRepository } from '../../shared/lib/database/repositories/business-prompt-repository';
 import { BusinessRepository } from '../../shared/lib/database/repositories/business-repository';
-import { ToolsRepository } from '../../shared/lib/database/repositories/tools-repository';
+import { BusinessToolsRepository } from '../../shared/lib/database/repositories/business-tools-repository';
 import { sentry } from '../../shared/utils/sentryService';
 import type { Session } from '../sessions/session';
 import assert from 'assert';
@@ -24,13 +24,10 @@ export async function addPromptToSession(session: Session): Promise<void> {
 
     const businessPromptRepo = new BusinessPromptRepository();
     const businessRepo = new BusinessRepository();
-    const toolRepo = new ToolsRepository();
+    const businessToolsRepo = new BusinessToolsRepository();
 
-    // Get all active tools for this business (for prompt reference)
-    const allTools = await toolRepo.findAll({}, {
-      business_id: business.id,
-      is_active: true
-    });
+    // Get all active tool names for this business (for prompt reference)
+    const activeToolNames = await businessToolsRepo.getActiveToolNamesForBusiness(business.id);
 
     // Get business info string
     const businessInfoString = businessRepo.buildBusinessInfoForCustomers(business);
@@ -41,7 +38,7 @@ export async function addPromptToSession(session: Session): Promise<void> {
     assert(promptContent, `No active prompt found for business ${business.id}`);
 
     // Create tool list for prompt (all available tools for AI reference)
-    const allToolsList = allTools.map(t => t.name).join(', ');
+    const allToolsList = activeToolNames.join(', ');
 
     // Inject data into prompt using replacements map
     const replacements = {
@@ -56,17 +53,17 @@ export async function addPromptToSession(session: Session): Promise<void> {
 
     // Store prompt and tool names in session
     session.aiInstructions = finalPrompt!;
-    session.allAvailableToolNames = allTools.map(t => t.name);
+    session.allAvailableToolNames = activeToolNames;
 
     const duration = Date.now() - startTime;
-    console.log(`✅ [GeneratePrompt] Generated prompt (${finalPrompt!.length} chars) with ${allTools.length} available tools (${duration}ms)`);
+    console.log(`✅ [GeneratePrompt] Generated prompt (${finalPrompt!.length} chars) with ${activeToolNames.length} available tools (${duration}ms)`);
 
     // Success breadcrumb
     sentry.addBreadcrumb(`Prompt generated successfully`, 'prompt-generation', {
       businessId: business.id,
       sessionId: session.id,
       promptLength: finalPrompt!.length,
-      allToolsCount: allTools.length,
+      allToolsCount: activeToolNames.length,
       duration
     });
 
