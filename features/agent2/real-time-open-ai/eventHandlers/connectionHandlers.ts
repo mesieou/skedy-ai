@@ -4,6 +4,7 @@ import { webSocketPool } from "../../sessions/websocketPool";
 import { attachWSHandlers } from "../coordinateWsEvents";
 import { updateOpenAiSession } from "./updateOpenAiSession";
 import { requestInitialResponse } from "./requestInitialResponse";
+import { persistSessionAndInteractions } from "./persistSessionAndInteractions";
 import WebSocket from "ws";
 import assert from "assert";
 
@@ -147,6 +148,49 @@ export async function handleWebSocketClose(
     // Calculate session duration
     if (session.startedAt) {
       session.durationInMinutes = Math.round((Date.now() - session.startedAt) / (1000 * 60));
+    }
+
+    // Persist session and interactions to database when connection closes
+    try {
+      console.log(`💾 [ConnectionHandlers] Persisting session data to database...`);
+
+      // Add breadcrumb for persistence attempt
+      sentry.addBreadcrumb(`Starting database persistence on WebSocket close`, 'database-persist', {
+        sessionId: session.id,
+        businessId: session.businessId,
+        interactionsCount: session.interactions.length,
+        sessionDuration: session.durationInMinutes || 0
+      });
+
+      await persistSessionAndInteractions(session);
+      console.log(`✅ [ConnectionHandlers] Session data persisted successfully`);
+
+      // Success breadcrumb
+      sentry.addBreadcrumb(`Database persistence completed successfully`, 'database-persist', {
+        sessionId: session.id,
+        businessId: session.businessId,
+        interactionsCount: session.interactions.length
+      });
+
+    } catch (persistError) {
+      console.error(`❌ [ConnectionHandlers] Failed to persist session data:`, persistError);
+
+      // Track critical persistence error in Sentry
+      sentry.trackError(persistError as Error, {
+        sessionId: session.id,
+        businessId: session.businessId,
+        operation: 'websocket_close_persistence',
+        metadata: {
+          closeCode: code,
+          closeReason: reason,
+          sessionDuration: session.durationInMinutes || 0,
+          interactionsCount: session.interactions.length,
+          hasCustomerId: !!session.customerId,
+          hasTokenUsage: !!session.tokenUsage
+        }
+      });
+
+      // Don't throw - connection is already closed, just log the error
     }
 
     // The session sync manager will automatically persist these changes to Redis

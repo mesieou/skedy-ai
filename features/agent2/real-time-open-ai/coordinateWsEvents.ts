@@ -83,6 +83,79 @@ export function attachWSHandlers(session: Session) {
         await logRateLimits(session, event as ServerRateLimitsUpdatedEvent);
         break;
 
+      case "response.function_call_arguments.delta":
+        // Real-time function call arguments being built (handled by response.function_call_arguments.done)
+        break;
+      // Response Generation Events (informational - no action needed)
+      case "response.created":
+        // AI started generating a response
+        break;
+
+      case "response.output_item.added":
+        // AI added an output item (message/audio) to the response
+        break;
+
+      case "conversation.item.added":
+        // Item was added to the conversation history
+        break;
+
+      case "response.content_part.added":
+        // AI added a content part (text/audio) to the response
+        break;
+
+      case "response.output_audio_transcript.delta":
+        // Real-time transcript delta as AI speaks (handled by response.output_audio_transcript.done)
+        break;
+
+      case "output_audio_buffer.started":
+        // Audio playback started
+        break;
+
+      case "output_audio_buffer.speech_started":
+        // AI started speaking
+        break;
+
+      case "output_audio_buffer.speech_stopped":
+        // AI stopped speaking
+        break;
+
+      case "output_audio_buffer.committed":
+        // Audio buffer committed for playback
+        break;
+
+      case "response.output_item.done":
+        // Response output item completed
+        break;
+
+      case "response.output_audio.done":
+        // AI audio output completed
+        break;
+
+      case "response.content_part.done":
+        // AI content part completed
+        break;
+
+      case "output_audio_buffer.stopped":
+        // Audio playback stopped
+        break;
+
+      // Input Audio Events (user speech)
+      case "input_audio_buffer.speech_started":
+        // User started speaking
+        break;
+
+      case "input_audio_buffer.speech_stopped":
+        // User stopped speaking
+        break;
+
+      case "input_audio_buffer.committed":
+        // User audio buffer committed for processing
+        break;
+
+      case "conversation.item.input_audio_transcription.delta":
+        // Real-time user speech transcription (handled by conversation.item.input_audio_transcription.completed)
+        break;
+
       // Error Events
       default:
         console.log(`[WS] Unhandled event: ${event.type}`, event);

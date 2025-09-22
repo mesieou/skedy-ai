@@ -23,13 +23,6 @@ export async function updateOpenAiSession(session: Session): Promise<void> {
 
     // Use tools directly (no transformation needed - schema already in Realtime API format)
     const openAiTools = session.currentTools.map(tool => {
-      console.log(`🔍 [UpdateOpenAI] Processing tool:`, {
-        toolName: tool.name,
-        hasSchema: !!tool.function_schema,
-        schemaName: tool.function_schema?.name,
-        schemaStrict: tool.function_schema?.parameters?.strict
-      });
-
       return tool.function_schema;
     });
 
@@ -46,8 +39,6 @@ export async function updateOpenAiSession(session: Session): Promise<void> {
       },
       event_id: eventId
     };
-
-    console.log(`📤 [UpdateOpenAI] Sending to OpenAI:`, JSON.stringify(sessionUpdate, null, 2));
 
     // Send to OpenAI
     session.ws.send(JSON.stringify(sessionUpdate));

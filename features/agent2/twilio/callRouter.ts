@@ -1,7 +1,7 @@
 // services/callEventHandler.ts
 import { Session } from '../sessions/session';
 import { WebhookEvent } from '@/app/api/voice/twilio-webhook/route';
-import { acceptCall, persistSessionAndInteractions } from './callHandlers';
+import { acceptCall } from './callHandlers';
 import { createAndConnectWebSocket } from '../real-time-open-ai/eventHandlers/connectionHandlers';
 import { sentry } from '@/features/shared/utils/sentryService';
 import { addPromptToSession } from '../services/addPromptToSession';
@@ -23,8 +23,7 @@ export async function handleCallEvent(session: Session, event: WebhookEvent) {
         break;
 
       case 'realtime.call.ended':
-        // Persist session and interactions to database
-        await persistSessionAndInteractions(session);
+        // Persist session and interactions to database are handled in the connection handlers
         break;
 
       default:
