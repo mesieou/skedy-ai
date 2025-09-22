@@ -12,7 +12,7 @@ import { storeUserTranscript } from "./eventHandlers/storeUserTranscript";
 import { logToolsUpdated, SessionUpdatedEvent } from "./eventHandlers/logToolsUpdated";
 import { logFunctionProcessed, ConversationItemDoneEvent } from "./eventHandlers/logFunctionProcessed";
 import { logErrorReceived, ErrorEvent } from "./eventHandlers/logErrorReceived";
-import { requestResponseAfterFunction, ResponseDoneEvent } from "./eventHandlers/requestResponseAfterFunction";
+// import { requestResponseAfterFunction, ResponseDoneEvent } from "./eventHandlers/requestResponseAfterFunction";
 import { logRateLimits } from "./eventHandlers/logRateLimits";
 import { ServerRateLimitsUpdatedEvent } from "./types/server/events/rateLimints/serverRateLimitsUpdatedTypes";
 import { ServerResponseFunctionCallArgumentsDoneEvent } from "./types/server/events/response/serverResponseFunctionCallArgumentsDoneTypes";
@@ -53,8 +53,8 @@ export function attachWSHandlers(session: Session) {
 
       // Response Events
       case "response.done":
-        // Response complete - clear pending data and request next response if functions were called
-        await requestResponseAfterFunction(session, event as ResponseDoneEvent);
+        // Response complete - just log, function handling moved to response.function_call_arguments.done
+        console.log(`✅ [ResponseDone] Session ${session.id} | Response completed`);
         break;
 
       case "response.function_call_arguments.done":

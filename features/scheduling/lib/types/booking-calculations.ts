@@ -42,7 +42,6 @@ export interface RouteSegment {
   to_address: string;
   distance_km: number;
   duration_mins: number;
-  cost: number;
   is_chargeable: boolean;
   service_id?: string;
   segment_type: 'customer_to_customer' | 'base_to_customer' | 'customer_to_base';
@@ -54,8 +53,6 @@ export interface TravelBreakdown {
   total_travel_time_mins: number;
   total_travel_cost: number;
   route_segments: RouteSegment[];
-  free_travel_applied: boolean;
-  free_travel_distance_km: number;
 }
 
 // Service cost breakdown
@@ -64,7 +61,6 @@ export interface ServiceBreakdown {
   service_name: string;
   quantity: number;
   service_cost: number;      // Only service-related costs (no travel)
-  setup_cost: number;
   total_cost: number;        // service_cost + setup_cost (no travel)
   estimated_duration_mins: number;
   component_breakdowns: ComponentBreakdown[];
@@ -90,6 +86,21 @@ export interface PriceBreakdown {
 // Result of quote calculation - the calculated quote (for tool responses)
 export interface QuoteResultInfo {
   quote_id: string;
+  service_name: string;
+  total_estimate_amount: number;
+  total_estimate_time_in_minutes: number;
+  deposit_amount: number;
+  currency: string;
+
+  // Simple breakdown for customer questions (prevents AI from double-adding GST)
+  labor_cost: number;
+  travel_cost: number;
+  gst_included: number;
+}
+
+// Internal detailed quote result (for calculations and session storage)
+export interface DetailedQuoteResult {
+  quote_id: string;
   total_estimate_amount: number;
   total_estimate_time_in_minutes: number;
   minimum_charge_applied: boolean;
@@ -99,20 +110,15 @@ export interface QuoteResultInfo {
 
 // Complete quote calculation result (internal use)
 export interface QuoteCalculationResult {
-  quoteResult: QuoteResultInfo;
+  quoteResult: DetailedQuoteResult;
   quoteRequest: QuoteRequestInfo;
 }
 
 // Business fees
 export interface BusinessFeeBreakdown {
   gst_amount: number;
-  gst_rate: number;
   platform_fee: number;
-  platform_fee_amount: number;
-  platform_fee_percentage: number;
   payment_processing_fee: number;
-  payment_processing_fee_amount: number;
-  payment_processing_fee_percentage: number;
   other_fees: Array<{ name: string; amount: number }>;
 }
 

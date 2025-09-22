@@ -1,7 +1,7 @@
 import { Business } from "../../shared/lib/database/types/business";
 import { User } from "../../shared/lib/database/types/user";
 import { Interaction } from "../../shared/lib/database/types/interactions";
-import { QuoteResultInfo, QuoteRequestInfo } from "../../scheduling/lib/types/booking-calculations";
+import { DetailedQuoteResult, QuoteRequestInfo } from "../../scheduling/lib/types/booking-calculations";
 import { Tool } from "../../shared/lib/database/types/tools";
 import { TokenSpent } from "../types";
 import WebSocket from "ws";
@@ -62,8 +62,8 @@ export interface Session {
   };
 
   // Conversation data
-  quotes: QuoteResultInfo[];             // All quotes generated during conversation
-  selectedQuote?: QuoteResultInfo;       // Currently selected quote result
+  quotes: DetailedQuoteResult[];             // All quotes generated during conversation
+  selectedQuote?: DetailedQuoteResult;       // Currently selected quote result
   selectedQuoteRequest?: QuoteRequestInfo; // Currently selected quote request
 
 }

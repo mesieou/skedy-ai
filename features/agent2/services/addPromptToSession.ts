@@ -54,6 +54,10 @@ export async function addPromptToSession(session: Session): Promise<void> {
       (prompt, [placeholder, value]) => prompt!.replace(new RegExp(placeholder.replace(/[{}]/g, '\\$&'), 'g'), value),
       promptData.prompt_content
     );
+    console.log('Final prompt:', finalPrompt);
+    console.log('Service names:', serviceNames);
+    console.log('Business info:', businessInfoString);
+    console.log('Active tool names:', activeToolNames);
 
     // Store prompt, tool names, and service names in session
     session.aiInstructions = finalPrompt!;

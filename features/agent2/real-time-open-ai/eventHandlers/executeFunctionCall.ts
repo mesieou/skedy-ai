@@ -3,7 +3,7 @@ import { executeToolFunction } from "../../services/executeTool";
 import { updateOpenAiSession } from "./updateOpenAiSession";
 import { sentry } from "@/features/shared/utils/sentryService";
 import { ServerResponseFunctionCallArgumentsDoneEvent } from "../types/server/events/response/serverResponseFunctionCallArgumentsDoneTypes";
-import { ConversationItemCreateEvent, RealtimeFunctionCallOutputItem } from "../types/client/events/clientConversationItemCreateTypes";
+import { RealtimeFunctionCallOutputItem } from "../types/client/events/clientConversationItemCreateTypes";
 import assert from "assert";
 
 export async function executeFunctionCall(
@@ -27,8 +27,32 @@ export async function executeFunctionCall(
     // Parse function arguments
     const args = JSON.parse(argsString);
 
+    console.log(`🔧 [FunctionCall] Executing function: ${name} (${call_id})`);
+    console.log(`📥 [FunctionCall] AI provided parameters:`, JSON.stringify(args, null, 2));
+
+    // Add breadcrumb for function execution start
+    sentry.addBreadcrumb(`Function call started: ${name}`, 'function-execution', {
+      sessionId: session.id,
+      businessId: session.businessId,
+      functionName: name,
+      callId: call_id,
+      parameters: args
+    });
+
     // Execute the function using executeTool service
     const result = await executeToolFunction(name, args, session);
+
+    console.log(`📤 [FunctionCall] Function result:`, JSON.stringify(result, null, 2));
+
+    // Add breadcrumb for function execution completion
+    sentry.addBreadcrumb(`Function call completed: ${name}`, 'function-execution', {
+      sessionId: session.id,
+      businessId: session.businessId,
+      functionName: name,
+      callId: call_id,
+      success: !!result,
+      resultSize: JSON.stringify(result).length
+    });
 
     // Update OpenAI session with current tools BEFORE sending result (if request_tool was executed)
     if (name === 'request_tool' && session.currentTools && session.currentTools.length > 0) {
@@ -64,7 +88,18 @@ export async function executeFunctionCall(
     }
 
     // Send function result back to OpenAI AFTER tools are updated
-    await sendFunctionResult(session, call_id, JSON.stringify(result));
+    console.log(`📤 [FunctionCall] Sending result object:`, result);
+    await sendFunctionResult(session, call_id, result);
+
+    // Immediately request AI response (exactly like documentation)
+    const responseRequest = {
+      type: "response.create"
+    };
+
+    assert(session.ws, `No WebSocket connection available for session ${session.id}`);
+
+    session.ws.send(JSON.stringify(responseRequest));
+    console.log(`🔄 [FunctionCall] Immediately requested AI response after function execution`);
 
     console.log(`✅ [FunctionCall] Function ${name} executed successfully`);
 
@@ -94,32 +129,32 @@ export async function executeFunctionCall(
     });
 
     // Send error result back to OpenAI
-    await sendFunctionResult(session, call_id, JSON.stringify({
+    await sendFunctionResult(session, call_id, {
       success: false,
       error: `Function execution failed: ${error}`
-    }));
+    });
   }
 }
 
 async function sendFunctionResult(
   session: Session,
   callId: string,
-  result: string
+  result: Record<string, unknown>
 ): Promise<void> {
   if (!session.ws) return;
 
   const functionOutputItem: RealtimeFunctionCallOutputItem = {
     type: "function_call_output",
     call_id: callId,
-    output: result
+    output: JSON.stringify(result)  // Single stringify here, like old agent
   };
 
-  const functionResultMessage: ConversationItemCreateEvent = {
+  const functionResultMessage = {
     type: "conversation.item.create",
-    event_id: `create_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
     item: functionOutputItem
   };
 
+  console.log(`📤 [FunctionCall] Sending complete message to OpenAI:`, JSON.stringify(functionResultMessage, null, 2));
   session.ws.send(JSON.stringify(functionResultMessage));
   console.log(`📤 [FunctionCall] Sent result for ${callId}`);
 }

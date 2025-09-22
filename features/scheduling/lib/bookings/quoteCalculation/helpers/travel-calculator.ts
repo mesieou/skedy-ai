@@ -35,8 +35,6 @@ export class TravelCalculator {
         total_travel_time_mins: 0,
         total_travel_cost: 0,
         route_segments: [],
-        free_travel_applied: false,
-        free_travel_distance_km: 0,
       };
     }
 
@@ -93,7 +91,6 @@ export class TravelCalculator {
         to_address: segment.to_address,
         distance_km: distance_data.distance_km,
         duration_mins: distance_data.duration_mins,
-        cost: 0, // Will be calculated per service component
         is_chargeable: segment.is_chargeable,
         service_id: segment.service_id,
         segment_type: "customer_to_customer",
@@ -119,8 +116,6 @@ export class TravelCalculator {
       total_travel_time_mins,
       total_travel_cost: Math.round(total_travel_cost),
       route_segments,
-      free_travel_applied: false,
-      free_travel_distance_km: 0,
     };
   }
 

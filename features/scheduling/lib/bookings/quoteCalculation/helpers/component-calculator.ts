@@ -42,7 +42,6 @@ export class ComponentCalculator {
       service_name: service.name,
       quantity,
       service_cost: Math.round(service_cost),
-      setup_cost: 0,
       total_cost: Math.round(service_cost), // No travel cost added here
       estimated_duration_mins,
       component_breakdowns: [],

@@ -1,6 +1,6 @@
 import type { Service } from '../../../../shared/lib/database/types/service';
 import type { Business } from '../../../../shared/lib/database/types/business';
-import type { QuoteResultInfo, ServiceWithQuantity, QuoteRequestInfo, QuoteCalculationResult } from '../../types/booking-calculations';
+import type { DetailedQuoteResult, ServiceWithQuantity, QuoteRequestInfo, QuoteCalculationResult } from '../../types/booking-calculations';
 import type { QuoteRequestData } from '../../types/booking-domain';
 import { DateUtils } from '../../../../shared/utils/date-utils';
 
@@ -96,11 +96,17 @@ export class BookingCalculator {
       // Step 7: Calculate deposit
       const deposit_amount = this.businessFeesCalculator.calculateDeposit(total_estimate_amount, business);
 
+
+      console.log('Generating quote ID for quote counter:', quoteCounter);
+      console.log('Service:', service);
+      console.log('Quantity:', quantity);
       // Step 8: Generate quote ID
       const quote_id = this.quoteIdGenerator.generateQuoteId(quoteCounter, service, quantity);
 
+      console.log('Quote ID:', quote_id);
+
       // Build separate result and request objects
-      const quoteResult: QuoteResultInfo = {
+      const quoteResult: DetailedQuoteResult = {
         quote_id,
         total_estimate_amount,
         total_estimate_time_in_minutes,
@@ -118,6 +124,18 @@ export class BookingCalculator {
         business,
         addresses,
       };
+
+      // Log detailed quote breakdown for debugging
+      console.log(`📋 [QuoteCalculator] Final Quote Breakdown:`);
+      console.log(`   Service: ${service.name} (quantity: ${quantity})`);
+      console.log(`   Service Cost: $${breakdown.total_cost.toFixed(2)} (${breakdown.estimated_duration_mins} mins)`);
+      console.log(`   Travel Cost: $${travel_breakdown.total_travel_cost.toFixed(2)} (${travel_breakdown.total_travel_time_mins} mins)`);
+      console.log(`   Subtotal: $${subtotal_before_fees.toFixed(2)}`);
+      console.log(`   Platform Fee: $${platformFee.toFixed(2)}`);
+      console.log(`   Processing Fee: $${processingFee.toFixed(2)}`);
+      console.log(`   Total: $${total_estimate_amount.toFixed(2)}`);
+      console.log(`   Deposit: $${deposit_amount.toFixed(2)}`);
+      console.log(`   Minimum Charge Applied: ${minimum_charge_applied}`);
 
       return {
         quoteResult,

@@ -66,11 +66,14 @@ export const getQuoteTool: CreateToolData = {
     error_message: 'I couldn\'t generate a quote for that request. Please check the service details and try again.',
     data_structure: {
       quote_id: 'string',
+      service_name: 'string',
       total_estimate_amount: 'number',
       total_estimate_time_in_minutes: 'number',
-      minimum_charge_applied: 'boolean',
-      price_breakdown: 'object',
-      deposit_amount: 'number'
+      deposit_amount: 'number',
+      currency: 'string',
+      labor_cost: 'number',
+      travel_cost: 'number',
+      gst_included: 'number'
     }
   }
 };

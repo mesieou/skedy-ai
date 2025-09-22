@@ -26,10 +26,10 @@ export async function updateDynamicTool(
 
   // Start with existing properties and required fields
   const properties: Record<string, ParameterDefinition> = {
-    ...toolSchema.function.parameters.properties
+    ...toolSchema.parameters.properties
   };
   const required: string[] = [
-    ...(toolSchema.function.parameters.required || [])
+    ...(toolSchema.parameters.required || [])
   ];
 
   // Append service requirements to existing properties
@@ -37,32 +37,30 @@ export async function updateDynamicTool(
     const property = convertRequirementToProperty(requirement);
     if (property) {
       properties[requirement] = property;
-      required.push(requirement);
+      if (!required.includes(requirement)) {
+        required.push(requirement);
+      }
     }
   });
 
-  // Append job_scope if service has options
-  if (serviceJobScopes.length > 0) {
+  // Update job_scope enum options if service has them (job_scope already added by ai_function_requirements)
+  if (serviceJobScopes.length > 0 && properties.job_scope) {
     properties.job_scope = {
-      type: "string",
-      description: "Job scope",
+      ...properties.job_scope,
       enum: serviceJobScopes
     };
-    required.push('job_scope');
   }
 
   // Return updated schema with appended parameters
   return {
     ...toolSchema,
-    function: {
-      ...toolSchema.function,
-      description: `Get price quote for ${service.name}`,
-      parameters: {
-        type: "object",
-        properties,
-        required,
-        additionalProperties: false
-      }
+    description: `Get price quote for ${service.name}`,
+    parameters: {
+      type: "object",
+      strict: true,
+      properties,
+      required,
+      additionalProperties: false
     }
   };
 }

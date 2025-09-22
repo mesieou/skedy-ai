@@ -7,7 +7,7 @@ import { AvailabilitySlotsSeeder } from '../../../../shared/lib/database/seeds/a
 
 
 // Test data imports
-import { 
+import {
   createUniqueRemovalistBusinessData,
   createUniqueMobileManicuristBusinessData
 } from '../../../../shared/lib/database/seeds/data/business-data';
@@ -68,18 +68,18 @@ describe('AvailabilityManager - updateAvailabilityAfterBooking', () => {
   let testDate = DateUtils.addDaysUTC(DateUtils.nowUTC(), DAYS_AHEAD_FOR_TEST);
   const testJsDate = new Date(testDate);
   const dayOfWeek = testJsDate.getUTCDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday (UTC-based)
-  
+
   // Move to Monday-Thursday when both calendar types work
   if (dayOfWeek === 0) { // Sunday
     testDate = DateUtils.addDaysUTC(testDate, 1); // Move to Monday
   } else if (dayOfWeek === 5) { // Friday - only weekday provider works
     testDate = DateUtils.addDaysUTC(testDate, 3); // Move to Monday
-  } else if (dayOfWeek === 6) { // Saturday  
+  } else if (dayOfWeek === 6) { // Saturday
     testDate = DateUtils.addDaysUTC(testDate, 2); // Move to Monday
   }
-  
+
   const testDateStr = DateUtils.extractDateString(testDate);
-  
+
   console.log(`Test date: ${testDateStr} (${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(testDate).getUTCDay()]})`);
 
   beforeAll(async () => {
@@ -162,7 +162,7 @@ describe('AvailabilityManager - updateAvailabilityAfterBooking', () => {
       '90': singleProviderAvailability.slots[testDateStr]?.['90']?.length || 0,
       'sample_60_slots': singleProviderAvailability.slots[testDateStr]?.['60']?.slice(0, 3)
     });
-    
+
     console.log(`Multi provider availability for ${testDateStr}:`, {
       '60': multiProviderAvailability.slots[testDateStr]?.['60']?.length || 0,
       'sample_60_slots': multiProviderAvailability.slots[testDateStr]?.['60']?.slice(0, 3)
@@ -198,23 +198,16 @@ describe('AvailabilityManager - updateAvailabilityAfterBooking', () => {
       deposit_paid: false,
       price_breakdown: {
         service_breakdowns: [],
-        travel_breakdown: { 
-          total_travel_cost: 0, 
+        travel_breakdown: {
+          total_travel_cost: 0,
           total_distance_km: 0,
           total_travel_time_mins: 0,
-          free_travel_applied: false,
-          free_travel_distance_km: 0,
-          route_segments: [] 
+          route_segments: []
         },
-        business_fees: { 
-          gst_rate: 0, 
-          gst_amount: 0, 
+        business_fees: {
+          gst_amount: 0,
           platform_fee: 0,
-          platform_fee_amount: 0,
-          platform_fee_percentage: 0,
           payment_processing_fee: 0,
-          payment_processing_fee_percentage: 0,
-          payment_processing_fee_amount: 0,
           other_fees: []
         }
       },
@@ -228,11 +221,11 @@ describe('AvailabilityManager - updateAvailabilityAfterBooking', () => {
       // Get initial availability for 60-minute slots
       const initialSlots = singleProviderAvailability.slots[testDateStr]?.['60'] || [];
       expect(initialSlots.length).toBeGreaterThan(0);
-      
+
       // Find a slot that has availability (count > 0)
       const availableSlot = initialSlots.find(([, count]) => count > 0);
       expect(availableSlot).toBeDefined();
-      
+
       const [slotTime, initialCount] = availableSlot!;
       expect(initialCount).toBe(SINGLE_PROVIDER_COUNT); // Single provider should have count of 1
 
@@ -281,7 +274,7 @@ describe('AvailabilityManager - updateAvailabilityAfterBooking', () => {
           booking90.start_at, booking90.end_at
         );
       });
-      
+
       // All overlapping 60-minute slots should be removed as well
       expect(overlappingSlots.length).toBe(0);
 
@@ -294,11 +287,11 @@ describe('AvailabilityManager - updateAvailabilityAfterBooking', () => {
       // Get initial availability for 60-minute slots
       const initialSlots = multiProviderAvailability.slots[testDateStr]?.['60'] || [];
       expect(initialSlots.length).toBeGreaterThan(0);
-      
+
       // Find a slot with 2 providers available
       const availableSlot = initialSlots.find(([, count]) => count === MULTI_PROVIDER_COUNT);
       expect(availableSlot).toBeDefined();
-      
+
       const [slotTime, initialCount] = availableSlot!;
       expect(initialCount).toBe(MULTI_PROVIDER_COUNT); // Two providers should be available
 
@@ -319,17 +312,17 @@ describe('AvailabilityManager - updateAvailabilityAfterBooking', () => {
     });
 
     test('should remove slot completely when both providers are booked', () => {
-      // Get initial availability for 120-minute slots  
+      // Get initial availability for 120-minute slots
       const initialSlots = multiProviderAvailability.slots[testDateStr]?.['120'] || [];
       const availableSlot = initialSlots.find(([, count]) => count === 2);
       expect(availableSlot).toBeDefined();
-      
+
       const [slotTime, initialCount] = availableSlot!;
       expect(initialCount).toBe(2);
 
       // Create first booking
       const booking1 = createTestBooking(provider1.id, multiProviderBusiness.id, slotTime, 120);
-      
+
       let manager = new AvailabilityManager(multiProviderAvailability, multiProviderBusiness);
       let updatedAvailability = manager.updateAvailabilityAfterBooking(booking1);
 
@@ -341,7 +334,7 @@ describe('AvailabilityManager - updateAvailabilityAfterBooking', () => {
 
       // Create second booking
       const booking2 = createTestBooking(provider2.id, multiProviderBusiness.id, slotTime, 120);
-      
+
       manager = new AvailabilityManager(updatedAvailability, multiProviderBusiness);
       updatedAvailability = manager.updateAvailabilityAfterBooking(booking2);
 
@@ -360,7 +353,7 @@ describe('AvailabilityManager - updateAvailabilityAfterBooking', () => {
       expect(availableSlot180).toBeDefined();
 
       const [slotTime180] = availableSlot180!;
-      
+
       // Create a 180-minute booking
       const booking180 = createTestBooking(provider1.id, multiProviderBusiness.id, slotTime180, 180);
 
@@ -377,7 +370,7 @@ describe('AvailabilityManager - updateAvailabilityAfterBooking', () => {
       const updatedSlots60 = updatedAvailability.slots[testDateStr]?.['60'] || [];
       const bookingStart = DateUtils.createSlotTimestamp(testDateStr, slotTime180);
       const bookingEnd = DateUtils.calculateEndTimestamp(bookingStart, 180);
-      
+
       // Find all 60-minute slots that overlap with the 180-minute booking
       const overlappingSlots60 = updatedSlots60.filter(([time]) => {
         const slotStart = DateUtils.createSlotTimestamp(testDateStr, time);
@@ -403,7 +396,7 @@ describe('AvailabilityManager - updateAvailabilityAfterBooking', () => {
       expect(firstAvailableSlot).toBeDefined();
 
       const [startTime] = firstAvailableSlot!;
-      
+
       // Create a 150-minute booking starting at this time
       const booking = createTestBooking(singleProvider.id, singleProviderBusiness.id, startTime, LONG_SLOT_DURATION);
 
@@ -428,10 +421,10 @@ describe('AvailabilityManager - updateAvailabilityAfterBooking', () => {
     test('should not affect slots that do not overlap', () => {
       // Get morning and afternoon slots that are far apart
       const initialSlots60 = multiProviderAvailability.slots[testDateStr]?.['60'] || [];
-      const morningSlot = initialSlots60.find(([time, count]) => 
+      const morningSlot = initialSlots60.find(([time, count]) =>
         time.startsWith('07:') && count === 2
       );
-      const afternoonSlot = initialSlots60.find(([time, count]) => 
+      const afternoonSlot = initialSlots60.find(([time, count]) =>
         time.startsWith('15:') && count === 2
       );
 
@@ -463,10 +456,10 @@ describe('AvailabilityManager - updateAvailabilityAfterBooking', () => {
 
     test('should handle multi-hour booking with slot-by-slot verification (10:00 AM - 2:00 PM)', () => {
       // Test a 4-hour booking from 10:00 AM to 2:00 PM and verify each hourly slot
-      
+
       // Create 4-hour booking from 10:00 AM to 2:00 PM
       const booking = createTestBooking(provider1.id, multiProviderBusiness.id, "10:00", MULTI_HOUR_BOOKING_DURATION);
-      
+
       const manager = new AvailabilityManager(multiProviderAvailability, multiProviderBusiness);
       const updatedAvailability = manager.updateAvailabilityAfterBooking(booking);
       const updatedSlots = updatedAvailability.slots[testDateStr]?.['60'] || [];
@@ -474,7 +467,7 @@ describe('AvailabilityManager - updateAvailabilityAfterBooking', () => {
       // Define the slots to check: before, during, and after the booking
       const slotsToCheck = [
         { time: "07:00", expected: MULTI_PROVIDER_COUNT, description: "Early morning (before booking)" },
-        { time: "08:00", expected: MULTI_PROVIDER_COUNT, description: "Morning (before booking)" }, 
+        { time: "08:00", expected: MULTI_PROVIDER_COUNT, description: "Morning (before booking)" },
         { time: "09:00", expected: MULTI_PROVIDER_COUNT, description: "One hour before booking" },
         { time: "10:00", expected: SINGLE_PROVIDER_COUNT, description: "Booking start time (10:00-11:00 overlaps 10:00-14:00)" },
         { time: "11:00", expected: SINGLE_PROVIDER_COUNT, description: "During booking (11:00-12:00 overlaps 10:00-14:00)" },
@@ -488,7 +481,7 @@ describe('AvailabilityManager - updateAvailabilityAfterBooking', () => {
       // Verify each slot
       slotsToCheck.forEach(({ time, expected, description }) => {
         const slot = updatedSlots.find(([slotTime]) => slotTime === time);
-        
+
         if (expected === MULTI_PROVIDER_COUNT) {
           // Slot should remain unchanged with 2 providers
           expect(slot).toBeDefined();
@@ -510,21 +503,21 @@ describe('AvailabilityManager - updateAvailabilityAfterBooking', () => {
       const initialSlots60 = singleProviderAvailability.slots[testDateStr]?.['60'] || [];
       const availableSlot = initialSlots60.find(([, count]) => count === 1);
       expect(availableSlot).toBeDefined();
-      
+
       const [slotTime] = availableSlot!;
-      
+
       // Create booking that overlaps this slot
       const booking = createTestBooking(singleProvider.id, singleProviderBusiness.id, slotTime, 60);
-      
+
       const manager = new AvailabilityManager(singleProviderAvailability, singleProviderBusiness);
       const updatedAvailability = manager.updateAvailabilityAfterBooking(booking);
-      
+
       // Verify the slot is completely removed (not just reduced to 0)
       const updatedSlots = updatedAvailability.slots[testDateStr]?.['60'] || [];
       const removedSlot = updatedSlots.find(([time]) => time === slotTime);
-      
+
       expect(removedSlot).toBeUndefined(); // Slot should be completely absent from array
-      
+
       console.log(`Single provider test: Slot ${slotTime} completely removed (1 → 0 = removed from array)`);
     });
 
@@ -533,30 +526,30 @@ describe('AvailabilityManager - updateAvailabilityAfterBooking', () => {
       const initialSlots60 = multiProviderAvailability.slots[testDateStr]?.['60'] || [];
       const availableSlot = initialSlots60.find(([, count]) => count === 2);
       expect(availableSlot).toBeDefined();
-      
+
       const [slotTime] = availableSlot!;
-      
+
       // Book first provider
       const booking1 = createTestBooking(provider1.id, multiProviderBusiness.id, slotTime, 60);
       let manager = new AvailabilityManager(multiProviderAvailability, multiProviderBusiness);
       let updatedAvailability = manager.updateAvailabilityAfterBooking(booking1);
-      
+
       // After first booking: 2 → 1
       let updatedSlots = updatedAvailability.slots[testDateStr]?.['60'] || [];
       const partiallyBookedSlot = updatedSlots.find(([time]) => time === slotTime);
       expect(partiallyBookedSlot).toBeDefined();
       expect(partiallyBookedSlot![1]).toBe(1);
-      
+
       // Book second provider (same time slot)
       const booking2 = createTestBooking(provider2.id, multiProviderBusiness.id, slotTime, 60);
       manager = new AvailabilityManager(updatedAvailability, multiProviderBusiness);
       updatedAvailability = manager.updateAvailabilityAfterBooking(booking2);
-      
+
       // After second booking: 1 → 0 = slot completely removed
       updatedSlots = updatedAvailability.slots[testDateStr]?.['60'] || [];
       const fullyBookedSlot = updatedSlots.find(([time]) => time === slotTime);
       expect(fullyBookedSlot).toBeUndefined(); // Slot should be completely absent
-      
+
       console.log(`Multi-provider exhaustion test: Slot ${slotTime} completely removed after both providers booked (2 → 1 → 0 = removed)`);
     });
 
@@ -564,44 +557,44 @@ describe('AvailabilityManager - updateAvailabilityAfterBooking', () => {
       // Test that booking on one day doesn't affect availability on other days
       const testDate2 = DateUtils.addDaysUTC(testDate, 1); // Day after test date
       const testDate2Str = DateUtils.extractDateString(testDate2);
-      
+
       // Get initial availability for both days
       const day1InitialSlots = multiProviderAvailability.slots[testDateStr]?.['60'] || [];
       const day2InitialSlots = multiProviderAvailability.slots[testDate2Str]?.['60'] || [];
-      
+
       expect(day1InitialSlots.length).toBeGreaterThan(0);
       expect(day2InitialSlots.length).toBeGreaterThan(0);
-      
+
       // Find available slots on both days
       const day1Slot = day1InitialSlots.find(([, count]) => count === 2);
       const day2Slot = day2InitialSlots.find(([, count]) => count === 2);
       expect(day1Slot).toBeDefined();
       expect(day2Slot).toBeDefined();
-      
+
       const [day1SlotTime] = day1Slot!;
       const [day2SlotTime] = day2Slot!;
-      
+
       // Book a slot on day 1
       const booking = createTestBooking(provider1.id, multiProviderBusiness.id, day1SlotTime, 60);
-      
+
       const manager = new AvailabilityManager(multiProviderAvailability, multiProviderBusiness);
       const updatedAvailability = manager.updateAvailabilityAfterBooking(booking);
-      
+
       // Verify day 1 slot is affected
       const day1UpdatedSlots = updatedAvailability.slots[testDateStr]?.['60'] || [];
       const day1UpdatedSlot = day1UpdatedSlots.find(([time]) => time === day1SlotTime);
       expect(day1UpdatedSlot).toBeDefined();
       expect(day1UpdatedSlot![1]).toBe(1); // Reduced from 2 to 1
-      
+
       // Verify day 2 slots remain completely unchanged
       const day2UpdatedSlots = updatedAvailability.slots[testDate2Str]?.['60'] || [];
       const day2UpdatedSlot = day2UpdatedSlots.find(([time]) => time === day2SlotTime);
       expect(day2UpdatedSlot).toBeDefined();
       expect(day2UpdatedSlot![1]).toBe(2); // Should remain unchanged
-      
+
       // Verify the entire day 2 has the same number of slots
       expect(day2UpdatedSlots.length).toBe(day2InitialSlots.length);
-      
+
       console.log(`Day isolation test: Booking on ${testDateStr} at ${day1SlotTime} did not affect ${testDate2Str} at ${day2SlotTime}`);
     });
 
@@ -609,31 +602,31 @@ describe('AvailabilityManager - updateAvailabilityAfterBooking', () => {
       // Test what happens when an entire day gets booked out
       const initialSlots60 = singleProviderAvailability.slots[testDateStr]?.['60'] || [];
       expect(initialSlots60.length).toBeGreaterThan(0);
-      
+
       let manager = new AvailabilityManager(singleProviderAvailability, singleProviderBusiness);
       let currentAvailability = singleProviderAvailability;
-      
+
       // Book every available slot for the single provider
       const bookingsToMake = initialSlots60.filter(([, count]) => count > 0);
-      
+
       for (const [slotTime] of bookingsToMake) {
         const booking = createTestBooking(singleProvider.id, singleProviderBusiness.id, slotTime, 60);
         manager = new AvailabilityManager(currentAvailability, singleProviderBusiness);
         currentAvailability = manager.updateAvailabilityAfterBooking(booking);
       }
-      
+
       // After booking all slots, verify the day structure
       const finalSlots60 = currentAvailability.slots[testDateStr]?.['60'] || [];
-      
+
       // All slots should be removed (empty array, not missing day)
       expect(finalSlots60).toEqual([]); // Empty array, not undefined
       expect(currentAvailability.slots[testDateStr]).toBeDefined(); // Day still exists
       expect(currentAvailability.slots[testDateStr]['60']).toEqual([]); // But 60-min slots are empty
-      
+
       // Other duration slots should still exist (unless also booked)
       expect(currentAvailability.slots[testDateStr]['30']).toBeDefined();
       expect(currentAvailability.slots[testDateStr]['90']).toBeDefined();
-      
+
       console.log(`Fully booked day test: Day ${testDateStr} 60-min slots completely booked out = empty array [], not missing day`);
     });
   });

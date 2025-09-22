@@ -2,6 +2,7 @@ import { ServiceRepository } from '../../../shared/lib/database/repositories/ser
 import { BookingCalculator } from '../../../scheduling/lib/bookings/quoteCalculation';
 import { AddressValidator } from '../../../scheduling/lib/bookings/address-validator';
 import type { QuoteRequestData } from '../../../scheduling/lib/types/booking-domain';
+import type { QuoteResultInfo } from '../../../scheduling/lib/types/booking-calculations';
 import type { Session } from '../../sessions/session';
 import type { Tool } from '../../../shared/lib/database/types/tools';
 import { buildToolResponse } from '../helpers/responseBuilder';
@@ -53,11 +54,11 @@ export async function getQuote(
 
     // Calculate quote (returns separate result and request objects)
     const calculator = new BookingCalculator();
-    const { quoteResult, quoteRequest } = await calculator.calculateBooking(args, service, session.businessEntity);
+    const { quoteResult: detailedResult, quoteRequest } = await calculator.calculateBooking(args, service, session.businessEntity);
 
-    // Update session with both objects
-    session.quotes.push(quoteResult);
-    session.selectedQuote = quoteResult;
+    // Update session with detailed result for internal use
+    session.quotes.push(detailedResult);
+    session.selectedQuote = detailedResult;
     session.selectedQuoteRequest = quoteRequest;
 
     const duration = Date.now() - startTime;
@@ -69,12 +70,26 @@ export async function getQuote(
       serviceId: args.service_id,
       serviceName: service.name,
       duration: duration,
-      totalAmount: quoteResult.total_estimate_amount,
-      totalTimeMinutes: quoteResult.total_estimate_time_in_minutes
+      totalAmount: detailedResult.total_estimate_amount,
+      totalTimeMinutes: detailedResult.total_estimate_time_in_minutes
     });
 
-    // Return only the quote result (clean response for user)
-    return buildToolResponse(tool, quoteResult as unknown as Record<string, unknown>);
+    // Create simplified quote response using the proper interface
+    const simplifiedQuoteResponse: QuoteResultInfo = {
+      quote_id: detailedResult.quote_id,
+      service_name: service.name,
+      total_estimate_amount: detailedResult.total_estimate_amount,
+      total_estimate_time_in_minutes: detailedResult.total_estimate_time_in_minutes,
+      deposit_amount: detailedResult.deposit_amount,
+      currency: session.businessEntity.currency_code,
+
+      // Simple breakdown for customer questions (prevents AI from double-adding GST)
+      labor_cost: detailedResult.price_breakdown?.service_breakdowns?.[0]?.total_cost || 0,
+      travel_cost: detailedResult.price_breakdown?.travel_breakdown?.total_travel_cost || 0,
+      gst_included: detailedResult.price_breakdown?.business_fees?.gst_amount || 0
+    };
+
+    return buildToolResponse(tool, simplifiedQuoteResponse as unknown as Record<string, unknown>);
 
   } catch (error) {
     const duration = Date.now() - startTime;

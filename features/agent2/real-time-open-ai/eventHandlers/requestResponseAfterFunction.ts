@@ -32,7 +32,8 @@ export async function requestResponseAfterFunction(
       type: "response.create",
       event_id: `response_after_function_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       response: {
-        conversation: "auto"
+        conversation: "auto",
+        output_modalities: ["audio"] as const
       }
     };
 
