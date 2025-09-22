@@ -109,11 +109,9 @@ async function sendFunctionResult(
   if (!session.ws) return;
 
   const functionOutputItem: RealtimeFunctionCallOutputItem = {
-    call_id: callId,
-    output: result,
     type: "function_call_output",
-    id: `func_output_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-    object: "realtime.item"
+    call_id: callId,
+    output: result
   };
 
   const functionResultMessage: ConversationItemCreateEvent = {

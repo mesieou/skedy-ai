@@ -5,6 +5,7 @@ import { BusinessToolsRepository } from '../../shared/lib/database/repositories/
 import { sentry } from '../../shared/utils/sentryService';
 import type { Session } from '../sessions/session';
 import assert from 'assert';
+import { ServiceRepository } from '../../shared/lib/database/repositories/service-repository';
 
 /**
  * Generate prompt with business and tool information injected
@@ -26,10 +27,14 @@ export async function addPromptToSession(session: Session): Promise<void> {
     const businessPromptRepo = new BusinessPromptRepository();
     const businessRepo = new BusinessRepository();
     const businessToolsRepo = new BusinessToolsRepository();
-
+    const serviceRepo = new ServiceRepository();
     // Get all active tool names for this business (for prompt reference)
     const activeToolNames = await businessToolsRepo.getActiveToolNamesForBusiness(business.id);
 
+    // Get all service names for this business
+    const services = await serviceRepo.findAll({}, { business_id: business.id });
+    const serviceNames = services.map(service => service.name);
+    const serviceNamesList = serviceNames.join(', ');
     // Get business info string
     const businessInfoString = businessRepo.buildBusinessInfoForCustomers(business);
 
@@ -38,25 +43,24 @@ export async function addPromptToSession(session: Session): Promise<void> {
 
     assert(promptData, `${PROMPTS_NAMES.MAIN_CONVERSATION} prompt not found for business ${business.id}`);
 
-    // Create tool list for prompt (all available tools for AI reference)
-    const allToolsList = activeToolNames.join(', ');
 
     // Inject data into prompt using replacements map
     const replacements = {
-      '{LIST OF TOOLS}': allToolsList,
+      '{LIST OF SERVICES}': serviceNamesList,
       '{BUSINESS INFO}': businessInfoString,
     };
 
     const finalPrompt = Object.entries(replacements).reduce(
-      (prompt, [placeholder, value]) => prompt!.replace(new RegExp(placeholder, 'g'), value),
+      (prompt, [placeholder, value]) => prompt!.replace(new RegExp(placeholder.replace(/[{}]/g, '\\$&'), 'g'), value),
       promptData.prompt_content
     );
 
-    // Store prompt and tool names in session
+    // Store prompt, tool names, and service names in session
     session.aiInstructions = finalPrompt!;
     session.promptName = promptData.prompt_name;
     session.promptVersion = promptData.prompt_version;
     session.allAvailableToolNames = activeToolNames;
+    session.serviceNames = serviceNames; // Populate for getServiceDetails fuzzy matching
 
     const duration = Date.now() - startTime;
     console.log(`✅ [GeneratePrompt] Generated prompt (${finalPrompt!.length} chars) with ${activeToolNames.length} available tools (${duration}ms)`);

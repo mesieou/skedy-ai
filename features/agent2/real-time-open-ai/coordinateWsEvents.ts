@@ -156,6 +156,14 @@ export function attachWSHandlers(session: Session) {
         // Real-time user speech transcription (handled by conversation.item.input_audio_transcription.completed)
         break;
 
+      case "output_audio_buffer.cleared":
+        // Audio buffer cleared
+        break;
+
+      case "conversation.item.truncated":
+        // Conversation item was truncated
+        break;
+
       // Error Events
       default:
         console.log(`[WS] Unhandled event: ${event.type}`, event);
