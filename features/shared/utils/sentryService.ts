@@ -33,7 +33,7 @@ export class SentryService {
         dsn: process.env.SENTRY_DSN,
         environment: process.env.NODE_ENV || 'development',
         tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
-        debug: process.env.NODE_ENV === 'development',
+        debug: false, // Disable debug logging to prevent console spam
         beforeSend(event) {
           // Add component tag to all errors
           if (event.exception) {

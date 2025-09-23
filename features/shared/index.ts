@@ -4,6 +4,12 @@ export { ThemeSwitcher } from './components/layout/theme-switcher';
 export { Hero } from './components/layout/hero';
 // Note: MainLayout and Navbar should be imported directly to avoid server/client conflicts
 
+// Section components
+export { HeroContent } from './components/sections/hero-content';
+export { CTASection } from './components/sections/cta-section';
+export { FloatingTradieElements } from './components/sections/floating-tradie-elements';
+export { WaitlistModal } from './components/sections/waitlist-modal';
+
 // UI components
 export * from './components/ui/button';
 export * from './components/ui/card';
