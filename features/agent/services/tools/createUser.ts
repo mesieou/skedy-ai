@@ -1,6 +1,5 @@
 import { CustomerManager } from '../../../scheduling/lib/bookings/customer-manager';
 import type { Session } from '../../sessions/session';
-import type { Tool } from '../../../shared/lib/database/types/tools';
 import { buildToolResponse } from '../helpers/responseBuilder';
 import { sentry } from '@/features/shared/utils/sentryService';
 
@@ -13,8 +12,7 @@ export async function createUser(
     last_name?: string;
     email?: string;
   },
-  session: Session,
-  tool: Tool
+  session: Session
 ) {
   const startTime = Date.now();
 
@@ -31,7 +29,7 @@ export async function createUser(
     // Validate required fields (user input validation)
     if (!args.first_name || args.first_name.trim().length === 0) {
       // User input error - empty name
-      return buildToolResponse(tool, null, `First name is required to create your profile.`);
+      return buildToolResponse(null, `First name is required to create your profile.`, false);
     }
 
     // Prepare user data for creation
@@ -69,7 +67,11 @@ export async function createUser(
     });
 
     // Success - use response builder
-    return buildToolResponse(tool, userData_response as unknown as Record<string, unknown>);
+    return buildToolResponse(
+      userData_response,
+      `Profile created for ${args.first_name}. You're all set!`,
+      true
+    );
 
   } catch (error) {
     const duration = Date.now() - startTime;

@@ -1,7 +1,6 @@
 import { AvailabilitySlotsRepository } from '../../../shared/lib/database/repositories/availability-slots-repository';
 import { AvailabilityManager } from '../../../scheduling/lib/availability/availability-manager';
 import type { Session } from '../../sessions/session';
-import type { Tool } from '../../../shared/lib/database/types/tools';
 import { buildToolResponse } from '../helpers/responseBuilder';
 import { DateUtils } from '../../../shared/utils/date-utils';
 import { sentry } from '@/features/shared/utils/sentryService';
@@ -14,8 +13,7 @@ export async function checkDayAvailability(
     date: string;
     quote_total_estimate_time_minutes: number;
   },
-  session: Session,
-  tool: Tool
+  session: Session
 ) {
   const startTime = Date.now();
 
@@ -31,7 +29,7 @@ export async function checkDayAvailability(
     // Validate date format using DateUtils
     if (!DateUtils.isValidDateFormat(args.date)) {
       // User input error - invalid date format
-      return buildToolResponse(tool, null, `Invalid date format. Please use YYYY-MM-DD`);
+      return buildToolResponse(null, `Invalid date format. Please use YYYY-MM-DD`, false);
     }
 
     // Validate date is not in the past - compare business dates directly
@@ -39,7 +37,7 @@ export async function checkDayAvailability(
 
     if (args.date < todayInBusinessTimezone) {
       // User input error - past date
-      return buildToolResponse(tool, null, `Cannot check past dates. Please select a future date.`);
+      return buildToolResponse(null, `Cannot check past dates. Please select a future date.`, false);
     }
 
     // Get current availability slots for the business
@@ -50,7 +48,7 @@ export async function checkDayAvailability(
 
     if (!currentAvailabilitySlots) {
       // User input error - no availability configured
-      return buildToolResponse(tool, null, `No availability for this date, please try another date.`);
+      return buildToolResponse(null, `No availability for this date, please try another date.`, false);
     }
 
     // Use AvailabilityManager to check the day with quote duration
@@ -62,7 +60,7 @@ export async function checkDayAvailability(
 
     if (!availabilityResult.success) {
       // User input error - no availability on requested date
-      return buildToolResponse(tool, null, availabilityResult.formattedMessage);
+      return buildToolResponse(null, availabilityResult.formattedMessage, false);
     }
 
     // AvailabilityManager already returns times in business timezone
@@ -84,7 +82,11 @@ export async function checkDayAvailability(
     });
 
     // Success - use response builder
-    return buildToolResponse(tool, availabilityData as unknown as Record<string, unknown>);
+    return buildToolResponse(
+      availabilityData,
+      `Available times for ${availabilityResult.date}: ${availabilityResult.availableSlots.map(slot => slot.time).join(', ')}`,
+      true
+    );
 
   } catch (error) {
     const duration = Date.now() - startTime;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebhookSignature } from './signature-verification';
-import { SessionService } from '@/features/agent2/sessions/sessionService';
-import { handleCallEvent } from '@/features/agent2/twilio/callRouter';
+import { SessionService } from '@/features/agent/sessions/sessionService';
+import { handleCallEvent } from '@/features/agent/twilio/callRouter';
 import { sentry } from '@/features/shared/utils/sentryService';
 import assert from 'assert';
 

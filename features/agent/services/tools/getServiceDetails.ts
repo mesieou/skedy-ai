@@ -1,7 +1,6 @@
 import Fuse from 'fuse.js';
 import { ServiceRepository } from '../../../shared/lib/database/repositories/service-repository';
 import type { Session } from '../../sessions/session';
-import type { Tool } from '../../../shared/lib/database/types/tools';
 import { buildToolResponse } from '../helpers/responseBuilder';
 import { sentry } from '@/features/shared/utils/sentryService';
 
@@ -11,8 +10,7 @@ import { sentry } from '@/features/shared/utils/sentryService';
  */
 export async function getServiceDetails(
   args: { service_name: string },
-  session: Session,
-  tool: Tool
+  session: Session
 ) {
   const startTime = Date.now();
 
@@ -49,7 +47,7 @@ export async function getServiceDetails(
         // This should not happen if services list is in sync, but handle gracefully
         const suggestions = session.serviceNames.slice(0, 3).join(', ');
         const errorMessage = `Service "${matchedServiceName}" is temporarily unavailable. Available services: ${suggestions}`;
-        return buildToolResponse(tool, null, errorMessage);
+        return buildToolResponse(null, errorMessage, false);
       }
 
       const duration = Date.now() - startTime;
@@ -66,13 +64,17 @@ export async function getServiceDetails(
       });
 
       // Success: return service data
-      return buildToolResponse(tool, service as unknown as Record<string, unknown>);
+        return buildToolResponse(
+          service as unknown as Record<string, unknown>,
+          `We offer ${service.name}. ${service.description}`,
+          true
+        );
     } else {
       // User input error - service name not found (fuzzy search failed)
       const suggestions = session.serviceNames.slice(0, 3).join(', ');
       const errorMessage = `Sorry, I couldn't find "${args.service_name}". Available services: ${suggestions}`;
 
-      return buildToolResponse(tool, null, errorMessage);
+      return buildToolResponse(null, errorMessage, false);
     }
   } catch (error) {
     const duration = Date.now() - startTime;

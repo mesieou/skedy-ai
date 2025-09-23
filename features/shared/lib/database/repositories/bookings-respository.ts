@@ -1,10 +1,11 @@
 import { BaseRepository } from '../base-repository';
 import type { Booking, CreateBookingData } from '../types/bookings';
 import { BookingStatus } from '../types/bookings';
+import assert from 'assert';
 import { DateUtils } from '../../../utils/date-utils';
 import type {
   QuoteRequestInfo,
-  QuoteResultInfo,
+  DetailedQuoteResult,
   BookingAddress,
   ServiceWithQuantity
 } from '../../../../scheduling/lib/types/booking-calculations';
@@ -40,15 +41,15 @@ export class BookingsRepository extends BaseRepository<Booking> {
     quoteRequestData: QuoteRequestInfo,
     user_id: string,
     start_at: string, // UTC ISO string
-    quoteResultData?: QuoteResultInfo // Optional: use pre-calculated pricing to avoid recalculation
+    quoteResultData?: DetailedQuoteResult // Optional: use pre-calculated pricing to avoid recalculation
   ): Promise<Booking> {
     try {
       // Step 1: Create addresses in database first
       await this.createAddresses(quoteRequestData.addresses);
 
-      // Step 2: Use pre-calculated result OR calculate pricing (for backwards compatibility)
-      const calculationResult: QuoteResultInfo = quoteResultData ||
-        await this.bookingCalculator.calculateBooking(quoteRequestData);
+      // Step 2: Use pre-calculated result (required - no fallback calculation)
+      assert(quoteResultData, 'Quote result data is required for booking creation');
+      const calculationResult: DetailedQuoteResult = quoteResultData;
 
       // Step 3: Create booking with calculated data (only fields that exist in Booking interface)
       const bookingData: CreateBookingData = {
@@ -60,8 +61,8 @@ export class BookingsRepository extends BaseRepository<Booking> {
         total_estimate_amount: calculationResult.total_estimate_amount,
         total_estimate_time_in_minutes: calculationResult.total_estimate_time_in_minutes,
         deposit_amount: calculationResult.deposit_amount,
-        remaining_balance: calculationResult.remaining_balance,
-        deposit_paid: calculationResult.deposit_paid,
+        remaining_balance: calculationResult.total_estimate_amount, // Initially same as total
+        deposit_paid: false, // Initially false until payment
         price_breakdown: calculationResult.price_breakdown
       };
 

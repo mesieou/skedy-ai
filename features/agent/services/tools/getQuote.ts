@@ -4,7 +4,6 @@ import { AddressValidator } from '../../../scheduling/lib/bookings/address-valid
 import type { QuoteRequestData } from '../../../scheduling/lib/types/booking-domain';
 import type { QuoteResultInfo } from '../../../scheduling/lib/types/booking-calculations';
 import type { Session } from '../../sessions/session';
-import type { Tool } from '../../../shared/lib/database/types/tools';
 import { buildToolResponse } from '../helpers/responseBuilder';
 import { sentry } from '@/features/shared/utils/sentryService';
 
@@ -13,8 +12,7 @@ import { sentry } from '@/features/shared/utils/sentryService';
  */
 export async function getQuote(
   args: QuoteRequestData & { service_id: string },
-  session: Session,
-  tool: Tool
+  session: Session
 ) {
   const startTime = Date.now();
 
@@ -33,7 +31,7 @@ export async function getQuote(
     const service = await serviceRepo.findOne({ id: args.service_id });
     if (!service) {
       // User input error - invalid service ID
-      return buildToolResponse(tool, null, `Service not found: ${args.service_id}`);
+      return buildToolResponse(null, `Service not found: ${args.service_id}`, false);
     }
 
     // If service has address requirements, validate addresses
@@ -48,7 +46,7 @@ export async function getQuote(
       const addressValidation = await addressValidator.validateQuoteAddresses(args);
       if (!addressValidation.isValid) {
         // User input error - invalid address data
-        return buildToolResponse(tool, null, `Invalid address: ${addressValidation.message}`);
+        return buildToolResponse(null, `Invalid address: ${addressValidation.message}`, false);
       }
     }
 
@@ -89,7 +87,11 @@ export async function getQuote(
       gst_included: detailedResult.price_breakdown?.business_fees?.gst_amount || 0
     };
 
-    return buildToolResponse(tool, simplifiedQuoteResponse as unknown as Record<string, unknown>);
+    return buildToolResponse(
+      simplifiedQuoteResponse as unknown as Record<string, unknown>,
+      `Here's your quote - total estimate cost is $${detailedResult.total_estimate_amount}. Deposit required: $${detailedResult.deposit_amount}. Remember this is an estimate and the final cost may vary.`,
+      true
+    );
 
   } catch (error) {
     const duration = Date.now() - startTime;

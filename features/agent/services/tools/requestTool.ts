@@ -1,5 +1,4 @@
 import type { Session } from '../../sessions/session';
-import type { Tool } from '../../../shared/lib/database/types/tools';
 import { buildToolResponse } from '../helpers/responseBuilder';
 import { sentry } from '@/features/shared/utils/sentryService';
 import { updateToolsToSession } from '../updateToolsToSession';
@@ -9,8 +8,7 @@ import { updateToolsToSession } from '../updateToolsToSession';
  */
 export async function requestTool(
   args: { tool_name: string; service_name?: string; reason?: string },
-  session: Session,
-  tool: Tool
+  session: Session
 ) {
   const startTime = Date.now();
 
@@ -27,18 +25,18 @@ export async function requestTool(
 
     // Check if get_quote is requested without service_name
     if (tool_name === 'get_quote' && !service_name) {
-      return buildToolResponse(tool, null, 'service_name is required when requesting get_quote tool. Please specify which service you need a quote for based on the customer conversation.');
+      return buildToolResponse(null, 'service_name is required when requesting get_quote tool. Please specify which service you need a quote for based on the customer conversation.', false);
     }
 
     // Check if tool exists in all available tool names
     if (!session.allAvailableToolNames?.includes(tool_name)) {
-      return buildToolResponse(tool, null, `${tool_name} does not exist`);
+      return buildToolResponse(null, `${tool_name} does not exist`, false);
     }
 
     // Check if tool is already active
     const isAlreadyActive = session.currentTools?.some(t => t.name === tool_name);
     if (isAlreadyActive) {
-      return buildToolResponse(tool, { tool_name, available: true }, `${tool_name} already available`);
+      return buildToolResponse({ tool_name, available: true }, `${tool_name} already available`, true);
     }
 
     // Update session tools with the requested tool
@@ -55,7 +53,7 @@ export async function requestTool(
       toolMadeAvailable: !isAlreadyActive
     });
 
-    return buildToolResponse(tool, { tool_name, available: true }, `${tool_name} ready`);
+    return buildToolResponse({ tool_name, available: true }, `${tool_name} ready. Continue with your request.`, true);
 
   } catch (error) {
     const duration = Date.now() - startTime;

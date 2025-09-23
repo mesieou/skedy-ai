@@ -1,6 +1,5 @@
 import { BookingOrchestrator } from '../../../scheduling/lib/bookings/booking-orchestrator';
 import type { Session } from '../../sessions/session';
-import type { Tool } from '../../../shared/lib/database/types/tools';
 import { buildToolResponse } from '../helpers/responseBuilder';
 import { DateUtils } from '../../../shared/utils/date-utils';
 import { sentry } from '@/features/shared/utils/sentryService';
@@ -15,8 +14,7 @@ export async function createBooking(
     quote_id: string;
     confirmation_message?: string;
   },
-  session: Session,
-  tool: Tool
+  session: Session
 ) {
   const startTime = Date.now();
 
@@ -33,13 +31,13 @@ export async function createBooking(
     // Validate date format using DateUtils
     if (!DateUtils.isValidDateFormat(args.preferred_date)) {
       // User input error - invalid date format
-      return buildToolResponse(tool, null, `Invalid date format. Please use YYYY-MM-DD format.`);
+      return buildToolResponse(null, `Invalid date format. Please use YYYY-MM-DD format.`, false);
     }
 
     // Validate time format using DateUtils
     if (!DateUtils.isValidTimeFormat(args.preferred_time)) {
       // User input error - invalid time format
-      return buildToolResponse(tool, null, `Invalid time format. Please use HH:MM format (24-hour).`);
+      return buildToolResponse(null, `Invalid time format. Please use HH:MM format (24-hour).`, false);
     }
 
     // Validate date is not in the past - compare business dates directly
@@ -47,39 +45,32 @@ export async function createBooking(
 
     if (args.preferred_date < todayInBusinessTimezone) {
       // User input error - past date
-      return buildToolResponse(tool, null, `Cannot book past dates. Please select a future date.`);
+      return buildToolResponse(null, `Cannot book past dates. Please select a future date.`, false);
     }
 
     // Get selected quote and request from session
     if (!session.selectedQuote || !session.selectedQuoteRequest) {
       // User input error - no quote selected
-      return buildToolResponse(tool, null, `No quote selected. Please get a quote first.`);
+      return buildToolResponse(null, `No quote selected. Please get a quote first.`, false);
     }
 
     // Validate quote_id matches the selected quote
     if (session.selectedQuote.quote_id !== args.quote_id) {
       // User input error - quote mismatch
-      return buildToolResponse(tool, null, `Quote ID mismatch. Please get a fresh quote.`);
+      return buildToolResponse(null, `Quote ID mismatch. Please get a fresh quote.`, false);
     }
 
     // Validate user exists in session
     if (!session.customerEntity) {
       // User input error - no user in session
-      return buildToolResponse(tool, null, `User profile required. Please create a user profile first.`);
+      return buildToolResponse(null, `User profile required. Please create a user profile first.`, false);
     }
-
-    // Add missing fields to quoteResultData before passing to BookingOrchestrator
-    const completeQuoteResultData = {
-      ...session.selectedQuote,
-      remaining_balance: session.selectedQuote.total_estimate_amount, // Initially same as total
-      deposit_paid: false // Initially false until payment tools handle it
-    };
 
     // Use BookingOrchestrator for core booking creation
     const bookingOrchestrator = new BookingOrchestrator();
     const result = await bookingOrchestrator.createBooking({
       quoteRequestData: session.selectedQuoteRequest,
-      quoteResultData: completeQuoteResultData,
+      quoteResultData: session.selectedQuote,
       userId: session.customerEntity.id,
       preferredDate: args.preferred_date,
       preferredTime: args.preferred_time
@@ -87,7 +78,7 @@ export async function createBooking(
 
     if (!result.success || !result.booking) {
       // User input error - booking failed (availability, etc.)
-      return buildToolResponse(tool, null, result.error || `Booking could not be created. We will contact you shortly.`);
+      return buildToolResponse(null, result.error || `Booking could not be created. We will contact you shortly.`, false);
     }
 
     // Convert booking UTC timestamps to business timezone for user display
@@ -120,8 +111,12 @@ export async function createBooking(
       totalAmount: session.selectedQuote.total_estimate_amount
     });
 
-    // Success - use response builder
-    return buildToolResponse(tool, bookingData as unknown as Record<string, unknown>);
+    // Success - clean response with specific message
+    return buildToolResponse(
+      bookingData,
+      `Booking confirmed for ${args.preferred_date} at ${args.preferred_time}. You will receive a confirmation message shortly.`,
+      true
+    );
 
   } catch (error) {
     const duration = Date.now() - startTime;

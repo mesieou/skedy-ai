@@ -10,14 +10,14 @@
 import { BookingsRepository } from '../../../shared/lib/database/repositories/bookings-respository';
 import { AvailabilitySlotsRepository } from '../../../shared/lib/database/repositories/availability-slots-repository';
 import { AvailabilityManager } from '../availability/availability-manager';
-import type { QuoteRequestInfo, QuoteResultInfo } from '../types/booking-calculations';
+import type { QuoteRequestInfo, DetailedQuoteResult } from '../types/booking-calculations';
 import type { Business } from '../../../shared/lib/database/types/business';
 import type { Booking } from '../../../shared/lib/database/types/bookings';
 import { DateUtils } from '../../../shared/utils/date-utils';
 
 export interface CreateBookingRequest {
   quoteRequestData: QuoteRequestInfo;
-  quoteResultData: QuoteResultInfo;
+  quoteResultData: DetailedQuoteResult;
   userId: string;
   preferredDate: string;
   preferredTime: string;
