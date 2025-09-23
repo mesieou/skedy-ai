@@ -9,7 +9,7 @@
  */
 
 import Redis from 'ioredis';
-import { simpleCircuitBreaker } from '../../agent/memory/redis/simple-circuit-breaker';
+// Removed circuit breaker import - was deleted
 import { sentry } from '@/features/shared/utils/sentryService';
 
 interface VoiceRedisConfig {
@@ -203,10 +203,12 @@ export class VoiceRedisClient {
 
   async get(key: string): Promise<string | null> {
     this.logOperation('GET', key, false);
-    return await simpleCircuitBreaker.execute(
-      () => this.client.get(key),
-      () => Promise.resolve(null) // Fallback: return null if Redis fails
-    );
+    try {
+      return await this.client.get(key);
+    } catch (error) {
+      console.error('Redis GET error:', error);
+      return null; // Fallback: return null if Redis fails
+    }
   }
 
   async set(key: string, value: string, ttlSeconds?: number): Promise<'OK'> {

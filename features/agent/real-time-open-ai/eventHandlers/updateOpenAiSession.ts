@@ -29,7 +29,7 @@ export async function updateOpenAiSession(session: Session): Promise<void> {
     // Generate unique event ID
     const eventId = `event_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
-    // Create session update message (strict OpenAI Realtime format)
+    // Create session update message (tools only - used by both WebSocket and WebRTC for tool updates)
     const sessionUpdate = {
       type: "session.update",
       session: {

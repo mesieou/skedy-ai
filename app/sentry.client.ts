@@ -1,20 +1,17 @@
 /**
- * Global Sentry Initialization for Skedy Voice Agent
+ * Client-side Sentry Initialization
  *
- * This file initializes Sentry globally for the entire Next.js application.
- * It runs once when the app starts and makes Sentry available everywhere.
+ * For client-side error tracking, use @sentry/browser instead of the server sentryService
  */
 
-import { sentry } from '@/features/shared/utils/sentryService';
+// TODO: Implement proper client-side Sentry with @sentry/browser
+// For now, disable client-side Sentry to fix build issues
 
-// Initialize Sentry globally
-const initialized = sentry.init();
+console.log('🎯 [App] Client-side Sentry disabled - server-side tracking still active');
 
-if (initialized) {
-  console.log('🎯 [App] Sentry initialized globally - error tracking active');
-} else {
-  console.log('⚠️ [App] Sentry not initialized - running without error tracking');
-}
-
-// Export for any manual usage if needed
-export { sentry };
+// No-op export for compatibility
+export const sentry = {
+  init: () => false,
+  trackError: () => {},
+  addBreadcrumb: () => {},
+};

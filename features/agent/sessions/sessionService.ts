@@ -32,22 +32,40 @@ export class SessionService {
           eventType: event.type
         });
 
-        const sipHeaders = event.data.sip_headers!;
-        const twilioAccountSid = this.extractTwilioAccountSid(sipHeaders);
-        const phoneNumber = this.extractPhoneNumber(sipHeaders);
-
-        assert(twilioAccountSid, 'Twilio Account SID not found in SIP headers');
-
+        // General session creation - handle different event types with assertions
         const businessRepository = new BusinessRepository();
         const userRepository = new UserRepository();
-        const [business, customer] = await Promise.all([
-          businessRepository.findByTwilioAccountSid(twilioAccountSid),
-          userRepository.findOne({
-            phone_number: phoneNumber
-          })
-        ]);
 
-        assert(business, `Business not found for Twilio Account SID: ${twilioAccountSid}`);
+        let business, customer, phoneNumber;
+
+        if (event.type === 'demo.session.create') {
+          // Demo sessions: require business_id in event data
+          const businessId = event.data.business_id as string;
+          assert(businessId, 'business_id required for demo sessions');
+
+          business = await businessRepository.findOne({ id: businessId });
+          assert(business, `Business not found for demo session: ${businessId}`);
+
+          phoneNumber = ''; // No phone for demo
+          customer = undefined; // No customer for demo
+
+        } else {
+          // Twilio sessions: require SIP headers
+          const sipHeaders = event.data.sip_headers;
+          assert(sipHeaders, 'sip_headers required for Twilio sessions');
+
+          const twilioAccountSid = this.extractTwilioAccountSid(sipHeaders);
+          assert(twilioAccountSid, 'Twilio Account SID not found in SIP headers');
+
+          phoneNumber = this.extractPhoneNumber(sipHeaders);
+
+          [business, customer] = await Promise.all([
+            businessRepository.findByTwilioAccountSid(twilioAccountSid),
+            userRepository.findOne({ phone_number: phoneNumber })
+          ]);
+
+          assert(business, `Business not found for Twilio Account SID: ${twilioAccountSid}`);
+        }
 
         // Assign API key index from pool when creating session
         const poolAssignment = webSocketPool.assign();
@@ -61,7 +79,7 @@ export class SessionService {
           customerId: customer?.id,
           customerEntity: customer || undefined,
           status: "active",
-          channel: "phone",
+          channel: event.type === 'demo.session.create' ? "website" : "phone",
           interactions: [],
           tokenUsage: {} as TokenSpent,
           startedAt: Date.now(),
@@ -134,4 +152,5 @@ export class SessionService {
     }
     return null;
   }
+
 }

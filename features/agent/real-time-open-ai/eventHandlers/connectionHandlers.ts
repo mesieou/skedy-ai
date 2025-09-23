@@ -4,6 +4,7 @@ import { webSocketPool } from "../../sessions/websocketPool";
 import { attachWSHandlers } from "../coordinateWsEvents";
 import { updateOpenAiSession } from "./updateOpenAiSession";
 import { requestInitialResponse } from "./requestInitialResponse";
+import { updateOpenAiInitialSessionForWebRTC } from "@/features/demo/services/updateOpenAiInitialSessionForWebRTC";
 import { persistSessionAndInteractions } from "./persistSessionAndInteractions";
 import WebSocket from "ws";
 import assert from "assert";
@@ -246,5 +247,37 @@ export async function handleWebSocketError(session: Session, error: Error): Prom
       operation: 'websocket_error_handler',
       metadata: { originalError: error.message }
     });
+  }
+}
+
+/**
+ * Handle WebRTC data channel open event
+ * Similar to WebSocket open but uses data channel for communication
+ * Instructions are already set via ephemeral token, only tools need to be sent
+ */
+export async function handleWebRTCOpen(session: Session, dataChannel: RTCDataChannel): Promise<void> {
+  try {
+    console.log(`✅ [ConnectionHandlers] WebRTC data channel open for session: ${session.id}`);
+
+    // Add breadcrumb for debugging
+    sentry.addBreadcrumb(`WebRTC data channel open for session ${session.id}`, 'webrtc-open');
+
+    // WebRTC session configuration will be sent after session.created event
+    console.log(`🎯 [ConnectionHandlers] WebRTC data channel ready - waiting for session.created event`);
+  } catch (error) {
+    console.error(`❌ [ConnectionHandlers] Failed to handle WebRTC open event for session ${session.id}:`, error);
+
+    // Track production error
+    sentry.trackError(error as Error, {
+      sessionId: session.id,
+      businessId: session.businessId,
+      operation: 'webrtc_open_event',
+      metadata: {
+        hasDataChannel: !!dataChannel,
+        toolsCount: session.currentTools?.length || 0
+      }
+    });
+
+    throw error;
   }
 }

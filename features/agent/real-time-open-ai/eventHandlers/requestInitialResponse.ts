@@ -21,7 +21,8 @@ export async function requestInitialResponse(session: Session): Promise<void> {
       }
     };
 
-    console.log(`🎯 [RequestInitialResponse] Requesting initial AI response for session ${session.id}`);
+    const connectionType = 'WebSocket';
+    console.log(`🎯 [RequestInitialResponse] Requesting initial AI response via ${connectionType} for session ${session.id}`);
     console.log(`📡 [RequestInitialResponse] Sending response.create with event_id: ${responseEventId}`);
 
     session.ws.send(JSON.stringify(responseConfig));

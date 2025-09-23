@@ -38,6 +38,7 @@ export interface Session {
   endedAt?: number;
   durationInMinutes?: number;
 
+
   // === TOOL SYSTEM ADDITIONS ===
   // Cached entities for tools (minimal dependencies)
   serviceNames: string[];                 // List of service names for fuzzy search
@@ -65,5 +66,8 @@ export interface Session {
   quotes: DetailedQuoteResult[];             // All quotes generated during conversation
   selectedQuote?: DetailedQuoteResult;       // Currently selected quote result
   selectedQuoteRequest?: QuoteRequestInfo; // Currently selected quote request
+
+  // Demo-specific fields
+  ephemeralToken?: string;                   // WebRTC ephemeral token for demo sessions
 
 }

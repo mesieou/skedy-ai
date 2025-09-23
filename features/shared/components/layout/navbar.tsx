@@ -1,7 +1,6 @@
 import { EnvVarWarning } from "@/features/auth/components/env-var-warning";
 import { AuthButton } from "@/features/auth/components/auth-button";
 import { hasEnvVars } from "@/features/shared/utils/utils";
-import Link from "next/link";
 import { NavbarClient } from "./navbar-client";
 
 const menuItems = [

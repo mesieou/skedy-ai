@@ -4,6 +4,8 @@
  * Clean, extensible error tracking for the voice agent
  */
 
+// Server-side only Sentry service
+// This file should ONLY be used in server-side code (API routes, server components)
 import * as Sentry from '@sentry/node';
 
 interface ErrorContext {

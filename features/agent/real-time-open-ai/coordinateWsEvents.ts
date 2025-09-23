@@ -19,7 +19,7 @@ import { ServerResponseFunctionCallArgumentsDoneEvent } from "./types/server/eve
 import { ServerResponseOutputAudioTranscriptDoneEvent } from "./types/server/events/response/serverResponseOutputAudioTranscriptDoneTypes";
 import { ServerInputAudioTranscriptionCompletedEvent } from "./types/server/events/conversation/serverInputAudioTranscriptionCompletedTypes";
 
-// Lean event router - just routes events to handlers
+// WebSocket event router
 export function attachWSHandlers(session: Session) {
   assert(session.ws, 'WebSocket not initialized in session');
 
