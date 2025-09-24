@@ -21,7 +21,6 @@ export function DemoHero({ businessType, sessionData, onEndDemo }: DemoHeroProps
     isMuted,
     isUserSpeaking,
     isAiThinking,
-    currentTranscript,
     toolsExecuting,
     connect,
     disconnect,
@@ -51,7 +50,6 @@ export function DemoHero({ businessType, sessionData, onEndDemo }: DemoHeroProps
       isMuted={isMuted}
       isUserSpeaking={isUserSpeaking}
       isAiThinking={isAiThinking}
-      currentTranscript={currentTranscript}
       toolsExecuting={toolsExecuting}
       onToggleMute={toggleMute}
       onDisconnect={disconnect}

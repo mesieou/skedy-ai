@@ -22,12 +22,14 @@ export function useRealtimeSession(agents: RealtimeAgent[], initialAgent: Realti
   const [isMuted, setIsMuted] = useState(false);
   const [isUserSpeaking, setIsUserSpeaking] = useState(false);
   const [isAiThinking, setIsAiThinking] = useState(false);
-  const [currentTranscript, setCurrentTranscript] = useState('');
   const [toolsExecuting, setToolsExecuting] = useState<string[]>([]);
 
   const sessionManagerRef = useRef<RealtimeSessionManager | null>(null);
   const agentManagerRef = useRef<AgentManager | null>(null);
   const isConnectingRef = useRef(false);
+  const streamingMessagesRef = useRef<Map<string, Message>>(new Map());
+  const pendingAiDeltas = useRef<Array<{itemId: string, delta: string}>>([]);
+  const userMessageProcessed = useRef(true);
 
   const addMessage = useCallback((type: 'user' | 'assistant' | 'system' | 'tool', content: string, options?: {
     agent?: string;
@@ -43,6 +45,32 @@ export function useRealtimeSession(agents: RealtimeAgent[], initialAgent: Realti
     };
     setMessages(prev => [...prev, message]);
   }, []);
+
+  const updateStreamingMessage = useCallback((itemId: string, delta: string, isUser: boolean) => {
+    const streamingMessages = streamingMessagesRef.current;
+
+    if (streamingMessages.has(itemId)) {
+      // Update existing message
+      const existingMessage = streamingMessages.get(itemId)!;
+      const updatedMessage = {
+        ...existingMessage,
+        content: isUser && existingMessage.content.includes('🎤') ? delta : existingMessage.content + delta
+      };
+      streamingMessages.set(itemId, updatedMessage);
+      setMessages(prev => prev.map(msg => msg.id === existingMessage.id ? updatedMessage : msg));
+    } else {
+      // Create new message
+      const message: Message = {
+        id: `stream_${itemId}`,
+        type: isUser ? 'user' : 'assistant',
+        content: delta,
+        timestamp: Date.now(),
+        agent: isUser ? undefined : currentAgent.name
+      };
+      streamingMessages.set(itemId, message);
+      setMessages(prev => [...prev, message]);
+    }
+  }, [currentAgent.name]);
 
   // Initialize managers
   useEffect(() => {
@@ -62,15 +90,28 @@ export function useRealtimeSession(agents: RealtimeAgent[], initialAgent: Realti
           addMessage('system', `🔄 Transferred to ${toAgent} specialist`);
         }
       },
-      onTranscriptReceived: (transcript, isUser) => {
-        if (isUser) {
-          addMessage('user', transcript);
-          setCurrentTranscript('');
-          setIsUserSpeaking(false);
-        } else {
-          addMessage('assistant', transcript, { agent: currentAgent.name });
-          setIsAiThinking(false);
+      onTranscriptDelta: (delta, isUser, itemId) => {
+        console.log('📝 [Hook] DELTA:', { delta, isUser, itemId });
+        updateStreamingMessage(itemId, delta, isUser);
+
+        // Set AI thinking state for status indicators
+        if (!isUser) {
+          setIsAiThinking(true);
         }
+      },
+      onUserSpeaking: (speaking) => {
+        console.log('🎵 [Hook] Audio streaming:', speaking);
+        setIsUserSpeaking(speaking);
+
+        if (speaking) {
+          // Mark that we're waiting for user message
+          userMessageProcessed.current = false;
+          pendingAiDeltas.current = [];
+        }
+      },
+      onAiThinking: (thinking) => {
+        console.log('🤖 [Hook] AI thinking:', thinking);
+        setIsAiThinking(thinking);
       },
       onToolExecution: (toolName) => {
         addMessage('tool', `🔧 Executing: ${toolName}`, { toolName, isProcessing: true });
@@ -84,7 +125,7 @@ export function useRealtimeSession(agents: RealtimeAgent[], initialAgent: Realti
     return () => {
       sessionManagerRef.current?.disconnect();
     };
-  }, [agents, initialAgent, addMessage, currentAgent.name]);
+  }, [agents, initialAgent, addMessage, updateStreamingMessage, currentAgent.name]);
 
   const connect = useCallback(async (config: SessionConfig) => {
     if (!sessionManagerRef.current || isConnectingRef.current) {
@@ -127,7 +168,6 @@ export function useRealtimeSession(agents: RealtimeAgent[], initialAgent: Realti
     isMuted,
     isUserSpeaking,
     isAiThinking,
-    currentTranscript,
     toolsExecuting,
 
     // Actions

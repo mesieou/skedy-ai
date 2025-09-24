@@ -48,6 +48,12 @@ export class RealtimeSessionManager {
           inputAudioTranscription: {
             model: 'whisper-1',
           },
+          turnDetection: {
+            type: 'server_vad',
+            threshold: 0.3,
+            prefixPaddingMs: 100,
+            silenceDurationMs: 100,
+          },
         },
       });
 
@@ -69,7 +75,7 @@ export class RealtimeSessionManager {
   private setupEventHandlers(): void {
     if (!this.session) return;
 
-    this.session.on("error", (error: any) => {
+    this.session.on("error", (error: unknown) => {
       console.error('❌ [SessionManager] Session error:', error);
       this.callbacks.onError?.(error.message || 'Session error');
     });
@@ -87,23 +93,46 @@ export class RealtimeSessionManager {
   }
 
   private handleTransportEvent(event: TransportEvent): void {
+    // Debug: Log all events to see what we're receiving
+    console.log('🔍 [SessionManager] Transport event:', event.type, event);
+
     switch (event.type) {
-      case "conversation.item.input_audio_transcription.completed":
-        if (event.transcript) {
-          this.callbacks.onTranscriptReceived?.(event.transcript, true);
+      // Audio streaming events
+      case "input_audio_buffer.append":
+        console.log('🎵 [SessionManager] Audio buffer append - user streaming audio');
+        this.callbacks.onUserSpeaking?.(true);
+        break;
+
+      case "input_audio_buffer.speech_started":
+        console.log('🎤 [SessionManager] User started speaking - create placeholder');
+        this.callbacks.onUserSpeaking?.(true);
+        // Create user message immediately when speech starts
+        this.callbacks.onTranscriptDelta?.('🎤 Speaking...', true, event.item_id || 'temp');
+        break;
+
+      case "input_audio_buffer.speech_stopped":
+        console.log('🎤 [SessionManager] User stopped speaking');
+        this.callbacks.onUserSpeaking?.(false);
+        break;
+
+      // ONLY DELTA EVENTS FOR STREAMING
+      case "conversation.item.input_audio_transcription.delta":
+        console.log('📝 [SessionManager] USER delta:', event.delta);
+        if (event.delta && event.item_id) {
+          this.callbacks.onTranscriptDelta?.(event.delta, true, event.item_id);
         }
         break;
 
-      case "response.output_audio_transcript.done":
-        if (event.transcript) {
-          this.callbacks.onTranscriptReceived?.(event.transcript, false);
+      case "response.output_audio_transcript.delta":
+        console.log('🤖 [SessionManager] AI delta:', event.delta);
+        if (event.delta && event.item_id) {
+          this.callbacks.onTranscriptDelta?.(event.delta, false, event.item_id);
         }
         break;
 
-      case "response.function_call_arguments.done":
-        if (event.name) {
-          this.callbacks.onToolExecution?.(event.name);
-        }
+      case "response.done":
+        console.log('🤖 [SessionManager] AI response completed');
+        this.callbacks.onAiThinking?.(false);
         break;
     }
   }

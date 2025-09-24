@@ -26,27 +26,9 @@ export function ChatMessage({
 
   useEffect(() => {
     setIsVisible(true);
-
-    // Typewriter effect for assistant messages
-    if (type === 'assistant' && content) {
-      setIsTyping(true);
-      setDisplayedContent('');
-
-      let currentIndex = 0;
-      const typeInterval = setInterval(() => {
-        if (currentIndex < content.length) {
-          setDisplayedContent(content.slice(0, currentIndex + 1));
-          currentIndex++;
-        } else {
-          setIsTyping(false);
-          clearInterval(typeInterval);
-        }
-      }, 30);
-
-      return () => clearInterval(typeInterval);
-    } else {
-      setDisplayedContent(content);
-    }
+    // No typewriter effect - content updates in real-time from streaming
+    setDisplayedContent(content);
+    setIsTyping(false);
   }, [content, type]);
 
   const formatTime = (timestamp: number) => {

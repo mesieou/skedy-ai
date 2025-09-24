@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Button } from "@/features/shared/components/ui/button";
-import { Mic, MicOff, PhoneOff, User, Loader2, Zap, Brain, Activity, Cpu, Radio, Waves } from "lucide-react";
+import { Mic, MicOff, PhoneOff, Loader2, Zap, Brain, Activity, Cpu, Radio, Waves } from "lucide-react";
 import { ChatMessage, ChatMessageProps } from '../ui/chat-message';
 import { AgentAvatar } from '../ui/agent-avatar';
 import { SessionStatus } from '../../lib/session/types';
@@ -14,7 +13,6 @@ interface ChatInterfaceProps {
   isMuted: boolean;
   isUserSpeaking: boolean;
   isAiThinking: boolean;
-  currentTranscript: string;
   toolsExecuting: string[];
   onToggleMute: () => void;
   onDisconnect: () => void;
@@ -29,7 +27,6 @@ export function ChatInterface({
   isMuted,
   isUserSpeaking,
   isAiThinking,
-  currentTranscript,
   toolsExecuting,
   onToggleMute,
   onDisconnect,
@@ -211,26 +208,6 @@ export function ChatInterface({
             </div>
           </div>
 
-        {/* Live Transcript */}
-        {currentTranscript && (
-          <div className="mx-6 mt-4 p-4 bg-primary/5 border border-primary/30 rounded-xl backdrop-blur-sm">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="relative">
-                <User className="h-4 w-4 text-primary" />
-                <div className="absolute inset-0 animate-ping">
-                  <User className="h-4 w-4 text-primary/30" />
-                </div>
-              </div>
-              <span className="text-sm font-medium text-primary glow-text">Live Transcript</span>
-              <div className="flex gap-1 ml-auto">
-                <Waves className="h-4 w-4 text-primary animate-pulse" />
-              </div>
-            </div>
-            <p className="text-foreground italic font-mono text-sm leading-relaxed">
-              "{currentTranscript}"
-            </p>
-          </div>
-        )}
 
         {/* Messages Container */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-primary/20">
