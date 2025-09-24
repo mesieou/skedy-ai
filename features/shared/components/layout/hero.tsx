@@ -7,9 +7,16 @@ import { WaitlistModal } from "../sections/waitlist-modal";
 import { Button } from "../ui/button";
 import { Play, Users } from "lucide-react";
 import { DemoModal } from "@/features/demo";
-import { ChatHero } from "@/features/demo/components/chat-hero";
+import dynamic from "next/dynamic";
+
+// Dynamic import to prevent server-side compilation issues
+const DynamicDemoHero = dynamic(() => import("@/features/demo/components/demo-hero").then(mod => ({ default: mod.DemoHero })), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>
+});
 
 interface DemoSessionData {
+  businessType: string;
   sessionId: string;
   ephemeralToken: string;
   tradieType: {
@@ -39,39 +46,30 @@ export function Hero() {
     setDemoBusinessType(businessType);
 
     if (method === 'web') {
+      // Close the modal first
+      console.log('🚪 [Hero] Closing modal...');
+      setIsDemoModalOpen(false);
+
       // Futuristic transition effect
+      console.log('🎬 [Hero] Setting isDemoActive to true...');
       setIsDemoActive(true);
 
-      // Start real API call
-      try {
-        console.log('🚀 [Hero] Calling demo API...');
-        const response = await fetch('/api/voice/demo-webrtc', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-          tradieTypeId: businessType === 'removalist' ? 'transport' : businessType
-        }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`API call failed: ${response.status}`);
+      // Create session data for DemoHero
+      const sessionData = {
+        businessType: businessType,
+        sessionId: `demo-${Date.now()}`,
+        ephemeralToken: 'will-be-created-by-demohero',
+        tradieType: {
+          id: businessType,
+          label: businessType.charAt(0).toUpperCase() + businessType.slice(1),
+          description: `${businessType} services`,
+          businessId: 'demo-business'
         }
+      };
 
-        const data = await response.json();
-        console.log('✅ [Hero] Demo session created:', data);
-        console.log('✅ [Hero] Setting demo session data...');
-
-        // Store session data for ChatHero
-        setDemoSessionData(data);
-        console.log('✅ [Hero] Demo session data set:', data);
-
-      } catch (error) {
-        console.error('❌ [Hero] Failed to start demo:', error);
-        alert('Failed to start demo. Please try again.');
-        setIsDemoActive(false);
-      }
+      console.log('🔧 [Hero] Created simple session data:', sessionData);
+      setDemoSessionData(sessionData);
+      console.log('✅ [Hero] Demo activated - DemoHero will handle connection!');
     } else {
       alert(`Phone demo for ${businessType} coming soon!`);
     }
@@ -81,7 +79,7 @@ export function Hero() {
     // End demo session via API
     if (demoSessionData?.sessionId) {
       try {
-        await fetch(`/api/voice/demo-webrtc?sessionId=${demoSessionData.sessionId}`, {
+        await fetch(`/api/realtime-session?sessionId=${demoSessionData.sessionId}`, {
           method: 'DELETE'
         });
       } catch (error) {
@@ -122,7 +120,7 @@ export function Hero() {
       {/* Main Content - CONDITIONAL */}
       {isDemoActive ? (
         <div className="animate-in fade-in-0 duration-500">
-          <ChatHero
+          <DynamicDemoHero
             businessType={demoBusinessType}
             sessionData={demoSessionData}
             onEndDemo={handleEndDemo}
@@ -139,7 +137,9 @@ export function Hero() {
                 className="w-full sm:w-auto btn text-sm sm:text-base"
                 onClick={() => {
                   console.log('🏠 [Hero] Try Demo button clicked - opening modal');
+                  console.log('🏠 [Hero] Current modal state:', isDemoModalOpen);
                   setIsDemoModalOpen(true);
+                  console.log('🏠 [Hero] Modal should now be open');
                 }}
               >
                 <Play className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />

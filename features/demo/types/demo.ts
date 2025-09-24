@@ -1,4 +1,3 @@
-// Demo types - simple and clean
 export interface TradieType {
   id: string;
   label: string;
@@ -13,4 +12,9 @@ export interface DemoSessionEvent {
     session_id: string;
     tradie_type?: string;
   };
+}
+
+export interface DemoConfig {
+  businessTypes: TradieType[];
+  defaultBusinessType: string;
 }

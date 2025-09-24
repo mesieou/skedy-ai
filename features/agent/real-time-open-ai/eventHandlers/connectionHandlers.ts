@@ -4,7 +4,7 @@ import { webSocketPool } from "../../sessions/websocketPool";
 import { attachWSHandlers } from "../coordinateWsEvents";
 import { updateOpenAiSession } from "./updateOpenAiSession";
 import { requestInitialResponse } from "./requestInitialResponse";
-import { updateOpenAiInitialSessionForWebRTC } from "@/features/demo/services/updateOpenAiInitialSessionForWebRTC";
+// Removed broken import to demo services
 import { persistSessionAndInteractions } from "./persistSessionAndInteractions";
 import WebSocket from "ws";
 import assert from "assert";

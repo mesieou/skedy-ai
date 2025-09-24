@@ -91,7 +91,10 @@ export function DemoModal({ isOpen, onClose, onStartDemo }: DemoModalProps) {
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
                 <Button
                   size="lg"
-                  onClick={() => onStartDemo(selectedBusiness, "web")}
+                  onClick={() => {
+                    console.log('🎯 [DemoModal] Try Web Demo clicked!', { selectedBusiness });
+                    onStartDemo(selectedBusiness, "web");
+                  }}
                   className="w-full sm:w-auto btn text-sm sm:text-base"
                 >
                   <Monitor className="mr-2 h-4 w-4" />
@@ -100,7 +103,10 @@ export function DemoModal({ isOpen, onClose, onStartDemo }: DemoModalProps) {
                 <Button
                   size="lg"
                   variant="outline"
-                  onClick={() => onStartDemo(selectedBusiness, "phone")}
+                  onClick={() => {
+                    console.log('📞 [DemoModal] Try Phone Demo clicked!', { selectedBusiness });
+                    onStartDemo(selectedBusiness, "phone");
+                  }}
                   className="w-full sm:w-auto btn-outline text-sm sm:text-base"
                 >
                   <Phone className="mr-2 h-4 w-4" />
