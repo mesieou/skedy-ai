@@ -31,5 +31,6 @@ export interface SessionCallbacks {
   onUserSpeaking?: (speaking: boolean) => void;
   onAiThinking?: (thinking: boolean) => void;
   onToolExecution?: (toolName: string) => void;
+  onToolResult?: (toolName: string, result: Record<string, unknown>, success: boolean) => void;
   onError?: (error: string) => void;
 }

@@ -1,28 +1,51 @@
-import { RealtimeSession, RealtimeAgent, OpenAIRealtimeWebRTC } from '@openai/agents/realtime';
-import { SessionStatus, SessionConfig, TransportEvent, SessionCallbacks } from './types';
+import { SessionStatus, SessionConfig, SessionCallbacks } from './types';
 import { AgentManager } from '../agents/agent-manager';
+import { AgentBridge } from '../services/agent-bridge';
+
+// Increase max listeners to prevent memory leak warnings (Node.js only)
+if (typeof process !== 'undefined' && process.setMaxListeners) {
+  process.setMaxListeners(20);
+}
 
 export class RealtimeSessionManager {
-  private session: RealtimeSession | null = null;
+  private peerConnection: RTCPeerConnection | null = null;
+  private dataChannel: RTCDataChannel | null = null;
   private audioElement: HTMLAudioElement | null = null;
   private agentManager: AgentManager;
   private status: SessionStatus = 'DISCONNECTED';
   private callbacks: SessionCallbacks;
   private isConnecting = false;
+  private backendSessionId: string | null = null;
+  private backendSession: Record<string, unknown> | null = null;
 
   constructor(agentManager: AgentManager, callbacks: SessionCallbacks = {}) {
     this.agentManager = agentManager;
     this.callbacks = callbacks;
   }
 
-  async connect(config: SessionConfig, ephemeralKey: string): Promise<void> {
-    if (this.session || this.isConnecting) {
+  async connect(config: SessionConfig, ephemeralKey: string, backendSessionId?: string, backendSession?: Record<string, unknown>): Promise<void> {
+    if (this.peerConnection || this.isConnecting) {
       console.log('❌ [SessionManager] Already connecting/connected');
       return;
     }
 
     this.isConnecting = true;
     this.updateStatus('CONNECTING');
+
+    // Store backend session data for tool execution
+    this.backendSessionId = backendSessionId || null;
+    this.backendSession = backendSession || null;
+    console.log('🔗 [SessionManager] Backend session ID:', this.backendSessionId);
+
+    const currentTools = (this.backendSession?.currentTools as Record<string, unknown>[]) || [];
+    const businessEntity = this.backendSession?.businessEntity as Record<string, unknown>;
+    console.log('🔧 [SessionManager] Backend session data:', {
+      hasSession: !!backendSession,
+      toolsCount: currentTools.length,
+      toolNames: currentTools.map((t: Record<string, unknown>) => t.name) || [],
+      hasInstructions: !!backendSession?.aiInstructions,
+      businessName: businessEntity?.name
+    });
 
     try {
       // Create audio element
@@ -34,32 +57,54 @@ export class RealtimeSessionManager {
         document.body.appendChild(this.audioElement);
       }
 
-      const rootAgent = this.agentManager.getCurrentAgent();
+      // Create WebRTC peer connection
+      this.peerConnection = new RTCPeerConnection();
 
-      // Create session using official SDK
-      this.session = new RealtimeSession(rootAgent, {
-        transport: new OpenAIRealtimeWebRTC({
-          audioElement: this.audioElement,
-        }),
-        model: 'gpt-4o-realtime-preview-2025-06-03',
-        config: {
-          inputAudioFormat: 'pcm16',
-          outputAudioFormat: 'pcm16',
-          inputAudioTranscription: {
-            model: 'whisper-1',
-          },
-          turnDetection: {
-            type: 'server_vad',
-            threshold: 0.3,
-            prefixPaddingMs: 100,
-            silenceDurationMs: 100,
-          },
+      // Set up audio playback from OpenAI
+      this.peerConnection.ontrack = (e) => {
+        console.log('🎵 [SessionManager] Received audio track from OpenAI:', e.streams[0]);
+        if (this.audioElement) {
+          this.audioElement.srcObject = e.streams[0];
+          console.log('🔊 [SessionManager] Audio element connected to stream');
+        }
+      };
+
+      // Add local audio track for microphone input
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.peerConnection.addTrack(mediaStream.getTracks()[0]);
+
+      // Set up data channel for events
+      this.dataChannel = this.peerConnection.createDataChannel("oai-events");
+      this.setupDataChannelHandlers();
+
+      // Create offer and set local description
+      const offer = await this.peerConnection.createOffer();
+      await this.peerConnection.setLocalDescription(offer);
+
+      // Send SDP to OpenAI using ephemeral token approach (simpler)
+      const response = await fetch("https://api.openai.com/v1/realtime/calls", {
+        method: "POST",
+        body: offer.sdp,
+        headers: {
+          Authorization: `Bearer ${ephemeralKey}`,
+          "Content-Type": "application/sdp",
         },
       });
 
-      this.setupEventHandlers();
+      if (!response.ok) {
+        throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+      }
 
-      await this.session.connect({ apiKey: ephemeralKey });
+      const answerSdp = await response.text();
+      const answer = {
+        type: "answer" as RTCSdpType,
+        sdp: answerSdp,
+      };
+
+      await this.peerConnection.setRemoteDescription(answer);
+
+      console.log('✅ [SessionManager] WebRTC connection established with backend tools');
+
       this.isConnecting = false;
       this.updateStatus('CONNECTED');
 
@@ -72,61 +117,107 @@ export class RealtimeSessionManager {
     }
   }
 
-  private setupEventHandlers(): void {
-    if (!this.session) return;
+  private setupDataChannelHandlers(): void {
+    if (!this.dataChannel) return;
 
-    this.session.on("error", (error: unknown) => {
-      console.error('❌ [SessionManager] Session error:', error);
-      this.callbacks.onError?.(error.message || 'Session error');
+    this.dataChannel.addEventListener("open", () => {
+      console.log('✅ [SessionManager] Data channel opened - ready to send/receive events');
+
+      // Send session.update with backend session configuration
+      const sessionUpdate = {
+        type: "session.update",
+        session: {
+          type: "realtime",
+          model: "gpt-realtime",
+          output_modalities: ["audio"],
+          audio: {
+            input: {
+              format: {
+                type: "audio/pcm",
+                rate: 24000,
+              },
+              turn_detection: {
+                type: "semantic_vad"
+              }
+            },
+            output: {
+              format: {
+                type: "audio/pcm",
+              },
+              voice: "alloy",
+            }
+          },
+          // Add tools from backend session
+          tools: (this.backendSession?.currentTools as Record<string, unknown>[])?.map(tool => tool.function_schema) || [],
+          tool_choice: "auto",
+          // Add instructions from backend session
+          instructions: (this.backendSession?.aiInstructions as string) || 'You are a helpful assistant.'
+        }
+      };
+
+      this.dataChannel!.send(JSON.stringify(sessionUpdate));
+      console.log('🔄 [SessionManager] Sent session.update with backend tools and instructions');
+
+      // Then send initial response request to start conversation
+      setTimeout(() => {
+        const responseRequest = {
+          type: "response.create"
+        };
+        this.dataChannel!.send(JSON.stringify(responseRequest));
+        console.log('🔄 [SessionManager] Sent initial response request');
+      }, 1000);
     });
 
-    this.session.on("agent_handoff", (context: unknown, fromAgent: { name: string }, toAgent: { name: string }) => {
-      const newAgent = this.agentManager.handoffToAgent(toAgent.name);
-      if (newAgent) {
-        this.callbacks.onAgentHandoff?.(fromAgent.name, toAgent.name);
+    this.dataChannel.addEventListener("error", (error) => {
+      console.error('❌ [SessionManager] Data channel error:', error);
+      this.callbacks.onError?.('Data channel error');
+    });
+
+    // Listen for server events from OpenAI
+    this.dataChannel.addEventListener("message", (e) => {
+      try {
+        const event = JSON.parse(e.data);
+        this.handleRealtimeEvent(event);
+      } catch (error) {
+        console.error('❌ [SessionManager] Failed to parse event:', error);
       }
-    });
-
-    this.session.on("transport_event", (event: TransportEvent) => {
-      this.handleTransportEvent(event);
     });
   }
 
-  private handleTransportEvent(event: TransportEvent): void {
-    // Debug: Log all events to see what we're receiving
-    console.log('🔍 [SessionManager] Transport event:', event.type, event);
+  private handleRealtimeEvent(event: Record<string, unknown>): void {
+    console.log('🔍 [SessionManager] Realtime event:', event.type);
+
+    // Log important events with more detail
+    if (['session.created', 'session.updated', 'response.done', 'error'].includes(event.type as string)) {
+      console.log('📋 [SessionManager] Important event details:', event);
+    }
 
     switch (event.type) {
       // Audio streaming events
       case "input_audio_buffer.append":
-        console.log('🎵 [SessionManager] Audio buffer append - user streaming audio');
         this.callbacks.onUserSpeaking?.(true);
         break;
 
       case "input_audio_buffer.speech_started":
-        console.log('🎤 [SessionManager] User started speaking - create placeholder');
         this.callbacks.onUserSpeaking?.(true);
         // Create user message immediately when speech starts
-        this.callbacks.onTranscriptDelta?.('🎤 Speaking...', true, event.item_id || 'temp');
+        this.callbacks.onTranscriptDelta?.('🎤 Speaking...', true, (event.item_id as string) || 'temp');
         break;
 
       case "input_audio_buffer.speech_stopped":
-        console.log('🎤 [SessionManager] User stopped speaking');
         this.callbacks.onUserSpeaking?.(false);
         break;
 
       // ONLY DELTA EVENTS FOR STREAMING
       case "conversation.item.input_audio_transcription.delta":
-        console.log('📝 [SessionManager] USER delta:', event.delta);
         if (event.delta && event.item_id) {
-          this.callbacks.onTranscriptDelta?.(event.delta, true, event.item_id);
+          this.callbacks.onTranscriptDelta?.(event.delta as string, true, event.item_id as string);
         }
         break;
 
       case "response.output_audio_transcript.delta":
-        console.log('🤖 [SessionManager] AI delta:', event.delta);
         if (event.delta && event.item_id) {
-          this.callbacks.onTranscriptDelta?.(event.delta, false, event.item_id);
+          this.callbacks.onTranscriptDelta?.(event.delta as string, false, event.item_id as string);
         }
         break;
 
@@ -134,6 +225,125 @@ export class RealtimeSessionManager {
         console.log('🤖 [SessionManager] AI response completed');
         this.callbacks.onAiThinking?.(false);
         break;
+
+      // Tool execution events
+      case "response.function_call_arguments.done":
+        console.log('🔧 [SessionManager] Function call arguments done:', event);
+        if (event.name && event.arguments && this.backendSessionId) {
+          this.handleToolExecution(event.name as string, event.arguments as string, event.call_id as string);
+        }
+        break;
+    }
+  }
+
+  private async handleToolExecution(toolName: string, argsString: string, callId?: string): Promise<void> {
+    if (!this.backendSessionId) {
+      console.error('❌ [SessionManager] No backend session ID for tool execution');
+      return;
+    }
+
+    try {
+      console.log(`🔧 [SessionManager] BEFORE tool execution:`, {
+        toolName,
+        backendSessionId: this.backendSessionId,
+        callId,
+        argsString
+      });
+      this.callbacks.onToolExecution?.(toolName);
+
+      // Parse arguments
+      const args = JSON.parse(argsString);
+
+      // Execute tool using agent backend system
+      const result = await AgentBridge.executeTool(this.backendSessionId, toolName, args);
+
+      console.log(`📤 [SessionManager] Tool result:`, result);
+      this.callbacks.onToolResult?.(toolName, result, true);
+
+      // If this was request_tool, update the session with new tools (same as backend agent)
+      if (toolName === 'request_tool' && result.success) {
+        console.log('🔧 [SessionManager] request_tool executed, updating session with new tools...');
+        await this.updateSessionWithNewTools();
+      }
+
+      // Send result back to OpenAI session if we have a call ID
+      if (callId && this.dataChannel) {
+        await this.sendToolResult(callId, result);
+      }
+
+    } catch (error) {
+      console.error(`❌ [SessionManager] Tool execution failed:`, error);
+      this.callbacks.onError?.(`Tool execution failed: ${error}`);
+
+      // Send error result back to OpenAI if we have a call ID
+      if (callId && this.dataChannel) {
+        await this.sendToolResult(callId, {
+          success: false,
+          error: `Tool execution failed: ${error}`
+        });
+      }
+    }
+  }
+
+  private async updateSessionWithNewTools(): Promise<void> {
+    if (!this.backendSessionId || !this.dataChannel) return;
+
+    try {
+      // Get updated session data from backend
+      const response = await fetch(`/api/demo-tool-execution?sessionId=${this.backendSessionId}&action=getSession`);
+      const sessionData = await response.json();
+
+      if (sessionData.success && sessionData.session) {
+        const updatedTools = (sessionData.session.currentTools as any[]) || [];
+        console.log('🔧 [SessionManager] Sending session.update with new tools:', updatedTools.map((t: any) => t.name));
+
+        // Send session.update event via data channel (same as backend updateOpenAiSession)
+        const sessionUpdate = {
+          type: "session.update",
+          session: {
+            type: "realtime",
+            tools: updatedTools.map((tool: any) => tool.function_schema),
+            tool_choice: "auto"
+          },
+          event_id: `event_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+        };
+
+        this.dataChannel.send(JSON.stringify(sessionUpdate));
+
+        console.log('✅ [SessionManager] Session updated with new tools via data channel:', updatedTools.map((t: any) => t.name));
+      }
+    } catch (error) {
+      console.error('❌ [SessionManager] Failed to update session with new tools:', error);
+    }
+  }
+
+  private async sendToolResult(callId: string, result: Record<string, unknown>): Promise<void> {
+    if (!this.dataChannel) return;
+
+    try {
+      // Send function result back to OpenAI via data channel
+      const functionResult = {
+        type: "conversation.item.create",
+        item: {
+          type: "function_call_output",
+          call_id: callId,
+          output: JSON.stringify(result)
+        }
+      };
+
+      this.dataChannel.send(JSON.stringify(functionResult));
+      console.log('📤 [SessionManager] Sent tool result via data channel');
+
+      // Request new response after sending tool result
+      const responseRequest = {
+        type: "response.create"
+      };
+
+      this.dataChannel.send(JSON.stringify(responseRequest));
+      console.log('🔄 [SessionManager] Requested AI response after tool execution');
+
+    } catch (error) {
+      console.error('❌ [SessionManager] Failed to send tool result:', error);
     }
   }
 
@@ -147,13 +357,19 @@ export class RealtimeSessionManager {
   }
 
   mute(muted: boolean): void {
-    this.session?.mute(muted);
+    // TODO: Implement muting via WebRTC
+    console.log('🔇 [SessionManager] Mute not implemented for WebRTC yet:', muted);
   }
 
   disconnect(): void {
-    if (this.session) {
-      this.session.close();
-      this.session = null;
+    if (this.peerConnection) {
+      this.peerConnection.close();
+      this.peerConnection = null;
+    }
+
+    if (this.dataChannel) {
+      this.dataChannel.close();
+      this.dataChannel = null;
     }
 
     if (this.audioElement && document.body.contains(this.audioElement)) {
@@ -165,7 +381,7 @@ export class RealtimeSessionManager {
     this.updateStatus('DISCONNECTED');
   }
 
-  getCurrentAgent(): RealtimeAgent {
+  getCurrentAgent(): any {
     return this.agentManager.getCurrentAgent();
   }
 }

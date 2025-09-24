@@ -91,7 +91,6 @@ export function useRealtimeSession(agents: RealtimeAgent[], initialAgent: Realti
         }
       },
       onTranscriptDelta: (delta, isUser, itemId) => {
-        console.log('📝 [Hook] DELTA:', { delta, isUser, itemId });
         updateStreamingMessage(itemId, delta, isUser);
 
         // Set AI thinking state for status indicators
@@ -137,8 +136,17 @@ export function useRealtimeSession(agents: RealtimeAgent[], initialAgent: Realti
 
     try {
       const openAIService = OpenAIService.getInstance();
-      const ephemeralKey = await openAIService.getEphemeralKey();
-      await sessionManagerRef.current.connect(config, ephemeralKey);
+      console.log('🎯 [Hook] Connecting with business category:', config.tradieType.id);
+      const sessionData = await openAIService.getEphemeralKey(config.tradieType.id);
+
+      const backendSession = sessionData.session as Record<string, unknown>;
+      console.log('🎯 [Hook] Backend session created:', {
+        sessionId: backendSession?.id,
+        businessName: (backendSession?.businessEntity as Record<string, unknown>)?.name,
+        toolsCount: (backendSession?.currentTools as unknown[])?.length || 0
+      });
+      
+      await sessionManagerRef.current.connect(config, sessionData.value, backendSession?.id as string, sessionData.session);
     } catch (error) {
       console.error('❌ Connection failed:', error);
       addMessage('system', `❌ Connection failed: ${error instanceof Error ? error.message : String(error)}`);

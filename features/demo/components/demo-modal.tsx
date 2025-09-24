@@ -3,45 +3,77 @@
 import { useState } from "react";
 import { Button } from "@/features/shared/components/ui/button";
 import { SimpleDropdown } from "@/features/shared/components/ui/dropdown-menu";
-import { Truck, Sparkles, Wrench, Palette, Monitor, Phone } from "lucide-react";
-
+import { Truck, Sparkles, Wrench, Palette, Monitor, Phone, Scissors, Dumbbell, MoreHorizontal } from "lucide-react";
+import { BusinessCategory } from "@/features/shared/lib/database/types/business";
 interface DemoModalProps {
   isOpen: boolean;
   onClose: () => void;
   onStartDemo: (businessType: string, method: "web" | "phone") => Promise<void>;
 }
 
+// Helper function to get all category information
+const getCategoryInfo = (category: BusinessCategory) => {
+  switch (category) {
+    case BusinessCategory.TRANSPORT:
+      return {
+        icon: Truck,
+        displayName: 'Transport & Moving',
+        description: 'Moving and transportation services'
+      };
+    case BusinessCategory.CLEANING:
+      return {
+        icon: Sparkles,
+        displayName: 'Cleaning Services',
+        description: 'Professional cleaning services'
+      };
+    case BusinessCategory.HANDYMAN:
+      return {
+        icon: Wrench,
+        displayName: 'Handyman Services',
+        description: 'General repair and maintenance'
+      };
+    case BusinessCategory.BEAUTY:
+      return {
+        icon: Scissors,
+        displayName: 'Beauty & Wellness',
+        description: 'Beauty and wellness services'
+      };
+    case BusinessCategory.FITNESS:
+      return {
+        icon: Dumbbell,
+        displayName: 'Fitness & Training',
+        description: 'Personal training and fitness'
+      };
+    case BusinessCategory.GARDENING:
+      return {
+        icon: Palette,
+        displayName: 'Gardening & Landscaping',
+        description: 'Garden maintenance and landscaping'
+      };
+    default:
+      return {
+        icon: MoreHorizontal,
+        displayName: 'Other Services',
+        description: 'Various professional services'
+      };
+  }
+};
+
 export function DemoModal({ isOpen, onClose, onStartDemo }: DemoModalProps) {
   const [selectedBusiness, setSelectedBusiness] = useState<string>('');
 
   if (!isOpen) return null;
 
-  const businessTypes = [
-    {
-      id: 'removalist',
-      label: 'Removalist',
-      description: 'Moving and transportation services',
-      icon: Truck
-    },
-    {
-      id: 'cleaner',
-      label: 'Cleaner',
-      description: 'Professional cleaning services',
-      icon: Sparkles
-    },
-    {
-      id: 'handyman',
-      label: 'Handyman',
-      description: 'General repair and maintenance',
-      icon: Wrench
-    },
-    {
-      id: 'beauty',
-      label: 'Beauty Therapist',
-      description: 'Beauty and wellness services',
-      icon: Palette
-    }
-  ];
+  // Create business types using the category info function
+  const businessTypes = Object.values(BusinessCategory).map((category) => {
+    const categoryInfo = getCategoryInfo(category);
+    return {
+      id: category,
+      label: categoryInfo.displayName,
+      description: categoryInfo.description,
+      icon: categoryInfo.icon
+    };
+  });
 
 
   return (

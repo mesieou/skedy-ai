@@ -28,7 +28,6 @@ interface DemoSessionData {
 }
 
 export function Hero() {
-  console.log('🏠 [Hero] Component rendering...');
 
   const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
   const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
@@ -60,7 +59,7 @@ export function Hero() {
         sessionId: `demo-${Date.now()}`,
         ephemeralToken: 'will-be-created-by-demohero',
         tradieType: {
-          id: businessType,
+          id: businessType, // This is already the BusinessCategory enum value from the modal
           label: businessType.charAt(0).toUpperCase() + businessType.slice(1),
           description: `${businessType} services`,
           businessId: 'demo-business'
@@ -91,16 +90,6 @@ export function Hero() {
     setDemoBusinessType("");
     setDemoSessionData(null);
   };
-
-  console.log('🏠 [Hero] Current state:', {
-    isWaitlistOpen,
-    isDemoModalOpen,
-    isDemoActive,
-    demoBusinessType,
-    demoSessionData,
-    timestamp: Date.now()
-  });
-
 
   return (
     <>
@@ -136,10 +125,7 @@ export function Hero() {
                 size="lg"
                 className="w-full sm:w-auto btn text-sm sm:text-base"
                 onClick={() => {
-                  console.log('🏠 [Hero] Try Demo button clicked - opening modal');
-                  console.log('🏠 [Hero] Current modal state:', isDemoModalOpen);
                   setIsDemoModalOpen(true);
-                  console.log('🏠 [Hero] Modal should now be open');
                 }}
               >
                 <Play className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
