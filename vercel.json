@@ -6,10 +6,6 @@
     },
     {
       "path": "/api/cron/availability-rollover",
-      "schedule": "30 14 * * *"
-    },
-    {
-      "path": "/api/cron/availability-rollover",
       "schedule": "0 16 * * *"
     }
   ]
