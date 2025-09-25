@@ -6,6 +6,7 @@ import { updateToolsToSession } from "@/features/agent/services/updateToolsToSes
 import { getInitialRequestedTools } from "@/features/shared/lib/database/types/tools";
 import { sessionManager } from "@/features/agent/sessions/sessionSyncManager";
 import { sentry } from "@/features/shared/utils/sentryService";
+import { createWebRTCSessionConfig } from "@/features/shared/lib/openai-realtime-config";
 import { v4 as uuidv4 } from 'uuid';
 
 export async function GET(request: Request) {
@@ -64,22 +65,12 @@ export async function GET(request: Request) {
       businessName: verifySession?.businessEntity?.name
     });
 
-    // Get OpenAI ephemeral token with tools and instructions
+    // Get OpenAI ephemeral token with tools and instructions using shared config
+    const tools = session.currentTools?.map(tool => tool.function_schema) || [];
+    const instructions = session.aiInstructions || `You are a helpful ${businessCategory} booking assistant for Skedy services.`;
+
     const sessionConfig = {
-      session: {
-        type: "realtime",
-        model: "gpt-4o-realtime-preview-2025-06-03",
-        audio: {
-          output: {
-            voice: "alloy",
-          },
-        },
-        // Add tools from backend session
-        tools: session.currentTools?.map(tool => tool.function_schema) || [],
-        tool_choice: "auto",
-        // Add instructions from backend session
-        instructions: session.aiInstructions || `You are a helpful ${businessCategory} booking assistant for Skedy services.`
-      },
+      session: createWebRTCSessionConfig(tools, instructions)
     };
 
     const response = await fetch(

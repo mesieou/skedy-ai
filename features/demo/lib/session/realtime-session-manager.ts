@@ -1,6 +1,7 @@
 import { SessionStatus, SessionConfig, SessionCallbacks } from './types';
 import { AgentBridge } from '../services/agent-bridge';
-import { sentry } from '@/features/shared/utils/sentryService';
+import * as Sentry from '@sentry/nextjs';
+import { createWebRTCSessionConfig, createSessionUpdateConfig } from '@/features/shared/lib/openai-realtime-config';
 
 // Increase max listeners to prevent memory leak warnings (Node.js only)
 if (typeof process !== 'undefined' && process.setMaxListeners) {
@@ -31,13 +32,17 @@ export class RealtimeSessionManager {
     this.updateStatus('CONNECTING');
 
     // Add breadcrumb for WebRTC connection start
-    sentry.addBreadcrumb('Demo WebRTC connection started', 'demo-webrtc', {
-      sessionId: backendSessionId || 'unknown',
-      hasBackendSession: !!backendSession,
-      tradieType: config.tradieType?.id || 'unknown'
+    Sentry.addBreadcrumb({
+      message: 'Demo WebRTC connection started',
+      category: 'demo-webrtc',
+      data: {
+        sessionId: backendSessionId || 'unknown',
+        hasBackendSession: !!backendSession,
+        tradieType: config.tradieType?.id || 'unknown'
+      }
     });
 
-    // Store backend session data for tool execution
+    // Store backend session data for tool execution and interaction tracking
     this.backendSessionId = backendSessionId || null;
     this.backendSession = backendSession || null;
     console.log('🔗 [SessionManager] Backend session ID:', this.backendSessionId);
@@ -111,9 +116,13 @@ export class RealtimeSessionManager {
       console.log('✅ [SessionManager] WebRTC connection established with backend tools');
 
       // Add breadcrumb for successful connection
-      sentry.addBreadcrumb('Demo WebRTC connection established', 'demo-webrtc', {
-        sessionId: this.backendSessionId || 'unknown',
-        toolsCount: (this.backendSession?.currentTools as unknown[])?.length || 0
+      Sentry.addBreadcrumb({
+        message: 'Demo WebRTC connection established',
+        category: 'demo-webrtc',
+        data: {
+          sessionId: this.backendSessionId || 'unknown',
+          toolsCount: (this.backendSession?.currentTools as unknown[])?.length || 0
+        }
       });
 
       this.isConnecting = false;
@@ -123,11 +132,12 @@ export class RealtimeSessionManager {
       console.error('❌ [SessionManager] Connection failed:', error);
 
       // Track connection error in Sentry
-      sentry.trackError(error as Error, {
-        sessionId: this.backendSessionId || 'unknown',
-        businessId: 'unknown',
-        operation: 'demo_webrtc_connection',
-        metadata: {
+      Sentry.captureException(error, {
+        tags: {
+          operation: 'demo_webrtc_connection',
+          sessionId: this.backendSessionId || 'unknown'
+        },
+        extra: {
           tradieType: config.tradieType?.id || 'unknown',
           hasEphemeralKey: !!ephemeralKey
         }
@@ -146,37 +156,11 @@ export class RealtimeSessionManager {
     this.dataChannel.addEventListener("open", () => {
       console.log('✅ [SessionManager] Data channel opened - ready to send/receive events');
 
-      // Send session.update with backend session configuration
-      const sessionUpdate = {
-        type: "session.update",
-        session: {
-          type: "realtime",
-          model: "gpt-realtime",
-          output_modalities: ["audio"],
-          audio: {
-            input: {
-              format: {
-                type: "audio/pcm",
-                rate: 24000,
-              },
-              turn_detection: {
-                type: "semantic_vad"
-              }
-            },
-            output: {
-              format: {
-                type: "audio/pcm",
-              },
-              voice: "alloy",
-            }
-          },
-          // Add tools from backend session
-          tools: (this.backendSession?.currentTools as Record<string, unknown>[])?.map(tool => tool.function_schema) || [],
-          tool_choice: "auto",
-          // Add instructions from backend session
-          instructions: (this.backendSession?.aiInstructions as string) || 'You are a helpful assistant.'
-        }
-      };
+      // Send session.update with backend session configuration using shared config
+      const tools = (this.backendSession?.currentTools as Record<string, unknown>[])?.map(tool => tool.function_schema) || [];
+      const instructions = (this.backendSession?.aiInstructions as string) || 'You are a helpful assistant.';
+
+      const sessionUpdate = createWebRTCSessionConfig(tools, instructions);
 
       this.dataChannel!.send(JSON.stringify(sessionUpdate));
       console.log('🔄 [SessionManager] Sent session.update with backend tools and instructions');
@@ -197,17 +181,17 @@ export class RealtimeSessionManager {
     });
 
     // Listen for server events from OpenAI
-    this.dataChannel.addEventListener("message", (e) => {
+    this.dataChannel.addEventListener("message", async (e) => {
       try {
         const event = JSON.parse(e.data);
-        this.handleRealtimeEvent(event);
+        await this.handleRealtimeEvent(event);
       } catch (error) {
         console.error('❌ [SessionManager] Failed to parse event:', error);
       }
     });
   }
 
-  private handleRealtimeEvent(event: Record<string, unknown>): void {
+  private async handleRealtimeEvent(event: Record<string, unknown>): Promise<void> {
     console.log('🔍 [SessionManager] Realtime event:', event.type);
 
     // Log important events with more detail
@@ -238,9 +222,23 @@ export class RealtimeSessionManager {
         }
         break;
 
+      case "conversation.item.input_audio_transcription.completed":
+        // Store user transcript via API to avoid client-side imports
+        if (this.backendSessionId && event.transcript) {
+          this.storeTranscriptViaAPI('user', event.transcript as string, event.item_id as string);
+        }
+        break;
+
       case "response.output_audio_transcript.delta":
         if (event.delta && event.item_id) {
           this.callbacks.onTranscriptDelta?.(event.delta as string, false, event.item_id as string);
+        }
+        break;
+
+      case "response.output_audio_transcript.done":
+        // Store AI transcript via API to avoid client-side imports
+        if (this.backendSessionId && event.transcript) {
+          this.storeTranscriptViaAPI('ai', event.transcript as string, event.item_id as string);
         }
         break;
 
@@ -320,16 +318,9 @@ export class RealtimeSessionManager {
         const updatedTools = (sessionData.session.currentTools as Record<string, unknown>[]) || [];
         console.log('🔧 [SessionManager] Sending session.update with new tools:', updatedTools.map((t: Record<string, unknown>) => t.name));
 
-        // Send session.update event via data channel (same as backend updateOpenAiSession)
-        const sessionUpdate = {
-          type: "session.update",
-          session: {
-            type: "realtime",
-            tools: updatedTools.map((tool: Record<string, unknown>) => tool.function_schema),
-            tool_choice: "auto"
-          },
-          event_id: `event_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
-        };
+        // Send session.update event via data channel using shared config
+        const tools = updatedTools.map((tool: Record<string, unknown>) => tool.function_schema);
+        const sessionUpdate = createSessionUpdateConfig(tools);
 
         this.dataChannel.send(JSON.stringify(sessionUpdate));
 
@@ -385,6 +376,10 @@ export class RealtimeSessionManager {
   }
 
   disconnect(): void {
+    // Clean up backend session first
+    this.cleanupBackendSession();
+
+    // Clean up WebRTC connections
     if (this.peerConnection) {
       this.peerConnection.close();
       this.peerConnection = null;
@@ -402,6 +397,102 @@ export class RealtimeSessionManager {
 
     this.isConnecting = false;
     this.updateStatus('DISCONNECTED');
+  }
+
+  private async cleanupBackendSession(): Promise<void> {
+    if (!this.backendSessionId) {
+      console.log('🔄 [SessionManager] No backend session to cleanup');
+      return;
+    }
+
+    try {
+      console.log(`🧹 [SessionManager] Cleaning up backend session: ${this.backendSessionId}`);
+
+      // Add breadcrumb for session cleanup
+      Sentry.addBreadcrumb({
+        message: 'Demo session cleanup started',
+        category: 'demo-cleanup',
+        data: {
+          sessionId: this.backendSessionId
+        }
+      });
+
+      // Call backend to end the session (similar to backend connectionHandlers)
+      const response = await fetch('/api/demo-tool-execution', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId: this.backendSessionId,
+          toolName: 'end_session', // We'll need to create this endpoint
+          args: {}
+        })
+      });
+
+      if (response.ok) {
+        console.log(`✅ [SessionManager] Backend session ${this.backendSessionId} cleaned up successfully`);
+        Sentry.addBreadcrumb({
+          message: 'Demo session cleanup completed',
+          category: 'demo-cleanup',
+          data: {
+            sessionId: this.backendSessionId
+          }
+        });
+      } else {
+        console.warn(`⚠️ [SessionManager] Failed to cleanup backend session: ${response.status}`);
+      }
+
+    } catch (error) {
+      console.error(`❌ [SessionManager] Error cleaning up backend session:`, error);
+
+      // Track cleanup error in Sentry
+      Sentry.captureException(error, {
+        tags: {
+          operation: 'demo_session_cleanup',
+          sessionId: this.backendSessionId || 'unknown'
+        },
+        extra: {
+          backendSessionId: this.backendSessionId
+        }
+      });
+    } finally {
+      // Clear references regardless of cleanup success
+      this.backendSessionId = null;
+      this.backendSession = null;
+    }
+  }
+
+  private async storeTranscriptViaAPI(type: 'user' | 'ai', transcript: string, itemId: string): Promise<void> {
+    if (!this.backendSessionId) return;
+
+    try {
+      // Store transcript via API to avoid client-side imports
+      const response = await fetch('/api/demo-tool-execution', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId: this.backendSessionId,
+          toolName: 'store_transcript',
+          args: {
+            type: type,
+            transcript: transcript,
+            itemId: itemId
+          }
+        })
+      });
+
+      if (response.ok) {
+        console.log(`✅ [SessionManager] ${type} transcript stored via API`);
+      } else {
+        console.warn(`⚠️ [SessionManager] Failed to store ${type} transcript: ${response.status}`);
+      }
+
+    } catch (error) {
+      console.error(`❌ [SessionManager] Error storing ${type} transcript:`, error);
+    }
   }
 
   getCurrentAgent(): { name: string; id: string } {

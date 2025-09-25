@@ -1,6 +1,7 @@
 import type { Session } from '../../sessions/session';
 import { sentry } from '@/features/shared/utils/sentryService';
 import assert from 'assert';
+import { createSessionUpdateConfig } from '@/features/shared/lib/openai-realtime-config';
 
 /**
  * Update OpenAI session with current tools
@@ -26,19 +27,8 @@ export async function updateOpenAiSession(session: Session): Promise<void> {
       return tool.function_schema;
     });
 
-    // Generate unique event ID
-    const eventId = `event_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-
-    // Create session update message (tools only - used by both WebSocket and WebRTC for tool updates)
-    const sessionUpdate = {
-      type: "session.update",
-      session: {
-        type: "realtime",
-        tools: openAiTools,
-        tool_choice: "auto"
-      },
-      event_id: eventId
-    };
+    // Create session update message using shared config
+    const sessionUpdate = createSessionUpdateConfig(openAiTools);
 
     // Send to OpenAI
     session.ws.send(JSON.stringify(sessionUpdate));

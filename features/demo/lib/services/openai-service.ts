@@ -1,4 +1,4 @@
-import { sentry } from '@/features/shared/utils/sentryService';
+import * as Sentry from '@sentry/nextjs';
 
 export class OpenAIService {
   private static instance: OpenAIService;
@@ -14,20 +14,24 @@ export class OpenAIService {
     console.log('🔑 [OpenAIService] Requesting ephemeral key...', { businessCategory });
 
     // Add breadcrumb for ephemeral key request
-    sentry.addBreadcrumb('Demo ephemeral key request', 'demo-openai', {
-      businessCategory: businessCategory || 'default'
+    Sentry.addBreadcrumb({
+      message: 'Demo ephemeral key request',
+      category: 'demo-openai',
+      data: {
+        businessCategory: businessCategory || 'default'
+      }
     });
 
     const url = businessCategory ? `/api/realtime-session?category=${businessCategory}` : '/api/realtime-session';
     const response = await fetch(url);
     if (!response.ok) {
       // Track error in Sentry
-      sentry.trackError(new Error(`Failed to get ephemeral key: ${response.status}`), {
-        sessionId: 'unknown',
-        businessId: 'unknown',
-        operation: 'demo_ephemeral_key_request',
-        metadata: {
-          businessCategory: businessCategory || 'default',
+      Sentry.captureException(new Error(`Failed to get ephemeral key: ${response.status}`), {
+        tags: {
+          operation: 'demo_ephemeral_key_request',
+          businessCategory: businessCategory || 'default'
+        },
+        extra: {
           httpStatus: response.status,
           httpStatusText: response.statusText
         }
@@ -44,10 +48,14 @@ export class OpenAIService {
     });
 
     // Add breadcrumb for successful key retrieval
-    sentry.addBreadcrumb('Demo ephemeral key received', 'demo-openai', {
-      sessionId: data.session?.id || 'unknown',
-      businessName: data.session?.businessEntity?.name || 'unknown',
-      hasKey: !!data.value
+    Sentry.addBreadcrumb({
+      message: 'Demo ephemeral key received',
+      category: 'demo-openai',
+      data: {
+        sessionId: data.session?.id || 'unknown',
+        businessName: data.session?.businessEntity?.name || 'unknown',
+        hasKey: !!data.value
+      }
     });
 
     return data;

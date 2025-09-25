@@ -10,54 +10,9 @@ import { sentry } from "@/features/shared/utils/sentryService";
 import { webSocketPool } from "../../sessions/websocketPool";
 import type { Session } from "../../sessions/session";
 import assert from "assert";
+import { createWebSocketSessionConfig, OPENAI_REALTIME_CONFIG } from "@/features/shared/lib/openai-realtime-config";
 
-// Constants for OpenAI API
-const OPENAI_CONFIG = {
-  BASE_URL: "https://api.openai.com/v1/realtime/calls",
-  MODEL: "gpt-realtime", // For SIP calls, use "gpt-realtime" not versioned model
-  VOICE: "marin",
-} as const;
-
-// Static audio configuration for OpenAI Realtime (matching working agent1)
-const AUDIO_CONFIG = {
-  input: {
-    format: "pcm16" as const,
-    turn_detection: {
-      type: "semantic_vad" as const,
-      create_response: true,
-      interrupt_response: true,
-      eagerness: "auto" as const  // Changed from "medium" to "auto" like agent1
-    },
-    transcription: {
-      model: "gpt-4o-transcribe",  // Changed from "whisper-1" to match agent1
-      language: "en"
-    },
-    noise_reduction: {
-      type: "near_field"  // Changed from "basic" to "near_field" like agent1
-    }
-  },
-  output: {
-    format: {
-      type: "pcm16" as const,
-      rate: 24000
-    },
-    voice: process.env.OPENAI_VOICE || OPENAI_CONFIG.VOICE
-  }
-} as const;
-
-// Constant function to create call config (no tools - sent via session.update)
-const createCallConfig = (instructions: string) => ({
-  type: "realtime" as const,
-  instructions,
-  model: OPENAI_CONFIG.MODEL, // Always use "gpt-realtime" for SIP calls
-  audio: {
-    ...AUDIO_CONFIG,
-    output: {
-      ...AUDIO_CONFIG.output,
-      voice: process.env.OPENAI_VOICE || OPENAI_CONFIG.VOICE
-    }
-  }
-});
+// Use shared config - no more duplication!
 
 // Response interface (needed for return type)
 interface CallAcceptResponse {
@@ -90,13 +45,11 @@ export async function acceptCall(session: Session): Promise<CallAcceptResponse> 
     assert(session.aiInstructions, 'AI instructions not generated - call addPromptToSession first');
     assert(apiKey, 'Session API key not assigned and OPENAI_API_KEY environment variable not set');
 
-    // Create call configuration using constants (no tools - sent via session.update later)
-    const callConfig = createCallConfig(
-      session.aiInstructions
-    );
+    // Create call configuration using shared config (no tools - sent via session.update later)
+    const callConfig = createWebSocketSessionConfig(session.aiInstructions);
 
     // Make API call to OpenAI
-    const acceptUrl = `${OPENAI_CONFIG.BASE_URL}/${session.id}/accept`;
+    const acceptUrl = `${OPENAI_REALTIME_CONFIG.BASE_URL}/${session.id}/accept`;
 
     console.log(`🔗 [AcceptCall] Accept URL: ${acceptUrl}`);
     console.log(`🔧 [AcceptCall] Config: Model=${callConfig.model}, Voice=${callConfig.audio.output.voice}`);

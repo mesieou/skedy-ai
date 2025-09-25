@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { RealtimeSessionManager } from '../lib/session/realtime-session-manager';
 import { OpenAIService } from '../lib/services/openai-service';
 import { SessionStatus, SessionConfig } from '../lib/session/types';
-import { sentry } from '@/features/shared/utils/sentryService';
+import * as Sentry from '@sentry/nextjs';
 
 export interface Message {
   id: string;
@@ -28,6 +28,7 @@ export function useRealtimeSession() {
   const streamingMessagesRef = useRef<Map<string, Message>>(new Map());
   const pendingAiDeltas = useRef<Array<{itemId: string, delta: string}>>([]);
   const userMessageProcessed = useRef(true);
+  const messageCounterRef = useRef(0);
 
   const addMessage = useCallback((type: 'user' | 'assistant' | 'system' | 'tool', content: string, options?: {
     agent?: string;
@@ -35,7 +36,7 @@ export function useRealtimeSession() {
     isProcessing?: boolean;
   }) => {
     const message: Message = {
-      id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `msg_${++messageCounterRef.current}`,
       type,
       content,
       timestamp: Date.now(),
@@ -82,9 +83,13 @@ export function useRealtimeSession() {
       onAgentHandoff: (fromAgent, toAgent) => {
         // Since we're using backend agents, just log the handoff
         addMessage('system', `🔄 Transferred to ${toAgent} specialist`);
-        sentry.addBreadcrumb('Demo agent handoff', 'demo-agent', {
-          fromAgent: fromAgent,
-          toAgent: toAgent
+        Sentry.addBreadcrumb({
+          message: 'Demo agent handoff',
+          category: 'demo-agent',
+          data: {
+            fromAgent: fromAgent,
+            toAgent: toAgent
+          }
         });
       },
       onTranscriptDelta: (delta, isUser, itemId) => {

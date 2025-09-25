@@ -63,6 +63,89 @@ export async function POST(request: Request) {
       );
     }
 
+    // Handle special demo cleanup command
+    if (toolName === 'end_session') {
+      console.log(`🧹 [API] Ending demo session: ${sessionId}`);
+
+      // Use the same cleanup logic as backend handleWebSocketClose
+      const { handleWebSocketClose } = await import('@/features/agent/real-time-open-ai/eventHandlers/connectionHandlers');
+
+      try {
+        // Call the backend cleanup function (simulating WebSocket close)
+        await handleWebSocketClose(session, 1000, 'Demo session ended by user');
+
+        console.log(`✅ [API] Demo session ${sessionId} ended and cleaned up successfully`);
+
+        return NextResponse.json({
+          success: true,
+          result: { message: 'Session ended and cleaned up successfully' },
+          sessionId: sessionId,
+          toolName: toolName
+        });
+
+      } catch (cleanupError) {
+        console.error(`❌ [API] Error during session cleanup:`, cleanupError);
+
+        // Track cleanup error
+        sentry.trackError(cleanupError as Error, {
+          sessionId: sessionId,
+          businessId: session.businessId,
+          operation: 'demo_session_cleanup_error',
+          metadata: {
+            originalError: (cleanupError as Error).message
+          }
+        });
+
+        return NextResponse.json({
+          success: false,
+          error: `Session cleanup failed: ${(cleanupError as Error).message}`,
+          sessionId: sessionId,
+          toolName: toolName
+        }, { status: 500 });
+      }
+    }
+
+    // Handle transcript storage
+    if (toolName === 'store_transcript') {
+      console.log(`📝 [API] Storing ${args.type} transcript for session ${sessionId}`);
+
+      try {
+        const { storeUserTranscript } = await import('@/features/agent/real-time-open-ai/eventHandlers/storeUserTranscript');
+        const { storeAiTranscript } = await import('@/features/agent/real-time-open-ai/eventHandlers/storeAiTranscript');
+
+        if (args.type === 'user') {
+          await storeUserTranscript(session, {
+            transcript: args.transcript as string,
+            item_id: args.itemId as string
+          } as unknown as import('@/features/agent/real-time-open-ai/types/server/events/conversation/serverInputAudioTranscriptionCompletedTypes').ServerInputAudioTranscriptionCompletedEvent);
+        } else if (args.type === 'ai') {
+          await storeAiTranscript(session, {
+            transcript: args.transcript as string,
+            item_id: args.itemId as string
+          } as unknown as import('@/features/agent/real-time-open-ai/types/server/events/response/serverResponseOutputAudioTranscriptDoneTypes').ServerResponseOutputAudioTranscriptDoneEvent);
+        }
+
+        console.log(`✅ [API] ${args.type} transcript stored successfully`);
+
+        return NextResponse.json({
+          success: true,
+          result: { message: `${args.type} transcript stored` },
+          sessionId: sessionId,
+          toolName: toolName
+        });
+
+      } catch (transcriptError) {
+        console.error(`❌ [API] Error storing ${args.type} transcript:`, transcriptError);
+
+        return NextResponse.json({
+          success: false,
+          error: `Transcript storage failed: ${(transcriptError as Error).message}`,
+          sessionId: sessionId,
+          toolName: toolName
+        }, { status: 500 });
+      }
+    }
+
     // Execute the tool using the agent system
     const result = await executeToolFunction(toolName, args, session);
 

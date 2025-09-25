@@ -11,6 +11,7 @@ import { AddressRole } from '../types/booking-calculations';
 export interface AddressValidationRequest {
   addresses: string[];
   addressTypes?: Record<string, AddressRole>;
+  requirements?: string[]; // AI function requirements from service
 }
 
 export interface ValidationResult {
@@ -34,13 +35,12 @@ export class AddressValidator {
    * Validate addresses for booking/quote processing
    */
   async validateAddresses(request: AddressValidationRequest): Promise<ValidationResult> {
-    const { addresses, addressTypes = {} } = request;
+    const { addresses, addressTypes = {}, requirements = [] } = request;
 
-    if (addresses.length === 0) {
-      return {
-        isValid: false,
-        message: "Please provide at least one pickup and dropoff address."
-      };
+    // Validate based on AI function requirements
+    const validationResult = this.validateAddressRequirements(addresses, requirements);
+    if (!validationResult.isValid) {
+      return validationResult;
     }
 
     try {
@@ -111,7 +111,7 @@ export class AddressValidator {
     dropoff_address?: string;
     customer_addresses?: string[];
     service_address?: string;
-  }): Promise<ValidationResult> {
+  }, requirements: string[] = []): Promise<ValidationResult> {
     const addresses: string[] = [];
     const addressTypes: Record<string, AddressRole> = {};
 
@@ -156,7 +156,7 @@ export class AddressValidator {
       addressTypes[args.service_address] = AddressRole.SERVICE;
     }
 
-    return this.validateAddresses({ addresses, addressTypes });
+    return this.validateAddresses({ addresses, addressTypes, requirements });
   }
 
   /**
@@ -191,6 +191,42 @@ export class AddressValidator {
     return { isServiced: true };
   }
 
+  /**
+   * Validate address requirements based on AI function requirements
+   */
+  private validateAddressRequirements(addresses: string[], requirements: string[]): ValidationResult {
+    const hasPickupRequirement = requirements.includes('pickup_addresses');
+    const hasDropoffRequirement = requirements.includes('dropoff_addresses');
+    const hasCustomerRequirement = requirements.includes('customer_address');
+
+    // If no address requirements, skip validation
+    if (!hasPickupRequirement && !hasDropoffRequirement && !hasCustomerRequirement) {
+      return { isValid: true, message: "No address requirements for this service" };
+    }
+
+    // If only customer address required (manicurist, plumber)
+    if (hasCustomerRequirement && !hasPickupRequirement && !hasDropoffRequirement) {
+      if (addresses.length === 0) {
+        return { isValid: false, message: "Please provide customer address." };
+      }
+      return { isValid: true, message: "Customer address requirement satisfied" };
+    }
+
+    // If pickup/dropoff required (removalist)
+    if (hasPickupRequirement || hasDropoffRequirement) {
+      if (addresses.length === 0) {
+        return { isValid: false, message: "Please provide at least one pickup and one dropoff address." };
+      }
+      // For pickup/dropoff services, we need at least 2 addresses (pickup + dropoff)
+      if (addresses.length < 2) {
+        return { isValid: false, message: "Please provide both pickup and dropoff addresses." };
+      }
+      return { isValid: true, message: "Pickup/dropoff address requirements satisfied" };
+    }
+
+    // Fallback
+    return { isValid: true, message: "Address requirements satisfied" };
+  }
   /**
    * Determine address type for better error messages
    */

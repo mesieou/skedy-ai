@@ -1,4 +1,4 @@
-import { sentry } from '@/features/shared/utils/sentryService';
+import * as Sentry from '@sentry/nextjs';
 
 /**
  * Bridge between demo frontend and agent backend
@@ -22,10 +22,14 @@ export class AgentBridge {
     });
 
     // Add breadcrumb for tool execution start
-    sentry.addBreadcrumb('Demo tool bridge execution', 'demo-bridge', {
-      sessionId: sessionId,
-      toolName: toolName,
-      argsKeys: Object.keys(args)
+    Sentry.addBreadcrumb({
+      message: 'Demo tool bridge execution',
+      category: 'demo-bridge',
+      data: {
+        sessionId: sessionId,
+        toolName: toolName,
+        argsKeys: Object.keys(args)
+      }
     });
 
     try {
@@ -57,12 +61,13 @@ export class AgentBridge {
         });
 
         // Track HTTP error in Sentry
-        sentry.trackError(new Error(`Tool execution HTTP error: ${response.status}`), {
-          sessionId: sessionId,
-          businessId: 'unknown',
-          operation: 'demo_bridge_http_error',
-          metadata: {
-            toolName: toolName,
+        Sentry.captureException(new Error(`Tool execution HTTP error: ${response.status}`), {
+          tags: {
+            operation: 'demo_bridge_http_error',
+            sessionId: sessionId,
+            toolName: toolName
+          },
+          extra: {
             httpStatus: response.status,
             httpStatusText: response.statusText,
             errorText: errorText
@@ -92,12 +97,13 @@ export class AgentBridge {
       });
 
       // Track error in Sentry
-      sentry.trackError(error as Error, {
-        sessionId: sessionId,
-        businessId: 'unknown',
-        operation: 'demo_bridge_tool_execution',
-        metadata: {
-          toolName: toolName,
+      Sentry.captureException(error, {
+        tags: {
+          operation: 'demo_bridge_tool_execution',
+          sessionId: sessionId,
+          toolName: toolName
+        },
+        extra: {
           argsKeys: Object.keys(args)
         }
       });

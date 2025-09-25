@@ -43,7 +43,7 @@ export async function getQuote(
 
     if (hasAddressRequirements) {
       const addressValidator = new AddressValidator();
-      const addressValidation = await addressValidator.validateQuoteAddresses(args);
+      const addressValidation = await addressValidator.validateQuoteAddresses(args, serviceRequirements);
       if (!addressValidation.isValid) {
         // User input error - invalid address data
         return buildToolResponse(null, `Invalid address: ${addressValidation.message}`, false);
