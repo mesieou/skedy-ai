@@ -10,7 +10,7 @@ import assert from "assert";
 
 export class SessionService {
   static async createOrGet(callId: string, event: WebhookEvent) {
-    let assignedApiKeyIndex: number;
+    let assignedApiKeyIndex: number | undefined;
 
     try {
       let session = await sessionManager.get(callId);
@@ -122,11 +122,11 @@ export class SessionService {
           hasSipHeaders: !!(event.data?.sip_headers)
         }
       });
-      assert(assignedApiKeyIndex!, 'Assigned API key index not found');
-
-      // Release API key if it was assigned but session creation failed
-      webSocketPool.release(assignedApiKeyIndex);
-      console.log(`🔄 [SessionService] Released API key ${assignedApiKeyIndex + 1} due to session creation failure`);
+      // Only release API key if it was actually assigned
+      if (typeof assignedApiKeyIndex === 'number') {
+        webSocketPool.release(assignedApiKeyIndex);
+        console.log(`🔄 [SessionService] Released API key ${assignedApiKeyIndex + 1} due to session creation failure`);
+      }
 
       throw error; // Re-throw so caller can handle
     }
