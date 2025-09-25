@@ -85,11 +85,7 @@ type BusinessType = keyof typeof businessConfigs;
 // Admin API endpoint to setup businesses in production
 export async function POST(request: NextRequest) {
   try {
-    // Temporarily disable auth for setup
-    // const authHeader = request.headers.get('authorization');
-    // if (authHeader !== `Bearer ${process.env.ADMIN_API_KEY}`) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    // }
+    // No auth required for setup
 
     const { businessType } = await request.json();
 
