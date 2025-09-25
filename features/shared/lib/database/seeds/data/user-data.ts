@@ -19,7 +19,7 @@ export function createUniqueAdminProviderUserData(businessId: string): CreateUse
   };
 }
 
-// Function to create unique provider user data for tests
+// Function to create unique provider user data for tests (generic)
 export function createUniqueProviderUserData(businessId: string): CreateUserData {
   const uniqueId = generateUniqueIdentifier();
   return {
@@ -29,6 +29,40 @@ export function createUniqueProviderUserData(businessId: string): CreateUserData
     last_name: "Johnson",
     phone_number: `+61412${Math.floor(Math.random() * 900000) + 100000}`,
     email: `sarah+${uniqueId}@tigapropertyservices.com`,
+  };
+}
+
+// Business-specific provider user data functions
+export function createRemovalistProviderUserData(businessId: string): CreateUserData {
+  return {
+    role: UserRole.PROVIDER,
+    first_name: "James",
+    business_id: businessId,
+    last_name: "Wilson",
+    phone_number: "+61412345678",
+    email: "james@davidremovals.com",
+  };
+}
+
+export function createManicuristProviderUserData(businessId: string): CreateUserData {
+  return {
+    role: UserRole.PROVIDER,
+    first_name: "Emma",
+    business_id: businessId,
+    last_name: "Taylor",
+    phone_number: "+61423456789",
+    email: "emma@nailsonthego.com.au",
+  };
+}
+
+export function createPlumberProviderUserData(businessId: string): CreateUserData {
+  return {
+    role: UserRole.PROVIDER,
+    first_name: "Tom",
+    business_id: businessId,
+    last_name: "Brown",
+    phone_number: "+61434567890",
+    email: "tom@fixitplumbing.com.au",
   };
 }
 

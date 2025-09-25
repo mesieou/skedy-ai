@@ -32,10 +32,12 @@ export async function checkDayAvailability(
       return buildToolResponse(null, `Invalid date format. Please use YYYY-MM-DD`, false);
     }
 
+    const businessDate = args.date; // Business timezone date (e.g., "2025-09-27" in Melbourne)
+
     // Validate date is not in the past - compare business dates directly
     const { date: todayInBusinessTimezone } = DateUtils.convertUTCToTimezone(DateUtils.nowUTC(), session.businessEntity.time_zone);
 
-    if (args.date < todayInBusinessTimezone) {
+    if (businessDate < todayInBusinessTimezone) {
       // User input error - past date
       return buildToolResponse(null, `Cannot check past dates. Please select a future date.`, false);
     }
@@ -51,10 +53,10 @@ export async function checkDayAvailability(
       return buildToolResponse(null, `No availability for this date, please try another date.`, false);
     }
 
-    // Use AvailabilityManager to check the day with quote duration
+    // Use AvailabilityManager to check the day with quote duration (pass business date)
     const availabilityManager = new AvailabilityManager(currentAvailabilitySlots, session.businessEntity);
     const availabilityResult = availabilityManager.checkDayAvailability(
-      args.date,
+      businessDate, // Pass business date - AvailabilityManager will handle UTC conversion
       args.quote_total_estimate_time_minutes
     );
 
@@ -63,10 +65,10 @@ export async function checkDayAvailability(
       return buildToolResponse(null, availabilityResult.formattedMessage, false);
     }
 
-    // AvailabilityManager already returns times in business timezone
+    // Convert response back to business date and times (AvailabilityManager already converts times to business timezone)
     const availabilityData = {
-      date: availabilityResult.date,
-      available_times: availabilityResult.availableSlots.map(slot => slot.time)
+      date: businessDate, // Return original business date that user requested
+      available_times: availabilityResult.availableSlots.map(slot => slot.time) // Already in business timezone
     };
 
     const duration = Date.now() - startTime;

@@ -6,6 +6,7 @@ import { sentry } from '../../shared/utils/sentryService';
 import type { Session } from '../sessions/session';
 import assert from 'assert';
 import { ServiceRepository } from '../../shared/lib/database/repositories/service-repository';
+import { DateUtils } from '../../shared/utils/date-utils';
 
 /**
  * Generate prompt with business and tool information injected
@@ -44,11 +45,22 @@ export async function addPromptToSession(session: Session): Promise<void> {
     assert(promptData, `${PROMPTS_NAMES.MAIN_CONVERSATION} prompt not found for business ${business.id}`);
 
 
+    // Get current date and time in business timezone using DateUtils
+    const nowUTC = DateUtils.nowUTC();
+    const { date: localDate, time: localTime } = DateUtils.convertUTCToTimezone(nowUTC, business.time_zone);
+
+    // Format for display
+    const currentDate = DateUtils.formatDateForDisplay(localDate);
+    const currentTime = DateUtils.formatTimeForDisplay(localTime.substring(0, 5)); // Remove seconds
+
+    const currentDateTime = `${currentDate} at ${currentTime}`;
+
     // Inject data into prompt using replacements map
     const replacements = {
       '{BUSINESS_TYPE}': business.business_category, // Direct use of category (removalist, manicurist, plumber)
       '{LIST OF SERVICES}': serviceNamesList,
       '{BUSINESS INFO}': businessInfoString,
+      '{CURRENT_DATE}': currentDateTime,
     };
 
     const finalPrompt = Object.entries(replacements).reduce(
@@ -57,6 +69,7 @@ export async function addPromptToSession(session: Session): Promise<void> {
     );
     console.log('Final prompt:', finalPrompt);
     console.log('Business type injected:', business.business_category);
+    console.log('Current date injected:', currentDateTime);
     console.log('Service names:', serviceNames);
     console.log('Business info:', businessInfoString);
     console.log('Active tool names:', activeToolNames);

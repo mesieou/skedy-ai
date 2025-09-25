@@ -104,12 +104,15 @@ export class AvailabilityManager {
         };
       }
 
-      // Convert business date to UTC context for database lookup
-      const utcDateContext = DateUtils.createSlotTimestamp(dateStr, '00:00:00');
-      const utcDateKey = DateUtils.extractDateString(utcDateContext);
+      // Convert business date to UTC date for database lookup
+      const businessDate = dateStr; // Business timezone date (e.g., "2025-09-27" in Melbourne)
+      const utcTimestamp = DateUtils.convertBusinessTimeToUTC(businessDate, '12:00:00', this.business.time_zone);
+      const utcDate = DateUtils.extractDateString(utcTimestamp); // UTC date for database lookup
+
+      console.log(`[AvailabilityManager] Business date: ${businessDate} → UTC date: ${utcDate}`);
 
       // Get slots for the UTC date key
-      const daySlots = this.availabilitySlots.slots[utcDateKey];
+      const daySlots = this.availabilitySlots.slots[utcDate];
 
       if (!daySlots) {
         return {
@@ -139,7 +142,7 @@ export class AvailabilityManager {
       // Convert UTC slot times to business timezone for user display
       const availableSlots = durationSlots.map(([utcTime, providerCount]) => {
         // utcTime is stored as "14:00" but represents UTC time, convert to business timezone
-        const utcTimestamp = DateUtils.createSlotTimestamp(utcDateKey, utcTime + ':00');
+        const utcTimestamp = DateUtils.createSlotTimestamp(utcDate, utcTime + ':00');
         const { time: businessTime } = DateUtils.convertUTCToTimezone(utcTimestamp, this.business.time_zone);
         return {
           time: businessTime, // Returns HH:MM in business timezone
@@ -152,7 +155,7 @@ export class AvailabilityManager {
 
       return {
         success: true,
-        date: dateStr,
+        date: businessDate, // Return original business date
         availableSlots,
         formattedMessage
       };

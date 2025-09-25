@@ -54,6 +54,9 @@ import {
   createRemovalistOwnerUserData,
   createManicuristOwnerUserData,
   createPlumberOwnerUserData,
+  createRemovalistProviderUserData,
+  createManicuristProviderUserData,
+  createPlumberProviderUserData,
   createUniqueProviderUserData,
   createUniqueCustomerUserData
 } from '../features/shared/lib/database/seeds/data/user-data';
@@ -67,7 +70,7 @@ import {
 import { weekdayCalendarSettingsData, weekendCalendarSettingsData } from '../features/shared/lib/database/seeds/data/calendar-settings-data';
 
 // Configuration
-const PROMPT_VERSION = 'v1.0.10'; // Use latest prompt version
+const PROMPT_VERSION = 'v1.0.11'; // Use latest prompt version
 
 // Business type configurations
 const businessConfigs = {
@@ -142,10 +145,26 @@ async function setupBusiness(businessType: BusinessType) {
     // Create additional provider if business has multiple providers
     let provider = null;
     if (business.number_of_providers >= 2) {
-      provider = await userSeeder.createUserWith(
-        createUniqueProviderUserData(business.id),
-        { email: `provider+${Date.now()}@${business.email.split('@')[1]}`, password: "demo123", email_confirm: true }
-      );
+      // Use business-specific provider data
+      let providerUserData;
+      let providerAuthData;
+
+      if (businessType === 'removalist') {
+        providerUserData = createRemovalistProviderUserData(business.id);
+        providerAuthData = { email: "james@davidremovals.com", password: "demo123", email_confirm: true };
+      } else if (businessType === 'manicurist') {
+        providerUserData = createManicuristProviderUserData(business.id);
+        providerAuthData = { email: "emma@nailsonthego.com.au", password: "demo123", email_confirm: true };
+      } else if (businessType === 'plumber') {
+        providerUserData = createPlumberProviderUserData(business.id);
+        providerAuthData = { email: "tom@fixitplumbing.com.au", password: "demo123", email_confirm: true };
+      } else {
+        // Fallback to generic
+        providerUserData = createUniqueProviderUserData(business.id);
+        providerAuthData = { email: `provider+${Date.now()}@${business.email.split('@')[1]}`, password: "demo123", email_confirm: true };
+      }
+
+      provider = await userSeeder.createUserWith(providerUserData, providerAuthData);
       console.log(`✅ Provider created: ${provider.email}`);
       providers.push(provider);
     }

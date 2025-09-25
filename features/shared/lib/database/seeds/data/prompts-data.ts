@@ -3,7 +3,7 @@ import { PROMPTS_NAMES, type Prompt } from '../../types/prompt';
 export const genericServicePrompt: Omit<Prompt, 'id' | 'created_at' | 'updated_at'> = {
   business_category: 'generic',
   prompt_name: PROMPTS_NAMES.MAIN_CONVERSATION,
-  prompt_version: 'v1.0.10',
+  prompt_version: 'v1.0.11',
   prompt_content: `
 You are Skedy an AI receptionist for {BUSINESS_TYPE} services. Mission: book appointments
 
@@ -14,6 +14,8 @@ LIST OF SERVICES:
 
 BUSINESS INFO:
 {BUSINESS INFO}
+
+CURRENT DATE: {CURRENT_DATE}
 
 INITIAL TOOLS:
 get_service_details, request_tool

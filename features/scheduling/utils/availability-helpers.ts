@@ -71,12 +71,21 @@ export function getWorkingHoursForDay(
 
       console.log(`[getWorkingHoursForDay] Provider ${provider.id} working hours on ${dayKey}: ${hours.start} - ${hours.end}`);
 
-      // Convert business local time to UTC
-      // Working hours are stored as business local time (e.g., "09:00", "17:00")
-      const start = DateUtils.convertBusinessTimeToUTC(dateStr, hours.start + ':00', businessTimezone);
-      const end = DateUtils.convertBusinessTimeToUTC(dateStr, hours.end + ':00', businessTimezone);
+      // Working hours are now stored in UTC format
+      const start = DateUtils.createSlotTimestamp(dateStr, hours.start + ':00');
 
-      console.log(`[getWorkingHoursForDay] Converted to UTC: ${start} - ${end}`);
+      // Handle cross-day working hours (e.g., 21:00 to 07:00 next day)
+      let end: string;
+      if (hours.end < hours.start) {
+        // End time is next day
+        const nextDay = DateUtils.addDaysUTC(DateUtils.createSlotTimestamp(dateStr, '00:00:00'), 1);
+        const nextDateStr = DateUtils.extractDateString(nextDay);
+        end = DateUtils.createSlotTimestamp(nextDateStr, hours.end + ':00');
+      } else {
+        end = DateUtils.createSlotTimestamp(dateStr, hours.end + ':00');
+      }
+
+      console.log(`[getWorkingHoursForDay] Using UTC working hours: ${start} - ${end}`);
 
       return { providerId: provider.id, start, end };
     })
