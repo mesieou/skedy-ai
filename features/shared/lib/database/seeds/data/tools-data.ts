@@ -119,7 +119,7 @@ export const checkDayAvailabilityTool: CreateToolData = {
 export const createUserTool: CreateToolData = {
   name: 'create_user',
   description: 'Create new customer',
-  version: '1.0.0',
+  version: '1.0.1',
   dynamic_parameters: false,
   business_specific: true,
   function_schema: {
@@ -132,18 +132,18 @@ export const createUserTool: CreateToolData = {
       properties: {
         first_name: {
           type: 'string',
-          description: 'Customer name'
+          description: 'Customer first name'
         },
         last_name: {
           type: 'string',
           description: 'Customer last name'
         },
-        email: {
+        phone_number: {
           type: 'string',
-          description: 'Customer email'
+          description: 'Customer mobile number (e.g., 0412345678)'
         }
       },
-      required: ['first_name'],
+      required: ['first_name', 'phone_number'],
       additionalProperties: false
     }
   },

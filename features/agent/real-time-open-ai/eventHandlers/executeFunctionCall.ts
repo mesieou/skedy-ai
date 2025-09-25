@@ -2,6 +2,7 @@ import { Session } from "../../sessions/session";
 import { executeToolFunction } from "../../services/executeTool";
 import { updateOpenAiSession } from "./updateOpenAiSession";
 import { sentry } from "@/features/shared/utils/sentryService";
+import { trackToolExecution } from "../../services/helpers/tool-interaction-tracker";
 import { ServerResponseFunctionCallArgumentsDoneEvent } from "../types/server/events/response/serverResponseFunctionCallArgumentsDoneTypes";
 import { RealtimeFunctionCallOutputItem } from "../types/client/events/clientConversationItemCreateTypes";
 import assert from "assert";
@@ -67,25 +68,8 @@ export async function executeFunctionCall(
     assert(tool.function_schema, `Tool ${name} missing function_schema`);
     assert(tool.version, `Tool ${name} missing version`);
 
-    // Store tool execution info for the current interaction (only if not first AI response)
-    if (!session.isFirstAiResponse) {
-      session.pendingToolExecution = {
-        name: name,
-        result: JSON.stringify(result),
-        schema: JSON.stringify(tool.function_schema),
-        schemaVersion: tool.version
-      };
-
-      // Update the latest interaction if it exists
-      const latestInteraction = session.interactions[session.interactions.length - 1];
-      if (latestInteraction) {
-        latestInteraction.generated_from_tool_calling = true;
-        latestInteraction.tool_name = name;
-        latestInteraction.tool_schema = JSON.stringify(tool.function_schema);
-        latestInteraction.tool_schema_version = tool.version;
-        latestInteraction.tool_result = JSON.stringify(result);
-      }
-    }
+    // Track tool execution in interactions using shared function
+    trackToolExecution(session, name, result);
 
     // Send function result back to OpenAI AFTER tools are updated
     console.log(`📤 [FunctionCall] Sending result object:`, result);

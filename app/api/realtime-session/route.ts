@@ -7,6 +7,7 @@ import { getInitialRequestedTools } from "@/features/shared/lib/database/types/t
 import { sessionManager } from "@/features/agent/sessions/sessionSyncManager";
 import { sentry } from "@/features/shared/utils/sentryService";
 import { createWebRTCSessionConfig } from "@/features/shared/lib/openai-realtime-config";
+import { getBusinessIdByCategory } from "@/features/shared/lib/demo-business-config";
 import { v4 as uuidv4 } from 'uuid';
 
 export async function GET(request: Request) {
@@ -122,23 +123,3 @@ export async function GET(request: Request) {
     );
   }
 }
-
-const getBusinessIdByCategory = (category: BusinessCategory) => {
-  switch (category) {
-    case BusinessCategory.REMOVALIST:
-      return {
-        businessId: "8eea40ae-7d0f-4a72-8041-847cb42e6996", // Removalist business ID
-      };
-    case BusinessCategory.MANICURIST:
-      return {
-        businessId: "0679ddaa-98ac-4341-80a3-98ac25a65d3c", // Manicurist business ID
-      };
-    case BusinessCategory.PLUMBER:
-      return {
-        businessId: "fbcab214-5992-4386-90b3-a32a2f07f14d", // Plumber business ID
-      };
-    default:
-      // Only support these business types
-      throw new Error(`Unsupported business category: ${category}. Supported: REMOVALIST, MANICURIST, PLUMBER, TECHNOLOGY`);
-  }
-};

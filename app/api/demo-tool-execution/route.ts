@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { executeToolFunction } from "@/features/agent/services/executeTool";
 import { sessionManager } from "@/features/agent/sessions/sessionSyncManager";
 import { sentry } from "@/features/shared/utils/sentryService";
+import { getBusinessIdByCategory } from "@/features/shared/lib/demo-business-config";
+import { trackToolExecution } from "@/features/agent/services/helpers/tool-interaction-tracker";
 
 export async function GET(request: Request) {
   try {
@@ -48,12 +50,40 @@ export async function POST(request: Request) {
     const allSessions = sessionManager.list();
     console.log(`🔍 [API] Available sessions:`, allSessions.map(s => s.id));
 
-    // Get the backend session
-    const session = await sessionManager.get(sessionId);
+    // Get the backend session (try without businessId first, then with each business category)
+    let session = await sessionManager.get(sessionId);
+
+    // If not found in memory, try Redis fallback with business context
+    if (!session) {
+      console.log(`🔍 [API] Session not in memory, trying Redis fallback...`);
+      const businessCategories = ['removalist', 'manicurist', 'plumber'];
+
+      for (const category of businessCategories) {
+        // Try to get business ID for this category
+        try {
+          const { BusinessCategory } = await import('@/features/shared/lib/database/types/business');
+          const categoryEnum = category === 'removalist' ? BusinessCategory.REMOVALIST :
+                              category === 'manicurist' ? BusinessCategory.MANICURIST :
+                              BusinessCategory.PLUMBER;
+
+          const businessInfo = getBusinessIdByCategory(categoryEnum);
+          session = await sessionManager.get(sessionId, businessInfo.businessId);
+
+          if (session) {
+            console.log(`✅ [API] Session recovered from Redis using ${category} business context`);
+            break;
+          }
+        } catch (error) {
+          console.log(`⚠️ [API] Failed to try ${category} business context:`, error);
+        }
+      }
+    }
+
     console.log(`🔍 [API] Session lookup result:`, {
       sessionId,
       found: !!session,
-      sessionExists: !!session
+      sessionExists: !!session,
+      businessName: session?.businessEntity?.name
     });
 
     if (!session) {
@@ -148,6 +178,10 @@ export async function POST(request: Request) {
 
     // Execute the tool using the agent system
     const result = await executeToolFunction(toolName, args, session);
+
+    // Track tool execution in interactions using shared function
+    trackToolExecution(session, toolName, result);
+    console.log(`🔧 [API] Tracked tool execution in interactions: ${toolName}`);
 
     console.log(`✅ [API] Tool ${toolName} executed successfully`);
 

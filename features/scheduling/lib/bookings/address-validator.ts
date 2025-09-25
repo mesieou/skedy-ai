@@ -110,6 +110,7 @@ export class AddressValidator {
     pickup_address?: string;
     dropoff_address?: string;
     customer_addresses?: string[];
+    customer_address?: string; // MISSING! AI sends this field
     service_address?: string;
   }, requirements: string[] = []): Promise<ValidationResult> {
     const addresses: string[] = [];
@@ -148,6 +149,12 @@ export class AddressValidator {
         addresses.push(address);
         addressTypes[address] = AddressRole.SERVICE;
       }
+    }
+
+    // Handle single customer address (AI sends this field)
+    if (args.customer_address) {
+      addresses.push(args.customer_address);
+      addressTypes[args.customer_address] = AddressRole.SERVICE;
     }
 
     // Handle single service address
