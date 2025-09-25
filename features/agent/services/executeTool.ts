@@ -66,37 +66,34 @@ export async function executeToolFunction(
     // Execute tool
     switch (toolName) {
       case 'get_service_details':
-        result = await getServiceDetails(args as { service_name: string }, session, tool);
+        result = await getServiceDetails(args as { service_name: string }, session);
         break;
       case 'get_quote':
-        result = await getQuote(args as unknown as QuoteRequestData & { service_id: string }, session, tool);
+        result = await getQuote(args as unknown as QuoteRequestData & { service_id: string }, session);
         break;
       case 'check_day_availability':
         result = await checkDayAvailability(
           args as { date: string; quote_total_estimate_time_minutes: number },
-          session,
-          tool
+          session
         );
         break;
       case 'create_user':
         result = await createUser(
-          args as { first_name: string; last_name?: string; email?: string },
-          session,
-          tool
+          args as { first_name: string; last_name?: string; phone_number: string },
+          session
         );
         break;
       case 'create_booking':
         result = await createBooking(
           args as { preferred_date: string; preferred_time: string; quote_id: string; confirmation_message?: string },
-          session,
-          tool
+          session
         );
         break;
       case 'request_tool':
-        result = await requestTool(args as { tool_name: string; service_name?: string; reason?: string }, session, tool);
+        result = await requestTool(args as { tool_name: string; service_name?: string; reason?: string }, session);
         break;
       default:
-        result = buildToolResponse(tool, null, `Unknown tool: ${toolName}`);
+        result = buildToolResponse(null, `Unknown tool: ${toolName}`, false);
 
         // Track unknown tool error
         sentry.trackError(new Error(`function called from Unknown tool: ${toolName}`), {

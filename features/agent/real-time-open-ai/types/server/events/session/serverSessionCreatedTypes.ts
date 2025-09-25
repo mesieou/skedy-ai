@@ -12,7 +12,7 @@ import {
   Prompt,
   TracingConfiguration,
   RetentionRatioTruncation
-} from './clientTypes';
+} from '../../../client/secrets/createClientSecret';
 
 // ============================================================================
 // SERVER SESSION CREATED EVENT

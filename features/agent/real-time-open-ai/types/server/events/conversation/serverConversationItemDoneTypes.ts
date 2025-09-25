@@ -3,7 +3,7 @@
  * Based exactly on the conversation.item.done server event documentation
  */
 
-import { ConversationItem } from './clientConversationItemCreateTypes';
+import { ConversationItem } from '../../../client/events/clientConversationItemCreateTypes';
 
 // ============================================================================
 // SERVER CONVERSATION ITEM DONE EVENT

@@ -3,7 +3,7 @@
  * Based exactly on the response.output_item.done server event documentation
  */
 
-import { ConversationItem } from './clientConversationItemCreateTypes';
+import { ConversationItem } from '../../../client/events/clientConversationItemCreateTypes';
 
 // ============================================================================
 // SERVER RESPONSE OUTPUT ITEM DONE EVENT

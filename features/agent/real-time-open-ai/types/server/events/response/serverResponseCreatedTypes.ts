@@ -3,8 +3,8 @@
  * Based exactly on the response.created server event documentation
  */
 
-import { ConversationItem } from './clientConversationItemCreateTypes';
-import { PCMAudioFormat, PCMUAudioFormat, PCMAAudioFormat } from './clientTypes';
+import { ConversationItem } from '../../../client/events/clientConversationItemCreateTypes';
+import { PCMAudioFormat, PCMUAudioFormat, PCMAAudioFormat } from '../../../client/secrets/createClientSecret';
 
 // ============================================================================
 // RESPONSE AUDIO CONFIGURATION

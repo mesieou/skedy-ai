@@ -4,15 +4,15 @@ import { UserRepository } from '../repositories/user-repository';
 import { AuthUserSeeder } from './auth-user-seeder';
 import type { User, CreateUserData } from '../types/user';
 import type { CreateAuthUserData } from '../types/auth-user';
-import { 
-  createUniqueAdminProviderUserData, 
-  createUniqueProviderUserData, 
-  createUniqueCustomerUserData 
+import {
+  createUniqueAdminProviderUserData,
+  createUniqueProviderUserData,
+  createUniqueCustomerUserData
 } from './data/user-data';
-import { 
-  createUniqueAdminAuthUserData, 
-  createUniqueProviderAuthUserData, 
-  createUniqueCustomerAuthUserData 
+import {
+  createUniqueAdminAuthUserData,
+  createUniqueProviderAuthUserData,
+  createUniqueCustomerAuthUserData
 } from './data/auth-user-data';
 
 export class UserSeeder extends BaseSeeder<User> {
@@ -27,7 +27,7 @@ export class UserSeeder extends BaseSeeder<User> {
   async createUserWith(userData: CreateUserData, authUserData: CreateAuthUserData): Promise<User> {
     // Create auth user first using provided data
     const authUser = await this.authUserSeeder.createAuthUserWith(authUserData);
-    
+
     // Create public user record with auth user ID
     return await this.createWith(userData, { id: authUser.id });
   }
@@ -56,9 +56,4 @@ export class UserSeeder extends BaseSeeder<User> {
     );
   }
 
-  // Override cleanup to delegate auth user cleanup
-  async cleanup(): Promise<void> {
-    await super.cleanup(); // Clean public user records
-    await this.authUserSeeder.cleanup(); // Clean auth users
-  }
 }

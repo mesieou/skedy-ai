@@ -7,8 +7,7 @@
 
 // Import and re-export existing types
 import type {
-  BookingCalculationInput,
-  BookingCalculationResult,
+  DetailedQuoteResult,
   PriceBreakdown,
   ServiceBreakdown,
   TravelBreakdown,
@@ -22,8 +21,7 @@ import { AddressRole } from './booking-calculations';
 
 // Re-export for external use
 export type {
-  BookingCalculationInput,
-  BookingCalculationResult,
+  DetailedQuoteResult,
   PriceBreakdown,
   ServiceBreakdown,
   TravelBreakdown,
@@ -103,7 +101,7 @@ export interface QuoteRequestData {
  */
 export interface BookingCreationInput {
   // Quote calculation result
-  quote_result: BookingCalculationResult;
+  quote_result: DetailedQuoteResult;
 
   // Booking-specific data
   preferred_date: string;

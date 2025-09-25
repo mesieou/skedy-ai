@@ -13,7 +13,7 @@ import {
   Prompt,
   TracingConfiguration,
   RetentionRatioTruncation
-} from '../client/clientTypes';
+} from './createClientSecret';
 
 // ============================================================================
 // SESSION RESPONSE OBJECT

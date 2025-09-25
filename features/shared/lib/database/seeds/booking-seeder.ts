@@ -1,7 +1,7 @@
 import { BaseSeeder } from './base-seeder';
 import { BookingsRepository } from '../repositories/bookings-respository';
 import type { Booking } from '../types/bookings';
-import type { BookingCalculationInput } from '../../../../scheduling/lib/types/booking-calculations';
+import type { QuoteRequestInfo } from '../../../../scheduling/lib/types/booking-calculations';
 
 export class BookingSeeder extends BaseSeeder<Booking> {
   constructor() {
@@ -10,7 +10,7 @@ export class BookingSeeder extends BaseSeeder<Booking> {
 
   // Create booking with services and addresses using dynamic arguments
   async createBookingWithServicesAndAddresses(
-    input: BookingCalculationInput,
+    input: QuoteRequestInfo,
     user_id: string,
     start_at: string
   ): Promise<Booking> {

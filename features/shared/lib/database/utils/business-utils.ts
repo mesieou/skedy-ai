@@ -6,32 +6,29 @@ import { TravelChargingModel } from '../types/service';
  * This abstracts the technical details from business owners during onboarding
  */
 export function computeDefaultTravelModel(
-  category: BusinessCategory, 
+  category: BusinessCategory,
   offers_mobile: boolean
 ): TravelChargingModel | null {
   // If business doesn't offer mobile services, no travel model needed
   if (!offers_mobile) {
     return null;
   }
-  
+
   // Auto-determine based on business category
   switch (category) {
-    case BusinessCategory.BEAUTY:
-    case BusinessCategory.CLEANING:
-    case BusinessCategory.FITNESS:
-    case BusinessCategory.HANDYMAN:
-      // These businesses typically travel from their base (office/salon/shop) to customers
+    case BusinessCategory.MANICURIST:
+      // Beauty businesses typically travel from their base to customers
       return TravelChargingModel.FROM_BASE_TO_CUSTOMERS;
-      
-    case BusinessCategory.TRANSPORT:
-      // Transport businesses typically charge between customer locations (pickup → dropoff)
+
+    case BusinessCategory.REMOVALIST:
+      // Removalist businesses typically charge between customer locations (pickup → dropoff)
       return TravelChargingModel.BETWEEN_CUSTOMER_LOCATIONS;
-      
-    case BusinessCategory.GARDENING:
-      // Gardeners typically travel from base to customer properties
+
+    case BusinessCategory.PLUMBER:
+      // Plumbers typically travel from base to customer properties
       return TravelChargingModel.FROM_BASE_TO_CUSTOMERS;
-      
-    case BusinessCategory.OTHER:
+
+    case BusinessCategory.TECHNOLOGY:
     default:
       // Safe default for unknown business types
       return TravelChargingModel.FROM_BASE_TO_CUSTOMERS;
@@ -48,9 +45,9 @@ export function isBusinessMobile(business: { offers_mobile_services: boolean }):
 /**
  * Check if a business is hybrid (offers both mobile and location services)
  */
-export function isBusinessHybrid(business: { 
-  offers_mobile_services: boolean; 
-  offers_location_services: boolean; 
+export function isBusinessHybrid(business: {
+  offers_mobile_services: boolean;
+  offers_location_services: boolean;
 }): boolean {
   return business.offers_mobile_services && business.offers_location_services;
 }

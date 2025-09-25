@@ -90,6 +90,8 @@ export class BusinessContextProvider {
       payment_methods: business.payment_methods.map(method => this.getPaymentMethodDescription(method)),
       preferred_payment_method: this.getPaymentMethodDescription(business.preferred_payment_method),
       charges_deposit: business.charges_deposit,
+      charges_gst: business.charges_gst,
+      prices_include_gst: business.prices_include_gst,
       deposit_type: business.deposit_type,
       deposit_percentage: business.deposit_percentage ?? undefined,
       deposit_fixed_amount: business.deposit_fixed_amount ?? undefined,
@@ -210,13 +212,10 @@ export class BusinessContextProvider {
    */
   private getCategoryDescription(category: BusinessCategory): string {
     const descriptions = {
-      [BusinessCategory.TRANSPORT]: 'Transportation and moving',
-      [BusinessCategory.CLEANING]: 'Cleaning and maintenance',
-      [BusinessCategory.HANDYMAN]: 'Handyman and repair',
-      [BusinessCategory.GARDENING]: 'Gardening and landscaping',
-      [BusinessCategory.BEAUTY]: 'Beauty and wellness',
-      [BusinessCategory.FITNESS]: 'Fitness and health',
-      [BusinessCategory.OTHER]: 'General services',
+      [BusinessCategory.REMOVALIST]: 'Removalist and moving',
+      [BusinessCategory.MANICURIST]: 'Manicurist and beauty',
+      [BusinessCategory.PLUMBER]: 'Plumbing and repair',
+      [BusinessCategory.TECHNOLOGY]: 'Technology services',
     };
     return descriptions[category] || category;
   }

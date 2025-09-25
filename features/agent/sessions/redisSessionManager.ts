@@ -330,7 +330,8 @@ export class RedisSessionManager {
       aiInstructions: hashData.aiInstructions || undefined,
 
       // Interaction tracking initialization - required field
-      isFirstAiResponse: true
+      isFirstAiResponse: true,
+      assignedApiKeyIndex: parseInt(hashData.assignedApiKeyIndex) || 0
     } as Session;
   }
 
