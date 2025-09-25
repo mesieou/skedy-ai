@@ -98,13 +98,15 @@ export class SessionService {
 
         sessionManager.add(session);
 
+        console.log(`🔄 [SessionService] Assigned API key ${assignedApiKeyIndex + 1} to session ${callId}`);
         // Success breadcrumb
         sentry.addBreadcrumb(`New session created successfully`, 'session-service', {
           sessionId: callId,
           businessId: business.id,
           businessName: business.name,
           hasExistingCustomer: !!customer,
-          customerPhoneNumber: phoneNumber
+          customerPhoneNumber: phoneNumber,
+          assignedApiKeyIndex: assignedApiKeyIndex
         });
       }
 
