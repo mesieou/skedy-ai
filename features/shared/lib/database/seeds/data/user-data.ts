@@ -56,3 +56,48 @@ export function createSuperAdminUserData(businessId: string): CreateUserData {
     email: "info@skedy.io",
   };
 }
+
+// Demo business owner user data functions
+export function createTigaRemovalistOwnerUserData(businessId: string): CreateUserData {
+  return {
+    role: UserRole.ADMIN_PROVIDER,
+    first_name: "Edward",
+    business_id: businessId,
+    last_name: "Tiga",
+    phone_number: "+61468002102",
+    email: "edward@tigapropertyservices.com",
+  };
+}
+
+export function createRemovalistOwnerUserData(businessId: string): CreateUserData {
+  return {
+    role: UserRole.ADMIN_PROVIDER,
+    first_name: "David",
+    business_id: businessId,
+    last_name: "Smith",
+    phone_number: "+61468002102",
+    email: "david@davidremovals.com",
+  };
+}
+
+export function createManicuristOwnerUserData(businessId: string): CreateUserData {
+  return {
+    role: UserRole.ADMIN_PROVIDER,
+    first_name: "Sarah",
+    business_id: businessId,
+    last_name: "Chen",
+    phone_number: "+61498765432",
+    email: "sarah@nailsonthego.com.au",
+  };
+}
+
+export function createPlumberOwnerUserData(businessId: string): CreateUserData {
+  return {
+    role: UserRole.ADMIN_PROVIDER,
+    first_name: "Mike",
+    business_id: businessId,
+    last_name: "Johnson",
+    phone_number: "+61387654321",
+    email: "mike@fixitplumbing.com.au",
+  };
+}

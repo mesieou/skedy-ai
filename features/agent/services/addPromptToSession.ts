@@ -46,6 +46,7 @@ export async function addPromptToSession(session: Session): Promise<void> {
 
     // Inject data into prompt using replacements map
     const replacements = {
+      '{BUSINESS_TYPE}': business.business_category, // Direct use of category (removalist, manicurist, plumber)
       '{LIST OF SERVICES}': serviceNamesList,
       '{BUSINESS INFO}': businessInfoString,
     };
@@ -55,6 +56,7 @@ export async function addPromptToSession(session: Session): Promise<void> {
       promptData.prompt_content
     );
     console.log('Final prompt:', finalPrompt);
+    console.log('Business type injected:', business.business_category);
     console.log('Service names:', serviceNames);
     console.log('Business info:', businessInfoString);
     console.log('Active tool names:', activeToolNames);

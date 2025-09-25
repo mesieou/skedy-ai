@@ -1,6 +1,6 @@
 import { SessionStatus, SessionConfig, SessionCallbacks } from './types';
-import { AgentManager } from '../agents/agent-manager';
 import { AgentBridge } from '../services/agent-bridge';
+import { sentry } from '@/features/shared/utils/sentryService';
 
 // Increase max listeners to prevent memory leak warnings (Node.js only)
 if (typeof process !== 'undefined' && process.setMaxListeners) {
@@ -11,15 +11,13 @@ export class RealtimeSessionManager {
   private peerConnection: RTCPeerConnection | null = null;
   private dataChannel: RTCDataChannel | null = null;
   private audioElement: HTMLAudioElement | null = null;
-  private agentManager: AgentManager;
   private status: SessionStatus = 'DISCONNECTED';
   private callbacks: SessionCallbacks;
   private isConnecting = false;
   private backendSessionId: string | null = null;
   private backendSession: Record<string, unknown> | null = null;
 
-  constructor(agentManager: AgentManager, callbacks: SessionCallbacks = {}) {
-    this.agentManager = agentManager;
+  constructor(callbacks: SessionCallbacks = {}) {
     this.callbacks = callbacks;
   }
 
@@ -31,6 +29,13 @@ export class RealtimeSessionManager {
 
     this.isConnecting = true;
     this.updateStatus('CONNECTING');
+
+    // Add breadcrumb for WebRTC connection start
+    sentry.addBreadcrumb('Demo WebRTC connection started', 'demo-webrtc', {
+      sessionId: backendSessionId || 'unknown',
+      hasBackendSession: !!backendSession,
+      tradieType: config.tradieType?.id || 'unknown'
+    });
 
     // Store backend session data for tool execution
     this.backendSessionId = backendSessionId || null;
@@ -105,11 +110,29 @@ export class RealtimeSessionManager {
 
       console.log('✅ [SessionManager] WebRTC connection established with backend tools');
 
+      // Add breadcrumb for successful connection
+      sentry.addBreadcrumb('Demo WebRTC connection established', 'demo-webrtc', {
+        sessionId: this.backendSessionId || 'unknown',
+        toolsCount: (this.backendSession?.currentTools as unknown[])?.length || 0
+      });
+
       this.isConnecting = false;
       this.updateStatus('CONNECTED');
 
     } catch (error) {
       console.error('❌ [SessionManager] Connection failed:', error);
+
+      // Track connection error in Sentry
+      sentry.trackError(error as Error, {
+        sessionId: this.backendSessionId || 'unknown',
+        businessId: 'unknown',
+        operation: 'demo_webrtc_connection',
+        metadata: {
+          tradieType: config.tradieType?.id || 'unknown',
+          hasEphemeralKey: !!ephemeralKey
+        }
+      });
+
       this.isConnecting = false;
       this.updateStatus('DISCONNECTED');
       this.callbacks.onError?.(error instanceof Error ? error.message : String(error));
@@ -294,15 +317,15 @@ export class RealtimeSessionManager {
       const sessionData = await response.json();
 
       if (sessionData.success && sessionData.session) {
-        const updatedTools = (sessionData.session.currentTools as any[]) || [];
-        console.log('🔧 [SessionManager] Sending session.update with new tools:', updatedTools.map((t: any) => t.name));
+        const updatedTools = (sessionData.session.currentTools as Record<string, unknown>[]) || [];
+        console.log('🔧 [SessionManager] Sending session.update with new tools:', updatedTools.map((t: Record<string, unknown>) => t.name));
 
         // Send session.update event via data channel (same as backend updateOpenAiSession)
         const sessionUpdate = {
           type: "session.update",
           session: {
             type: "realtime",
-            tools: updatedTools.map((tool: any) => tool.function_schema),
+            tools: updatedTools.map((tool: Record<string, unknown>) => tool.function_schema),
             tool_choice: "auto"
           },
           event_id: `event_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
@@ -310,7 +333,7 @@ export class RealtimeSessionManager {
 
         this.dataChannel.send(JSON.stringify(sessionUpdate));
 
-        console.log('✅ [SessionManager] Session updated with new tools via data channel:', updatedTools.map((t: any) => t.name));
+        console.log('✅ [SessionManager] Session updated with new tools via data channel:', updatedTools.map((t: Record<string, unknown>) => t.name));
       }
     } catch (error) {
       console.error('❌ [SessionManager] Failed to update session with new tools:', error);
@@ -381,7 +404,8 @@ export class RealtimeSessionManager {
     this.updateStatus('DISCONNECTED');
   }
 
-  getCurrentAgent(): any {
-    return this.agentManager.getCurrentAgent();
+  getCurrentAgent(): { name: string; id: string } {
+    // Return simple agent info since we're using backend agents
+    return { name: 'Backend Agent', id: 'backend' };
   }
 }

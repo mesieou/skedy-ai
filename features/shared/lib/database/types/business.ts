@@ -1,14 +1,11 @@
 import type { BaseEntity } from './base';
 
-// Business enums
+// Business enums - Demo categories + Skedy
 export enum BusinessCategory {
-  TRANSPORT = 'transport',
-  CLEANING = 'cleaning',
-  HANDYMAN = 'handyman',
-  GARDENING = 'gardening',
-  BEAUTY = 'beauty',
-  FITNESS = 'fitness',
-  OTHER = 'other'
+  REMOVALIST = 'removalist',
+  MANICURIST = 'manicurist',
+  PLUMBER = 'plumber',
+  TECHNOLOGY = 'technology' // For Skedy business
 }
 
 export enum SubscriptionType {

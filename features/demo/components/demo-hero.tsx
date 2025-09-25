@@ -2,7 +2,6 @@
 
 import React, { useEffect } from 'react';
 import { useRealtimeSession } from '../hooks/use-realtime-session';
-import { simpleBookingScenario, defaultAgent } from '../lib/agents/agent-config';
 import { ChatInterface } from './chat/chat-interface';
 import { LandingInterface } from './ui/landing-interface';
 import { SessionConfig } from '../lib/session/types';
@@ -25,7 +24,7 @@ export function DemoHero({ businessType, sessionData, onEndDemo }: DemoHeroProps
     connect,
     disconnect,
     toggleMute
-  } = useRealtimeSession(simpleBookingScenario, defaultAgent);
+  } = useRealtimeSession();
 
   // Auto-connect when sessionData is provided
   useEffect(() => {

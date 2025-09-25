@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/features/shared/components/ui/button";
 import { SimpleDropdown } from "@/features/shared/components/ui/dropdown-menu";
-import { Truck, Sparkles, Wrench, Palette, Monitor, Phone, Scissors, Dumbbell, MoreHorizontal } from "lucide-react";
+import { Truck, Wrench, Scissors, MoreHorizontal, Monitor, Phone } from "lucide-react";
 import { BusinessCategory } from "@/features/shared/lib/database/types/business";
 interface DemoModalProps {
   isOpen: boolean;
@@ -11,50 +11,32 @@ interface DemoModalProps {
   onStartDemo: (businessType: string, method: "web" | "phone") => Promise<void>;
 }
 
-// Helper function to get all category information
+// Helper function to get category information for demo businesses
 const getCategoryInfo = (category: BusinessCategory) => {
   switch (category) {
-    case BusinessCategory.TRANSPORT:
+    case BusinessCategory.REMOVALIST:
       return {
         icon: Truck,
-        displayName: 'Transport & Moving',
-        description: 'Moving and transportation services'
+        displayName: 'Removalist Services',
+        description: 'House moves, furniture removal, transport'
       };
-    case BusinessCategory.CLEANING:
-      return {
-        icon: Sparkles,
-        displayName: 'Cleaning Services',
-        description: 'Professional cleaning services'
-      };
-    case BusinessCategory.HANDYMAN:
-      return {
-        icon: Wrench,
-        displayName: 'Handyman Services',
-        description: 'General repair and maintenance'
-      };
-    case BusinessCategory.BEAUTY:
+    case BusinessCategory.MANICURIST:
       return {
         icon: Scissors,
-        displayName: 'Beauty & Wellness',
-        description: 'Beauty and wellness services'
+        displayName: 'Mobile Manicurist',
+        description: 'Professional nail services at your location'
       };
-    case BusinessCategory.FITNESS:
+    case BusinessCategory.PLUMBER:
       return {
-        icon: Dumbbell,
-        displayName: 'Fitness & Training',
-        description: 'Personal training and fitness'
-      };
-    case BusinessCategory.GARDENING:
-      return {
-        icon: Palette,
-        displayName: 'Gardening & Landscaping',
-        description: 'Garden maintenance and landscaping'
+        icon: Wrench,
+        displayName: 'Plumbing Services',
+        description: 'Emergency repairs, maintenance, installations'
       };
     default:
       return {
         icon: MoreHorizontal,
-        displayName: 'Other Services',
-        description: 'Various professional services'
+        displayName: 'Unknown Service',
+        description: 'Unknown service type'
       };
   }
 };
@@ -64,8 +46,14 @@ export function DemoModal({ isOpen, onClose, onStartDemo }: DemoModalProps) {
 
   if (!isOpen) return null;
 
-  // Create business types using the category info function
-  const businessTypes = Object.values(BusinessCategory).map((category) => {
+  // Only show the 3 supported demo business types
+  const supportedCategories = [
+    BusinessCategory.REMOVALIST,
+    BusinessCategory.MANICURIST,
+    BusinessCategory.PLUMBER
+  ];
+
+  const businessTypes = supportedCategories.map((category) => {
     const categoryInfo = getCategoryInfo(category);
     return {
       id: category,

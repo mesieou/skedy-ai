@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { RealtimeAgent } from '@openai/agents/realtime';
 import { RealtimeSessionManager } from '../lib/session/realtime-session-manager';
-import { AgentManager } from '../lib/agents/agent-manager';
 import { OpenAIService } from '../lib/services/openai-service';
 import { SessionStatus, SessionConfig } from '../lib/session/types';
+import { sentry } from '@/features/shared/utils/sentryService';
 
 export interface Message {
   id: string;
@@ -15,9 +14,9 @@ export interface Message {
   isProcessing?: boolean;
 }
 
-export function useRealtimeSession(agents: RealtimeAgent[], initialAgent: RealtimeAgent) {
+export function useRealtimeSession() {
   const [status, setStatus] = useState<SessionStatus>('DISCONNECTED');
-  const [currentAgent, setCurrentAgent] = useState<RealtimeAgent>(initialAgent);
+  const [currentAgent] = useState<{ name: string; id: string }>({ name: 'Backend Agent', id: 'backend' });
   const [messages, setMessages] = useState<Message[]>([]);
   const [isMuted, setIsMuted] = useState(false);
   const [isUserSpeaking, setIsUserSpeaking] = useState(false);
@@ -25,7 +24,6 @@ export function useRealtimeSession(agents: RealtimeAgent[], initialAgent: Realti
   const [toolsExecuting, setToolsExecuting] = useState<string[]>([]);
 
   const sessionManagerRef = useRef<RealtimeSessionManager | null>(null);
-  const agentManagerRef = useRef<AgentManager | null>(null);
   const isConnectingRef = useRef(false);
   const streamingMessagesRef = useRef<Map<string, Message>>(new Map());
   const pendingAiDeltas = useRef<Array<{itemId: string, delta: string}>>([]);
@@ -74,9 +72,7 @@ export function useRealtimeSession(agents: RealtimeAgent[], initialAgent: Realti
 
   // Initialize managers
   useEffect(() => {
-    agentManagerRef.current = new AgentManager(agents, initialAgent);
-
-    sessionManagerRef.current = new RealtimeSessionManager(agentManagerRef.current, {
+    sessionManagerRef.current = new RealtimeSessionManager({
       onStatusChange: (newStatus) => {
         setStatus(newStatus);
         if (newStatus === 'CONNECTED') {
@@ -84,11 +80,12 @@ export function useRealtimeSession(agents: RealtimeAgent[], initialAgent: Realti
         }
       },
       onAgentHandoff: (fromAgent, toAgent) => {
-        const newAgent = agentManagerRef.current?.getAgent(toAgent);
-        if (newAgent) {
-          setCurrentAgent(newAgent);
-          addMessage('system', `🔄 Transferred to ${toAgent} specialist`);
-        }
+        // Since we're using backend agents, just log the handoff
+        addMessage('system', `🔄 Transferred to ${toAgent} specialist`);
+        sentry.addBreadcrumb('Demo agent handoff', 'demo-agent', {
+          fromAgent: fromAgent,
+          toAgent: toAgent
+        });
       },
       onTranscriptDelta: (delta, isUser, itemId) => {
         updateStreamingMessage(itemId, delta, isUser);
@@ -124,7 +121,7 @@ export function useRealtimeSession(agents: RealtimeAgent[], initialAgent: Realti
     return () => {
       sessionManagerRef.current?.disconnect();
     };
-  }, [agents, initialAgent, addMessage, updateStreamingMessage, currentAgent.name]);
+  }, [addMessage, updateStreamingMessage, currentAgent.name]);
 
   const connect = useCallback(async (config: SessionConfig) => {
     if (!sessionManagerRef.current || isConnectingRef.current) {
@@ -145,7 +142,7 @@ export function useRealtimeSession(agents: RealtimeAgent[], initialAgent: Realti
         businessName: (backendSession?.businessEntity as Record<string, unknown>)?.name,
         toolsCount: (backendSession?.currentTools as unknown[])?.length || 0
       });
-      
+
       await sessionManagerRef.current.connect(config, sessionData.value, backendSession?.id as string, sessionData.session);
     } catch (error) {
       console.error('❌ Connection failed:', error);
@@ -168,7 +165,7 @@ export function useRealtimeSession(agents: RealtimeAgent[], initialAgent: Realti
     }
   }, [isMuted, addMessage]);
 
-  return {
+    return {
     // State
     status,
     currentAgent,
@@ -184,7 +181,6 @@ export function useRealtimeSession(agents: RealtimeAgent[], initialAgent: Realti
     toggleMute,
 
     // Managers (for advanced usage)
-    agentManager: agentManagerRef.current,
     sessionManager: sessionManagerRef.current
   };
 }

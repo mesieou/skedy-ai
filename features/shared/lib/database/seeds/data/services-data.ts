@@ -598,3 +598,103 @@ export const skedyAIAgentServiceData: CreateServiceData = {
     ]
   }
 };
+
+// ===================================================================
+// PLUMBER SERVICES (Examples 9-10)
+// ===================================================================
+
+export const plumberEmergencyServiceData: CreateServiceData = {
+  business_id: "placeholder-business-id",
+  name: "Emergency Plumbing Callout",
+  description: "24/7 emergency plumbing service for urgent repairs.",
+  how_it_works: "We respond to your emergency plumbing needs within 1 hour. Our qualified plumber will diagnose the issue, provide a quote, and fix the problem on the spot when possible.",
+  location_type: LocationType.CUSTOMER,
+  travel_charging_model: TravelChargingModel.FROM_BASE_TO_CUSTOMERS,
+  pricing_config: {
+    components: [
+      {
+        name: "Emergency Callout Fee",
+        pricing_combination: PricingCombination.SERVICE_FIXED_PER_SERVICE,
+        tiers: [
+          {
+            min_quantity: 1,
+            max_quantity: 1,
+            price: 120.00,
+            duration_estimate_mins: {
+              "blocked_drain": 60,
+              "leaking_tap": 30,
+              "burst_pipe": 90,
+              "hot_water_system": 120,
+              "toilet_repair": 45
+            }
+          }
+        ]
+      },
+      {
+        name: "Hourly Labor",
+        pricing_combination: PricingCombination.LABOR_PER_HOUR_PER_PERSON,
+        tiers: [
+          {
+            min_quantity: 1,
+            max_quantity: 1,
+            price: 95.00,
+            duration_estimate_mins: {
+              "blocked_drain": 60,
+              "leaking_tap": 30,
+              "burst_pipe": 90,
+              "hot_water_system": 120,
+              "toilet_repair": 45
+            }
+          }
+        ]
+      }
+    ]
+  }
+};
+
+export const plumberMaintenanceServiceData: CreateServiceData = {
+  business_id: "placeholder-business-id",
+  name: "General Plumbing Maintenance",
+  description: "Regular plumbing maintenance and non-emergency repairs.",
+  how_it_works: "Schedule a convenient time for our plumber to visit and handle your plumbing maintenance needs. Perfect for non-urgent repairs, installations, and routine maintenance.",
+  location_type: LocationType.CUSTOMER,
+  travel_charging_model: TravelChargingModel.FROM_BASE_TO_CUSTOMERS,
+  pricing_config: {
+    components: [
+      {
+        name: "Service Call",
+        pricing_combination: PricingCombination.SERVICE_FIXED_PER_SERVICE,
+        tiers: [
+          {
+            min_quantity: 1,
+            max_quantity: 1,
+            price: 80.00,
+            duration_estimate_mins: {
+              "tap_installation": 45,
+              "toilet_installation": 90,
+              "pipe_repair": 60,
+              "maintenance_check": 30
+            }
+          }
+        ]
+      },
+      {
+        name: "Labor Cost",
+        pricing_combination: PricingCombination.LABOR_PER_HOUR_PER_PERSON,
+        tiers: [
+          {
+            min_quantity: 1,
+            max_quantity: 1,
+            price: 85.00,
+            duration_estimate_mins: {
+              "tap_installation": 45,
+              "toilet_installation": 90,
+              "pipe_repair": 60,
+              "maintenance_check": 30
+            }
+          }
+        ]
+      }
+    ]
+  }
+};

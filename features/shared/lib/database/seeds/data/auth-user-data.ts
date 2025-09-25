@@ -43,3 +43,28 @@ export function createSuperAdminAuthUserData(): CreateAuthUserData {
     email_confirm: true
   };
 }
+
+// Demo business owner auth user data functions
+export function createRemovalistOwnerAuthUserData(): CreateAuthUserData {
+  return {
+    email: "edward@tigapropertyservices.com",
+    password: "demo123",
+    email_confirm: true
+  };
+}
+
+export function createManicuristOwnerAuthUserData(): CreateAuthUserData {
+  return {
+    email: "sarah@nailsonthego.com.au",
+    password: "demo123",
+    email_confirm: true
+  };
+}
+
+export function createPlumberOwnerAuthUserData(): CreateAuthUserData {
+  return {
+    email: "mike@fixitplumbing.com.au",
+    password: "demo123",
+    email_confirm: true
+  };
+}

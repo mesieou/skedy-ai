@@ -15,7 +15,6 @@ export { useRealtimeSession } from './hooks/use-realtime-session';
 
 // Services
 export { OpenAIService } from './lib/services/openai-service';
-export { AgentManager } from './lib/agents/agent-manager';
 export { RealtimeSessionManager } from './lib/session/realtime-session-manager';
 
 // Type exports

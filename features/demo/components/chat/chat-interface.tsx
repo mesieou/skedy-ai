@@ -3,12 +3,11 @@ import { Mic, MicOff, PhoneOff, Loader2, Zap, Brain, Activity, Cpu, Radio, Waves
 import { ChatMessage, ChatMessageProps } from '../ui/chat-message';
 import { AgentAvatar } from '../ui/agent-avatar';
 import { SessionStatus } from '../../lib/session/types';
-import { RealtimeAgent } from '@openai/agents/realtime';
 
 interface ChatInterfaceProps {
   businessType: string;
   status: SessionStatus;
-  currentAgent: RealtimeAgent;
+  currentAgent: { name: string; id: string };
   messages: ChatMessageProps[];
   isMuted: boolean;
   isUserSpeaking: boolean;

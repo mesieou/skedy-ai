@@ -1,3 +1,5 @@
+import { sentry } from '@/features/shared/utils/sentryService';
+
 /**
  * Bridge between demo frontend and agent backend
  * Uses API calls to avoid server-side imports in client code
@@ -17,6 +19,13 @@ export class AgentBridge {
       toolName,
       args,
       url: '/api/demo-tool-execution'
+    });
+
+    // Add breadcrumb for tool execution start
+    sentry.addBreadcrumb('Demo tool bridge execution', 'demo-bridge', {
+      sessionId: sessionId,
+      toolName: toolName,
+      argsKeys: Object.keys(args)
     });
 
     try {
@@ -46,6 +55,20 @@ export class AgentBridge {
           statusText: response.statusText,
           errorText: errorText
         });
+
+        // Track HTTP error in Sentry
+        sentry.trackError(new Error(`Tool execution HTTP error: ${response.status}`), {
+          sessionId: sessionId,
+          businessId: 'unknown',
+          operation: 'demo_bridge_http_error',
+          metadata: {
+            toolName: toolName,
+            httpStatus: response.status,
+            httpStatusText: response.statusText,
+            errorText: errorText
+          }
+        });
+
         throw new Error(`Tool execution failed: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
@@ -67,6 +90,18 @@ export class AgentBridge {
         error: error,
         errorMessage: (error as Error).message
       });
+
+      // Track error in Sentry
+      sentry.trackError(error as Error, {
+        sessionId: sessionId,
+        businessId: 'unknown',
+        operation: 'demo_bridge_tool_execution',
+        metadata: {
+          toolName: toolName,
+          argsKeys: Object.keys(args)
+        }
+      });
+
       throw error;
     }
   }

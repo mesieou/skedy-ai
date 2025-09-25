@@ -110,11 +110,12 @@ describe('addPromptToSession - Template Injection', () => {
     expect(mockSession.aiInstructions).toContain(expectedBusinessInfo);
 
     // Should NOT contain template placeholders
+    expect(mockSession.aiInstructions).not.toContain('{BUSINESS_TYPE}');
     expect(mockSession.aiInstructions).not.toContain('{LIST OF SERVICES}');
     expect(mockSession.aiInstructions).not.toContain('{BUSINESS INFO}');
 
-    // Should contain the actual prompt structure from seeds
-    expect(mockSession.aiInstructions).toContain('You are Rachel, AI receptionist for removalist services');
+    // Should contain the actual prompt structure from seeds with business type injected
+    expect(mockSession.aiInstructions).toContain('You are Skedy an AI receptionist for removalist services');
     expect(mockSession.aiInstructions).toContain('PERSONALITY: Friendly, direct, Aussie');
 
     // Verify session metadata is set correctly

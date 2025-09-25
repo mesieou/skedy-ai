@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { executeToolFunction } from "@/features/agent/services/executeTool";
 import { sessionManager } from "@/features/agent/sessions/sessionSyncManager";
+import { sentry } from "@/features/shared/utils/sentryService";
 
 export async function GET(request: Request) {
   try {
@@ -36,6 +37,13 @@ export async function POST(request: Request) {
 
     console.log(`🔧 [API] Executing tool: ${toolName} for session ${sessionId}`);
 
+    // Add breadcrumb for demo tool execution
+    sentry.addBreadcrumb('Demo tool execution started', 'demo-tool', {
+      sessionId: sessionId,
+      toolName: toolName,
+      argsKeys: Object.keys(args || {})
+    });
+
     // Debug: Check what sessions exist
     const allSessions = sessionManager.list();
     console.log(`🔍 [API] Available sessions:`, allSessions.map(s => s.id));
@@ -60,6 +68,13 @@ export async function POST(request: Request) {
 
     console.log(`✅ [API] Tool ${toolName} executed successfully`);
 
+    // Add breadcrumb for successful tool execution
+    sentry.addBreadcrumb('Demo tool execution completed', 'demo-tool', {
+      sessionId: sessionId,
+      toolName: toolName,
+      success: (result as { success?: boolean }).success !== false
+    });
+
     return NextResponse.json({
       success: true,
       result: result,
@@ -69,6 +84,17 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error(`❌ [API] Tool execution failed:`, error);
+
+    // Track error in Sentry
+    sentry.trackError(error as Error, {
+      sessionId: 'unknown',
+      businessId: 'unknown',
+      operation: 'demo_tool_execution',
+      metadata: {
+        toolName: 'unknown',
+        errorMessage: (error as Error).message
+      }
+    });
 
     return NextResponse.json(
       {

@@ -5,6 +5,7 @@ import { addPromptToSession } from "@/features/agent/services/addPromptToSession
 import { updateToolsToSession } from "@/features/agent/services/updateToolsToSession";
 import { getInitialRequestedTools } from "@/features/shared/lib/database/types/tools";
 import { sessionManager } from "@/features/agent/sessions/sessionSyncManager";
+import { sentry } from "@/features/shared/utils/sentryService";
 import { v4 as uuidv4 } from 'uuid';
 
 export async function GET(request: Request) {
@@ -12,13 +13,19 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const categoryParam = url.searchParams.get('category');
 
-  // Default to TRANSPORT if no category provided
-  const businessCategory = categoryParam as BusinessCategory || BusinessCategory.TRANSPORT;
+  // Default to REMOVALIST if no category provided
+  const businessCategory = categoryParam as BusinessCategory || BusinessCategory.REMOVALIST;
 
   const businessInfo = getBusinessIdByCategory(businessCategory);
   console.log('🔍 [API] /realtime-session called with category:', businessCategory);
 
   try {
+    // Add breadcrumb for demo session creation
+    sentry.addBreadcrumb('Demo session creation started', 'demo-session', {
+      businessCategory: businessCategory,
+      businessId: businessInfo.businessId
+    });
+
     // Create backend session
     const callId = `demo_${uuidv4()}`;
     const event = {
@@ -39,6 +46,14 @@ export async function GET(request: Request) {
     await updateToolsToSession(session, [...getInitialRequestedTools()]);
 
     console.log('✅ [API] Session created with tools:', session.currentTools?.map(t => t.name));
+
+    // Add breadcrumb for successful session setup
+    sentry.addBreadcrumb('Demo session setup completed', 'demo-session', {
+      sessionId: callId,
+      businessName: session.businessEntity?.name,
+      toolsCount: session.currentTools?.length || 0,
+      toolNames: session.currentTools?.map(t => t.name) || []
+    });
 
     // Debug: Verify session is persisted
     const verifySession = await sessionManager.get(callId);
@@ -86,6 +101,12 @@ export async function GET(request: Request) {
     const data = await response.json();
     console.log('✅ [API] Created ephemeral token:', data.value ? 'YES' : 'NO');
 
+    // Add breadcrumb for successful token creation
+    sentry.addBreadcrumb('Demo ephemeral token created', 'demo-session', {
+      sessionId: callId,
+      hasToken: !!data.value
+    });
+
     // Return token and whole session
     return NextResponse.json({
       ...data, // OpenAI token data
@@ -93,6 +114,17 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("Error in /realtime-session:", error);
+
+    // Track error in Sentry
+    sentry.trackError(error as Error, {
+      sessionId: 'unknown',
+      businessId: businessInfo.businessId,
+      operation: 'demo_session_creation',
+      metadata: {
+        businessCategory: businessCategory
+      }
+    });
+
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 }
@@ -102,36 +134,20 @@ export async function GET(request: Request) {
 
 const getBusinessIdByCategory = (category: BusinessCategory) => {
   switch (category) {
-    case BusinessCategory.TRANSPORT:
+    case BusinessCategory.REMOVALIST:
       return {
-        businessId: "be1f3d11-5a5a-4004-964a-15a01b6d5dd9",
+        businessId: "8eea40ae-7d0f-4a72-8041-847cb42e6996", // Removalist business ID
       };
-    case BusinessCategory.CLEANING:
+    case BusinessCategory.MANICURIST:
       return {
-        businessId: "be1f3d11-5a5a-4004-964a-15a01b6d5dd9",
+        businessId: "0679ddaa-98ac-4341-80a3-98ac25a65d3c", // Manicurist business ID
       };
-    case BusinessCategory.HANDYMAN:
+    case BusinessCategory.PLUMBER:
       return {
-        businessId: "be1f3d11-5a5a-4004-964a-15a01b6d5dd9",
-
-      };
-    case BusinessCategory.BEAUTY:
-      return {
-        businessId: "be1f3d11-5a5a-4004-964a-15a01b6d5dd9",
-
-      };
-    case BusinessCategory.FITNESS:
-      return {
-        businessId: "be1f3d11-5a5a-4004-964a-15a01b6d5dd9",
-      };
-    case BusinessCategory.GARDENING:
-      return {
-        businessId: "be1f3d11-5a5a-4004-964a-15a01b6d5dd9",
-
+        businessId: "fbcab214-5992-4386-90b3-a32a2f07f14d", // Plumber business ID
       };
     default:
-      return {
-        businessId: "be1f3d11-5a5a-4004-964a-15a01b6d5dd9",
-      };
+      // Only support these business types
+      throw new Error(`Unsupported business category: ${category}. Supported: REMOVALIST, MANICURIST, PLUMBER, TECHNOLOGY`);
   }
 };

@@ -7,7 +7,7 @@ function generateUniqueIdentifier(): string {
 }
 
 // Function to create unique business data for tests
-export function createUniqueRemovalistBusinessData(): CreateBusinessData {
+export function createTigaRemovalistBusinessData(): CreateBusinessData {
   const uniqueId = generateUniqueIdentifier();
   return {
     name: `Tiga Removals ${uniqueId}`,
@@ -16,7 +16,7 @@ export function createUniqueRemovalistBusinessData(): CreateBusinessData {
     address: "123 Collins Street, Melbourne VIC 3000, Australia",
     time_zone: "Australia/Melbourne",
     language: "en",
-    business_category: BusinessCategory.TRANSPORT,
+    business_category: BusinessCategory.REMOVALIST,
     charges_gst: true,
     prices_include_gst: true,
     gst_rate: 10.00,
@@ -43,6 +43,41 @@ export function createUniqueRemovalistBusinessData(): CreateBusinessData {
   };
 }
 
+export function createUniqueRemovalistBusinessData(): CreateBusinessData {
+  const uniqueId = generateUniqueIdentifier();
+  return {
+    name: `David Removals ${uniqueId}`,
+    email: `David+${uniqueId}@davidremovals.com`,
+    phone_number: `+61468002102`,
+    address: "123 Collins Street, Melbourne VIC 3000, Australia",
+    time_zone: "Australia/Melbourne",
+    language: "en",
+    business_category: BusinessCategory.REMOVALIST,
+    charges_gst: true,
+    prices_include_gst: true,
+    gst_rate: 10.00,
+    charges_deposit: true,
+    payment_processing_fee_percentage: 2.9,
+    booking_platform_fee_percentage: 2.0,
+    currency_code: "AUD",
+    number_of_providers: 2,
+    subscription_type: SubscriptionType.FREE,
+    payment_methods: [PaymentMethod.CREDIT_CARD, PaymentMethod.BANK_TRANSFER, PaymentMethod.CASH],
+    preferred_payment_method: PaymentMethod.CASH,
+    deposit_type: DepositType.FIXED,
+    deposit_percentage: null,
+    deposit_fixed_amount: 100.0,
+    website_url: "https://davidremovals.com.au/",
+    whatsapp_number: `+61412345${Math.floor(Math.random() * 900) + 100}`,
+    whatsapp_phone_number_id: "684078768113901",
+    stripe_connect_account_id: "acct_1Rna89P41K8lchaj",
+    stripe_account_status: "active",
+    offers_mobile_services: true,   // "Yes, we travel to customers for pickup/dropoff"
+    offers_location_services: false, // "No, customers don't come to our warehouse"
+    minimum_charge: 200,
+    twilio_account_sid: "AC017f39060e7fafce96588f27c558c93f"
+  };
+}
 // Function to create unique manicurist business data for tests
 export function createUniqueMobileManicuristBusinessData(): CreateBusinessData {
   const uniqueId = generateUniqueIdentifier();
@@ -53,7 +88,7 @@ export function createUniqueMobileManicuristBusinessData(): CreateBusinessData {
     address: "321 High Street, Prahran VIC 3181, Australia",
     time_zone: "Australia/Melbourne",
     language: "en",
-    business_category: BusinessCategory.BEAUTY,
+    business_category: BusinessCategory.MANICURIST,
     charges_gst: false,
     prices_include_gst: false,
     gst_rate: 0.00,
@@ -90,7 +125,7 @@ export function createUniqueMassageBusinessData(): CreateBusinessData {
     address: "456 Chapel Street, South Yarra VIC 3141, Australia",
     time_zone: "Australia/Melbourne",
     language: "en",
-    business_category: BusinessCategory.BEAUTY,
+    business_category: BusinessCategory.MANICURIST,
     charges_gst: true,
     prices_include_gst: true,
     gst_rate: 10.00,
@@ -116,6 +151,43 @@ export function createUniqueMassageBusinessData(): CreateBusinessData {
   };
 }
 
+// Function to create unique plumber business data for tests
+export function createUniquePlumberBusinessData(): CreateBusinessData {
+  const uniqueId = generateUniqueIdentifier();
+  return {
+    name: `Fix-It Plumbing ${uniqueId}`,
+    email: `mike+${uniqueId}@fixitplumbing.com.au`,
+    phone_number: `+61387654${Math.floor(Math.random() * 900) + 100}`,
+    address: "789 Smith Street, Collingwood VIC 3066, Australia",
+    time_zone: "Australia/Melbourne",
+    language: "en",
+    business_category: BusinessCategory.PLUMBER,
+    charges_gst: true,
+    prices_include_gst: true,
+    gst_rate: 10.00,
+    charges_deposit: true,
+    payment_processing_fee_percentage: 2.9,
+    booking_platform_fee_percentage: 3.5,
+    currency_code: "AUD",
+    number_of_providers: 2,
+    subscription_type: SubscriptionType.BASIC,
+    payment_methods: [PaymentMethod.CREDIT_CARD, PaymentMethod.CASH],
+    preferred_payment_method: PaymentMethod.CREDIT_CARD,
+    deposit_type: DepositType.FIXED,
+    deposit_percentage: null,
+    deposit_fixed_amount: 50.0,
+    website_url: "https://fixitplumbing.com.au",
+    whatsapp_number: `+61387654${Math.floor(Math.random() * 900) + 100}`,
+    whatsapp_phone_number_id: "684078768113906",
+    stripe_connect_account_id: "acct_1Rna89P41K8lchao",
+    stripe_account_status: "active",
+    offers_mobile_services: true,
+    offers_location_services: false,
+    minimum_charge: 120.0,
+    twilio_account_sid: "AC017f39060e7fafce96588f27c558c93f"
+  };
+}
+
 // Function to create Skedy business data for tests
 export function createSkedyBusinessData(): CreateBusinessData {
   return {
@@ -125,7 +197,7 @@ export function createSkedyBusinessData(): CreateBusinessData {
     address: "1 Aberdeen Road, Blackburn South, VIC, Australia",
     time_zone: "Australia/Melbourne",
     language: "en",
-    business_category: BusinessCategory.OTHER, // Technology falls under OTHER category
+    business_category: BusinessCategory.TECHNOLOGY, // Skedy is a technology platform
     charges_gst: false,
     prices_include_gst: false,
     gst_rate: 0.0,
