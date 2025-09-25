@@ -2,11 +2,11 @@
  * Simple Sentry Error Tracking Service
  *
  * Clean, extensible error tracking for the voice agent
+ * Uses Next.js Sentry integration for consistent frontend/backend tracking
  */
 
-// Server-side only Sentry service
-// This file should ONLY be used in server-side code (API routes, server components)
-import * as Sentry from '@sentry/node';
+// Use Next.js Sentry integration instead of @sentry/node for consistency
+import * as Sentry from '@sentry/nextjs';
 
 interface ErrorContext {
   sessionId: string;
@@ -17,48 +17,22 @@ interface ErrorContext {
 }
 
 export class SentryService {
-  private static initialized = false;
-
   /**
-   * Initialize Sentry (call once at app startup)
+   * Check if Sentry is available (Next.js handles initialization automatically)
    */
-  static init(): boolean {
-    if (this.initialized) return true;
-
-    if (!process.env.SENTRY_DSN) {
-      console.warn('⚠️ [Sentry] SENTRY_DSN not configured - error tracking disabled');
-      return false;
-    }
-
-    try {
-      Sentry.init({
-        dsn: process.env.SENTRY_DSN,
-        environment: process.env.NODE_ENV || 'development',
-        tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
-        debug: false, // Disable debug logging to prevent console spam
-        beforeSend(event) {
-          // Add component tag to all errors
-          if (event.exception) {
-            event.tags = { ...event.tags, component: 'voice-agent' };
-          }
-          return event;
-        },
-      });
-
-      this.initialized = true;
-      console.log('✅ [Sentry] Initialized successfully');
-      return true;
-    } catch (error) {
-      console.error('❌ [Sentry] Failed to initialize:', error);
-      return false;
-    }
+  private static isSentryAvailable(): boolean {
+    return typeof Sentry !== 'undefined' && typeof Sentry.captureException === 'function';
   }
 
   /**
    * Track an error with context
    */
   static trackError(error: Error, context: ErrorContext): void {
-    if (!this.initialized) return;
+    if (!this.isSentryAvailable()) {
+      console.warn('⚠️ [Sentry] Not available - falling back to console.error');
+      console.error('Error:', error.message, 'Context:', context);
+      return;
+    }
 
     Sentry.withScope((scope) => {
       // Set user context
@@ -71,6 +45,7 @@ export class SentryService {
         sessionId: context.sessionId,
         businessId: context.businessId || 'unknown',
         operation: context.operation || 'unknown',
+        component: 'voice-agent', // Add component tag
       });
 
       // Add extra context
@@ -87,7 +62,11 @@ export class SentryService {
    * Track a message (for non-error events)
    */
   static trackMessage(message: string, level: 'info' | 'warning' | 'error' = 'info', context?: ErrorContext): void {
-    if (!this.initialized) return;
+    if (!this.isSentryAvailable()) {
+      console.warn('⚠️ [Sentry] Not available - falling back to console.log');
+      console.log(`[${level.toUpperCase()}] ${message}`, context ? { context } : '');
+      return;
+    }
 
     Sentry.withScope((scope) => {
       if (context) {
@@ -95,6 +74,7 @@ export class SentryService {
           sessionId: context.sessionId,
           businessId: context.businessId || 'unknown',
           operation: context.operation || 'unknown',
+          component: 'voice-agent',
         });
 
         if (context.metadata) {
@@ -110,7 +90,10 @@ export class SentryService {
    * Add breadcrumb for debugging
    */
   static addBreadcrumb(message: string, category: string = 'default', data?: Record<string, unknown>): void {
-    if (!this.initialized) return;
+    if (!this.isSentryAvailable()) {
+      console.log(`🍞 [Breadcrumb] ${category}: ${message}`, data || '');
+      return;
+    }
 
     Sentry.addBreadcrumb({
       message,
@@ -124,7 +107,6 @@ export class SentryService {
 
 // Export a simple interface for common use cases
 export const sentry = {
-  init: () => SentryService.init(),
   trackError: (error: Error, context: ErrorContext) => SentryService.trackError(error, context),
   trackMessage: (message: string, level: 'info' | 'warning' | 'error' = 'info', context?: ErrorContext) =>
     SentryService.trackMessage(message, level, context),
@@ -132,5 +114,5 @@ export const sentry = {
     SentryService.addBreadcrumb(message, category, data),
 };
 
-// Sentry is globally initialized in app/layout.tsx
+// Sentry is automatically initialized by Next.js via instrumentation.ts
 // Just import { sentry } from this file when you need it
