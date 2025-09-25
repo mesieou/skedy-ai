@@ -50,7 +50,7 @@ async function main() {
 
     // Step 1: Create Business
     console.log('📊 Creating business...');
-    const business = await businessSeeder.createUniqueRemovalistBusiness();
+    const business = await businessSeeder.createTigaRemovalistBusiness();
     console.log(`✅ Business created: ${business.name} (ID: ${business.id})`);
 
     // Step 2: Create Users
@@ -93,9 +93,10 @@ async function main() {
     // Step 5: Generate Availability
     console.log('🕐 Generating availability slots...');
     const tomorrowDate = DateUtils.addDaysUTC(DateUtils.nowUTC(), 1);
+    const tomorrowBusinessDate = DateUtils.extractDateString(tomorrowDate);
     await availabilitySlotsRepository.generateInitialBusinessAvailability(
       business.id,
-      tomorrowDate,
+      tomorrowBusinessDate,
       providers,
       calendarSettings,
       business.time_zone,

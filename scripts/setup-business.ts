@@ -201,10 +201,15 @@ async function setupBusiness(businessType: BusinessType) {
 
     // Step 5: Generate Availability
     console.log('🕐 Generating availability slots...');
-    const tomorrowDate = DateUtils.addDaysUTC(DateUtils.nowUTC(), 1);
+
+    // Get tomorrow in business timezone
+    const { date: todayInBusiness } = DateUtils.convertUTCToTimezone(DateUtils.nowUTC(), business.time_zone);
+    const tomorrowInBusiness = DateUtils.addDaysUTC(DateUtils.createSlotTimestamp(todayInBusiness, '00:00:00'), 1);
+    const tomorrowBusinessDate = DateUtils.extractDateString(tomorrowInBusiness);
+
     await availabilitySlotsRepository.generateInitialBusinessAvailability(
       business.id,
-      tomorrowDate,
+      tomorrowBusinessDate, // Pass business date - function will handle UTC conversion
       providers,
       calendarSettings,
       business.time_zone,

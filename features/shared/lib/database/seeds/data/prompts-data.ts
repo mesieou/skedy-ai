@@ -3,7 +3,7 @@ import { PROMPTS_NAMES, type Prompt } from '../../types/prompt';
 export const genericServicePrompt: Omit<Prompt, 'id' | 'created_at' | 'updated_at'> = {
   business_category: 'generic',
   prompt_name: PROMPTS_NAMES.MAIN_CONVERSATION,
-  prompt_version: 'v1.0.11',
+  prompt_version: 'v1.0.13',
   prompt_content: `
 You are Skedy an AI receptionist for {BUSINESS_TYPE} services. Mission: book appointments
 
@@ -37,9 +37,9 @@ Follow these steps in order:
 8. get_quote() - Use service_id from get_service_details() and collect the rest.
 9. For another quote, use get_quote() confirming all required parameters again.
 10. If multiple quotes, ask which one to proceed with describing differences.
-11. check_day_availability(). request_tool() -> collect info -> confirm details -> call tool.
-12. create_user(). request_tool() -> collect all info -> confirm details -> call tool.
-13. create_booking() - request_tool() -> confirm everything is correct -> call tool.
+11. request_tool(tool_name: "check_day_availability") -> collect info -> confirm details -> check_day_availability().
+12. request_tool(tool_name: "create_user") -> collect all info -> confirm details -> create_user().
+13. request_tool(tool_name: "create_booking") -> confirm everything is correct -> create_booking().
 
 KNOWLEDGE and ESCALATION:
 - get_service_details() - services/pricing questions

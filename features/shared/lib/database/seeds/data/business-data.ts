@@ -12,7 +12,7 @@ export function createTigaRemovalistBusinessData(): CreateBusinessData {
   return {
     name: `Tiga Removals ${uniqueId}`,
     email: `edward+${uniqueId}@tigapropertyservices.com`,
-    phone_number: `+61468002102`,
+    phone_number: `+61424028285`,
     address: "123 Collins Street, Melbourne VIC 3000, Australia",
     time_zone: "Australia/Melbourne",
     language: "en",

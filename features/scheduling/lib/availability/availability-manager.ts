@@ -54,14 +54,19 @@ export class AvailabilityManager {
   async generateInitialBusinessAvailability(
     providers: User[],
     calendarSettings: CalendarSettings[],
-    fromDate: string, // UTC ISO string
+    fromBusinessDate: string, // Business date (e.g., "2025-09-27" in Melbourne)
     days: number = 30
   ): Promise<AvailabilitySlots> {
     const allSlots: { [dateKey: string]: { [durationKey: string]: [string, number][] } } = {};
 
+    // Convert business date to UTC for generation
+    const fromUTC = DateUtils.convertBusinessTimeToUTC(fromBusinessDate, '00:00:00', this.business.time_zone);
+
+    console.log(`[AvailabilityManager] Generating from business date: ${fromBusinessDate} → UTC: ${DateUtils.extractDateString(fromUTC)}`);
+
     // Generate availability for the specified number of days
     for (let dayOffset = 0; dayOffset < days; dayOffset++) {
-      const currentDate = DateUtils.addDaysUTC(fromDate, dayOffset);
+      const currentDate = DateUtils.addDaysUTC(fromUTC, dayOffset);
       const dateKey = DateUtils.extractDateString(currentDate); // "2025-01-15"
 
       // Generate availability for all duration intervals for this day

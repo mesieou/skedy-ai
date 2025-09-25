@@ -3,6 +3,7 @@ import type { Session } from '../../sessions/session';
 import { buildToolResponse } from '../helpers/responseBuilder';
 import { DateUtils } from '../../../shared/utils/date-utils';
 import { sentry } from '@/features/shared/utils/sentryService';
+import { BookingNotifications } from '../../../notifications/booking-notifications';
 
 /**
  * Create booking - uses session injection for minimal dependencies
@@ -109,6 +110,27 @@ export async function createBooking(
       bookingId: result.booking.id,
       duration: duration,
       totalAmount: session.selectedQuote.total_estimate_amount
+    });
+
+    // Send booking confirmation SMS (fire and forget - don't block the response)
+    // Get service name from the selected quote request
+    const serviceName = session.selectedQuoteRequest?.services?.[0]?.service?.name;
+
+    BookingNotifications.sendBookingConfirmation(
+      result.booking,
+      session.customerEntity,
+      session.businessEntity,
+      serviceName
+    ).catch(error => {
+      console.error('Booking notification failed (non-blocking):', error);
+      sentry.trackError(error as Error, {
+        sessionId: session.id,
+        businessId: session.businessId,
+        operation: 'tool_create_booking',
+        metadata: {
+          errorName: (error as Error).name
+        }
+      });
     });
 
     // Success - clean response with specific message
