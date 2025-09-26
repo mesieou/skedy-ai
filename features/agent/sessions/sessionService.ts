@@ -65,19 +65,23 @@ export class SessionService {
           customer = phoneNumber ? await userRepository.findOne({ phone_number: phoneNumber }) : undefined;
 
         } else if (event.type === 'realtime.call.incoming') {
-          // Real phone calls: find business by Twilio Account SID
+          // Real phone calls: use removalist business (simple approach)
           const sipHeaders = event.data.sip_headers;
           assert(sipHeaders, 'sip_headers required for Twilio sessions');
 
           const twilioAccountSid = this.extractTwilioAccountSid(sipHeaders);
           assert(twilioAccountSid, 'Twilio Account SID not found in SIP headers');
 
-          phoneNumber = this.extractPhoneNumber(sipHeaders);
+          // Simple: Find removalist business by phone number
+          //temporary fix for demo phone call
+          const calledNumber = this.extractPhoneNumber(sipHeaders);
+          business = await businessRepository.findOne({
+            phone_number: calledNumber || '+61468002102',
+            business_category: 'removalist'
+          });
 
-          business = await businessRepository.findByTwilioAccountSid(twilioAccountSid);
           customer = await userRepository.findOne({ phone_number: phoneNumber });
-
-          assert(business, `Business not found for Twilio Account SID: ${twilioAccountSid}`);
+          assert(business, 'Business not found for phone call-temporary fix for demo phone call');
 
         } else {
           // Other event types (future expansion)
