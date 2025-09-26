@@ -36,26 +36,6 @@ export class DatabaseClientFactory {
   static async getClient(context?: ClientContext): Promise<SupabaseClient> {
     const clientType = context?.type || this.detectClientType();
 
-    // DETAILED LOGGING
-    console.log('🔍 [ClientFactory] Environment Detection:', {
-      isProduction: this.isProduction(),
-      isDevelopment: this.isDevelopment(),
-      NODE_ENV: process.env.NODE_ENV,
-      VERCEL_ENV: process.env.VERCEL_ENV,
-      VERCEL: process.env.VERCEL,
-      VERCEL_URL: !!process.env.VERCEL_URL,
-      NEXT_PUBLIC_VERCEL_URL: !!process.env.NEXT_PUBLIC_VERCEL_URL,
-      ENVIRONMENT: process.env.ENVIRONMENT,
-      APP_ENV: process.env.APP_ENV,
-      NEXT_RUNTIME: process.env.NEXT_RUNTIME
-    });
-
-    console.log('🔍 [ClientFactory] Client Selection:', {
-      detectedClientType: clientType,
-      contextProvided: !!context,
-      requestedType: context?.type
-    });
-
     switch (clientType) {
       case ClientType.ADMIN:
         return this.getAdminClient();
