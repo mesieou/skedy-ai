@@ -80,7 +80,7 @@ export class BusinessToolsRepository extends BaseRepository<BusinessTool> {
 
       // TEMPORARY FIX: Return hardcoded tool names to get the call working
       console.log(`🚨 [BusinessTools] TEMPORARY: Using hardcoded tool names to bypass database hang`);
-      const hardcodedToolNames = ['request_tool', 'get_quote', 'create_booking', 'get_availability', 'create_user', 'send_text'];
+      const hardcodedToolNames = ['request_tool', 'get_quote', 'create_booking', 'check_day_availability', 'create_user', 'get_service_details'];
 
       sentry.addBreadcrumb('Active tool names retrieved (hardcoded)', 'business-tools', {
         businessId,
