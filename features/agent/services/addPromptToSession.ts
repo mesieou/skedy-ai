@@ -31,34 +31,18 @@ export async function addPromptToSession(session: Session): Promise<void> {
     const businessToolsRepo = new BusinessToolsRepository();
     const serviceRepo = new ServiceRepository();
     // Get all active tool names for this business (for prompt reference)
-    console.log(`🔧 [GeneratePrompt] Calling getActiveToolNamesForBusiness for business: ${business.id}`);
-    let activeToolNames: string[] = [];
-    try {
-      activeToolNames = await businessToolsRepo.getActiveToolNamesForBusiness(business.id);
-      console.log(`🤖 [GeneratePrompt] Active tool names retrieved: ${JSON.stringify(activeToolNames)}`);
-    } catch (error) {
-      console.error(`❌ [GeneratePrompt] Failed to get active tool names:`, error);
-      throw error; // Re-throw to see the full error
-    }
+    const activeToolNames = await businessToolsRepo.getActiveToolNamesForBusiness(business.id);
+    console.log(`🤖 [GeneratePrompt] Active tool names: ${activeToolNames}`);
     // Get all service names for this business
-    console.log(`🚨 [GeneratePrompt] TEMPORARY: Using hardcoded services to bypass database hang`);
-    const hardcodedServices = [{ name: 'Removalist Service' }, { name: 'Packing Service' }];
-    const services = hardcodedServices;
-    console.log(`🤖 [GeneratePrompt] Services (hardcoded): ${JSON.stringify(services)}`);
+    const services = await serviceRepo.findAll({}, { business_id: business.id });
+    console.log(`🤖 [GeneratePrompt] Services: ${services}`);
     const serviceNames = services.map(service => service.name);
     const serviceNamesList = serviceNames.join(', ');
     // Get business info string
     const businessInfoString = businessRepo.buildBusinessInfoForCustomers(business);
     console.log(`🤖 [GeneratePrompt] Business info string: ${businessInfoString}`);
     // Get active prompt data for business in ONE query using JOIN
-    console.log(`🚨 [GeneratePrompt] TEMPORARY: Using hardcoded prompt to bypass database hang`);
-    const hardcodedPromptData = {
-      prompt_name: PROMPTS_NAMES.MAIN_CONVERSATION,
-      prompt_version: 'v1.0.0',
-      prompt_content: 'You are Skedy, an AI receptionist for {BUSINESS_TYPE} services. Help customers with bookings and quotes. Available tools: {TOOL_NAMES}. Services: {LIST OF SERVICES}. Business info: {BUSINESS INFO}. Current date: {CURRENT_DATE}, time: {CURRENT_TIME}.'
-    };
-    const promptData = hardcodedPromptData;
-    console.log(`🤖 [GeneratePrompt] Prompt data (hardcoded): ${promptData.prompt_name} v${promptData.prompt_version}`);
+    const promptData = await businessPromptRepo.getActivePromptByNameForBusiness(business.id, PROMPTS_NAMES.MAIN_CONVERSATION);
 
     assert(promptData, `${PROMPTS_NAMES.MAIN_CONVERSATION} prompt not found for business ${business.id}`);
 
