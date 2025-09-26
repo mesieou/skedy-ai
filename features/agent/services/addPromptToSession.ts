@@ -31,14 +31,15 @@ export async function addPromptToSession(session: Session): Promise<void> {
     const serviceRepo = new ServiceRepository();
     // Get all active tool names for this business (for prompt reference)
     const activeToolNames = await businessToolsRepo.getActiveToolNamesForBusiness(business.id);
-
+    console.log(`🤖 [GeneratePrompt] Active tool names: ${activeToolNames}`);
     // Get all service names for this business
     const services = await serviceRepo.findAll({}, { business_id: business.id });
+    console.log(`🤖 [GeneratePrompt] Services: ${services}`);
     const serviceNames = services.map(service => service.name);
     const serviceNamesList = serviceNames.join(', ');
     // Get business info string
     const businessInfoString = businessRepo.buildBusinessInfoForCustomers(business);
-
+    console.log(`🤖 [GeneratePrompt] Business info string: ${businessInfoString}`);
     // Get active prompt data for business in ONE query using JOIN
     const promptData = await businessPromptRepo.getActivePromptByNameForBusiness(business.id, PROMPTS_NAMES.MAIN_CONVERSATION);
 

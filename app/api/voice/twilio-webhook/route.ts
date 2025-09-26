@@ -58,9 +58,11 @@ export async function POST(request: NextRequest) {
 
     console.log(`📞 Incoming call event: ${callId} (${event.type})`);
 
+
     // 2️⃣ Get or create session via SessionManager
     const session = await SessionService.createOrGet(callId, event);
     assert(session, 'Failed to create or get session');
+    console.log(`🚀 [Webhook] Session created/retrieved successfully: ${session.id}`);
 
     // Add success breadcrumb
     sentry.addBreadcrumb('Session created/retrieved successfully', 'webhook', {
@@ -70,6 +72,7 @@ export async function POST(request: NextRequest) {
     });
 
     // 3️⃣ Pass session and event to handler (async)
+    console.log(`🚀 [Webhook] Starting async handleCallEvent for session: ${session.id}`);
     handleCallEvent(session, event).catch((err: unknown) => {
       console.error('❌ Async processing error:', err);
 
