@@ -23,6 +23,7 @@ export async function handleCallEvent(session: Session, event: WebhookEvent) {
         break;
 
       case 'realtime.call.ended':
+        console.log(`🤖 [CallRouter] Realtime call ended: ${session.id}`);
         // Persist session and interactions to database are handled in the connection handlers
         break;
 

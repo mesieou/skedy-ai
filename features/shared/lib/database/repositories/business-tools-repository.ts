@@ -29,13 +29,15 @@ export class BusinessToolsRepository extends BaseRepository<BusinessTool> {
    * Optimized for prompt generation - returns just the tool names
    */
   async getActiveToolNamesForBusiness(businessId: string): Promise<string[]> {
+    console.log(`🤖 [BusinessToolsRepository] Getting active tool names for business: ${businessId}`);
     const client = await this.getClient();
+    console.log(`🤖 [BusinessToolsRepository] Client: ${client}`);
     const { data, error } = await client
       .from('business_tools')
       .select('tools(name)')
       .eq('business_id', businessId)
       .eq('active', true);
-
+    console.log(`🤖 [BusinessToolsRepository] Data: ${data}`);
     if (error) throw new Error(`Failed to get active tool names: ${error.message}`);
     // Supabase foreign key syntax returns: [{"tools": {"name": "tool_name"}}, ...]
     return (data as unknown as { tools: { name: string } }[] || [])
