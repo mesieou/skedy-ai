@@ -31,13 +31,19 @@ export class BusinessToolsRepository extends BaseRepository<BusinessTool> {
   async getActiveToolNamesForBusiness(businessId: string): Promise<string[]> {
     console.log(`🤖 [BusinessToolsRepository] Getting active tool names for business: ${businessId}`);
     const client = await this.getClient();
-    console.log(`🤖 [BusinessToolsRepository] Client: ${client}`);
+    console.log(`🤖 [BusinessToolsRepository] Client info:`, {
+      hasClient: !!client,
+      clientType: typeof client,
+      hasFrom: typeof client?.from
+    });
+
+    console.log(`🤖 [BusinessToolsRepository] Starting database query...`);
     const { data, error } = await client
       .from('business_tools')
       .select('tools(name)')
       .eq('business_id', businessId)
       .eq('active', true);
-    console.log(`🤖 [BusinessToolsRepository] Data: ${data}`);
+    console.log(`🤖 [BusinessToolsRepository] Query completed. Data:`, data, 'Error:', error);
     if (error) throw new Error(`Failed to get active tool names: ${error.message}`);
     // Supabase foreign key syntax returns: [{"tools": {"name": "tool_name"}}, ...]
     return (data as unknown as { tools: { name: string } }[] || [])

@@ -44,6 +44,15 @@ export async function handleCallEvent(session: Session, event: WebhookEvent) {
     }
 
   } catch (error) {
+    console.error(`❌ [CallRouter] Error in handleCallEvent for session ${session.id}:`, error);
+
+    // Release API key if session has one assigned
+    if (typeof session.assignedApiKeyIndex === 'number') {
+      const { webSocketPool } = await import('../sessions/websocketPool');
+      webSocketPool.release(session.assignedApiKeyIndex);
+      console.log(`🔄 [CallRouter] Released API key ${session.assignedApiKeyIndex + 1} due to call handling failure`);
+    }
+
     // Track call event handling error
     sentry.trackError(error as Error, {
       sessionId: session.id,
@@ -53,7 +62,8 @@ export async function handleCallEvent(session: Session, event: WebhookEvent) {
         eventType: event.type,
         sessionStatus: session.status,
         errorName: (error as Error).name,
-        hasBusinessEntity: !!session.businessEntity
+        hasBusinessEntity: !!session.businessEntity,
+        apiKeyReleased: typeof session.assignedApiKeyIndex === 'number'
       }
     });
 
