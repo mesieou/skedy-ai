@@ -71,24 +71,30 @@ export async function POST(request: NextRequest) {
       businessId: session.businessId
     });
 
-    // 3️⃣ Pass session and event to handler (async)
-    console.log(`🚀 [Webhook] Starting async handleCallEvent for session: ${session.id}`);
-    handleCallEvent(session, event).catch((err: unknown) => {
-      console.error('❌ Async processing error:', err);
+    // 3️⃣ Pass session and event to handler (AWAIT to prevent serverless termination)
+    console.log(`🚀 [Webhook] Starting handleCallEvent for session: ${session.id}`);
+    try {
+      await handleCallEvent(session, event);
+      console.log(`✅ [Webhook] handleCallEvent completed successfully for session: ${session.id}`);
+    } catch (err) {
+      console.error('❌ Call event processing error:', err);
 
-      // Track async processing error
+      // Track call event processing error
       sentry.trackError(err as Error, {
         sessionId: session.id,
         businessId: session.businessId,
-        operation: 'async_call_event_processing',
+        operation: 'call_event_processing',
         metadata: {
           eventType: event.type,
           callId: callId
         }
       });
-    });
 
-    // 4️⃣ Return fast to Twilio/OpenAI
+      // Don't throw - still return success to webhook caller
+      console.log(`⚠️ [Webhook] Continuing despite handleCallEvent error for session: ${session.id}`);
+    }
+
+    // 4️⃣ Return to Twilio/OpenAI after processing is complete
     const processingTime = Date.now() - startTime;
     console.log(`✅ Webhook processed in ${processingTime}ms`);
 

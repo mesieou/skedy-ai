@@ -34,21 +34,16 @@ export class DatabaseClientFactory {
    * Main entry point - automatically detects context or uses explicit type
    */
   static async getClient(context?: ClientContext): Promise<SupabaseClient> {
-    console.log(`🔧 [ClientFactory] STEP I: Getting client with context:`, context);
     const clientType = context?.type || this.detectClientType();
-    console.log(`🔧 [ClientFactory] STEP II: Resolved client type: ${clientType}`);
 
     switch (clientType) {
       case ClientType.ADMIN:
-        console.log(`🔧 [ClientFactory] STEP III: Getting ADMIN client`);
         return this.getAdminClient();
 
       case ClientType.SERVER:
-        console.log(`🔧 [ClientFactory] STEP III: Getting SERVER client`);
         return this.getServerClient();
 
       case ClientType.CLIENT:
-        console.log(`🔧 [ClientFactory] STEP III: Getting CLIENT client`);
         return this.getBrowserClient();
 
       default:
@@ -114,14 +109,9 @@ export class DatabaseClientFactory {
    * Use cases: Scripts, API routes, webhooks, background jobs
    */
   static getAdminClient(): SupabaseClient {
-    console.log(`🔧 [ClientFactory] STEP IV: Checking if admin client exists`);
     if (!this.adminClient) {
-      console.log(`🔧 [ClientFactory] STEP V: Creating new admin client`);
       this.adminClient = createSecretClient();
       console.log('🔑 Using ADMIN client (full access)');
-      console.log(`🔧 [ClientFactory] STEP VI: Admin client created successfully`);
-    } else {
-      console.log(`🔧 [ClientFactory] STEP V: Reusing existing admin client`);
     }
     return this.adminClient;
   }

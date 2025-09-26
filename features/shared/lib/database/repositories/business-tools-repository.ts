@@ -63,48 +63,29 @@ export class BusinessToolsRepository extends BaseRepository<BusinessTool> {
   async getActiveToolNamesForBusiness(businessId: string): Promise<string[]> {
     const startTime = Date.now();
 
-    // Add timeout protection to prevent webhook hanging
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
-        reject(new Error(`getActiveToolNamesForBusiness timed out after 10 seconds for business ${businessId}`));
-      }, 10000); // 10 second timeout
-    });
-
     try {
-      console.log(`🔧 [BusinessTools] STEP 1: Starting getActiveToolNamesForBusiness for ${businessId}`);
-
       sentry.addBreadcrumb('Getting active tool names for business', 'business-tools', {
         businessId,
         operation: 'getActiveToolNamesForBusiness'
       });
 
-      console.log(`🔧 [BusinessTools] STEP 2: About to call this.getClient()`);
-      const client = await Promise.race([this.getClient(), timeoutPromise]);
-      console.log(`🔧 [BusinessTools] STEP 3: Got client successfully`);
+      const client = await this.getClient();
 
-      console.log(`🔧 [BusinessTools] STEP 4: About to execute Supabase query`);
-      const queryPromise = client
+      const { data, error } = await client
         .from('business_tools')
         .select('tools(name)')
         .eq('business_id', businessId)
         .eq('active', true);
 
-      const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
-
-      console.log(`🔧 [BusinessTools] STEP 5: Query completed`);
       console.log(`🔍 [BusinessTools] Query result for business ${businessId}:`, { data, error });
 
       if (error) {
-        console.log(`🔧 [BusinessTools] STEP 6: Query had error: ${error.message}`);
         throw new Error(`Failed to get active tool names: ${error.message}`);
       }
 
-      console.log(`🔧 [BusinessTools] STEP 7: Processing results`);
       const toolNames = (data as unknown as { tools: { name: string } }[] || [])
         .map((row) => row.tools?.name)
         .filter((name): name is string => Boolean(name));
-
-      console.log(`🔧 [BusinessTools] STEP 8: Processed ${toolNames.length} tool names: ${toolNames.join(', ')}`);
 
       sentry.addBreadcrumb('Active tool names retrieved successfully', 'business-tools', {
         businessId,
@@ -112,11 +93,9 @@ export class BusinessToolsRepository extends BaseRepository<BusinessTool> {
         duration: Date.now() - startTime
       });
 
-      console.log(`🔧 [BusinessTools] STEP 9: Returning tool names`);
       return toolNames;
 
     } catch (error) {
-      console.log(`🔧 [BusinessTools] STEP ERROR: Caught error:`, error);
       sentry.trackError(error as Error, {
         sessionId: 'business-tools-query',
         operation: 'getActiveToolNamesForBusiness',
