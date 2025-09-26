@@ -75,31 +75,52 @@ export class BusinessToolsRepository extends BaseRepository<BusinessTool> {
       const client = await this.getClient();
       console.log(`🔍 [BusinessTools] Got client successfully, about to execute query...`);
 
-      // Add timeout to the query
-      const queryPromise = client
-        .from('business_tools')
-        .select('tools(name)')
-        .eq('business_id', businessId)
-        .eq('active', true);
+      // Simplified query without JOIN to avoid hanging
+      console.log(`🔍 [BusinessTools] Using simplified query approach...`);
 
-      console.log(`🔍 [BusinessTools] Query created, executing...`);
-
-      const { data, error } = await Promise.race([
-        queryPromise,
+      const { data: businessToolsData, error: businessToolsError } = await Promise.race([
+        client
+          .from('business_tools')
+          .select('tool_id')
+          .eq('business_id', businessId)
+          .eq('active', true),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Query timeout after 10 seconds')), 10000)
+          setTimeout(() => reject(new Error('Business tools query timeout after 10 seconds')), 10000)
         )
       ]);
 
-      console.log(`🔍 [BusinessTools] Query completed for business ${businessId}:`, { data, error });
+      console.log(`🔍 [BusinessTools] Business tools query completed:`, { businessToolsData, businessToolsError });
 
-      if (error) {
-        throw new Error(`Failed to get active tool names: ${error.message}`);
+      if (businessToolsError) {
+        throw new Error(`Failed to get business tools: ${businessToolsError.message}`);
       }
 
-      const toolNames = (data as unknown as { tools: { name: string } }[] || [])
-        .map((row) => row.tools?.name)
-        .filter((name): name is string => Boolean(name));
+      if (!businessToolsData || businessToolsData.length === 0) {
+        console.log(`🔍 [BusinessTools] No active tools found for business ${businessId}`);
+        return [];
+      }
+
+      // Get tool names separately
+      const toolIds = businessToolsData.map((row: { tool_id: string }) => row.tool_id);
+      console.log(`🔍 [BusinessTools] Found tool IDs:`, toolIds);
+
+      const { data: toolsData, error: toolsError } = await Promise.race([
+        client
+          .from('tools')
+          .select('name')
+          .in('id', toolIds),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Tools query timeout after 10 seconds')), 10000)
+        )
+      ]);
+
+      console.log(`🔍 [BusinessTools] Tools query completed:`, { toolsData, toolsError });
+
+      if (toolsError) {
+        throw new Error(`Failed to get tool names: ${toolsError.message}`);
+      }
+
+      const toolNames = (toolsData || []).map((row: { name: string }) => row.name).filter(Boolean);
 
       sentry.addBreadcrumb('Active tool names retrieved successfully', 'business-tools', {
         businessId,
