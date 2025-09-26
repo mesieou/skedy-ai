@@ -77,6 +77,8 @@ export class BusinessToolsRepository extends BaseRepository<BusinessTool> {
         .eq('business_id', businessId)
         .eq('active', true);
 
+      console.log(`🔍 [BusinessTools] Query result for business ${businessId}:`, { data, error });
+
       if (error) {
         throw new Error(`Failed to get active tool names: ${error.message}`);
       }

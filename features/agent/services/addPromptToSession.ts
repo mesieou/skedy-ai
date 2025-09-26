@@ -31,8 +31,15 @@ export async function addPromptToSession(session: Session): Promise<void> {
     const businessToolsRepo = new BusinessToolsRepository();
     const serviceRepo = new ServiceRepository();
     // Get all active tool names for this business (for prompt reference)
-    const activeToolNames = await businessToolsRepo.getActiveToolNamesForBusiness(business.id);
-    console.log(`🤖 [GeneratePrompt] Active tool names: ${activeToolNames}`);
+    console.log(`🔧 [GeneratePrompt] Calling getActiveToolNamesForBusiness for business: ${business.id}`);
+    let activeToolNames: string[] = [];
+    try {
+      activeToolNames = await businessToolsRepo.getActiveToolNamesForBusiness(business.id);
+      console.log(`🤖 [GeneratePrompt] Active tool names retrieved: ${JSON.stringify(activeToolNames)}`);
+    } catch (error) {
+      console.error(`❌ [GeneratePrompt] Failed to get active tool names:`, error);
+      throw error; // Re-throw to see the full error
+    }
     // Get all service names for this business
     const services = await serviceRepo.findAll({}, { business_id: business.id });
     console.log(`🤖 [GeneratePrompt] Services: ${services}`);
