@@ -18,6 +18,7 @@ export async function addPromptToSession(session: Session): Promise<void> {
   try {
     const business = session.businessEntity;
     console.log(`🤖 [GeneratePrompt] Generating prompt for business: ${business.name} (${business.id})`);
+    console.log(`🔧 [GeneratePrompt] NEW CODE DEPLOYED - About to get active tool names...`);
 
     // Add breadcrumb
     sentry.addBreadcrumb(`Generating prompt`, 'prompt-generation', {

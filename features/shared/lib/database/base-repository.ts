@@ -5,7 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { DateUtils } from '../../utils/date-utils';
 
 export class BaseRepository<T extends BaseEntity> {
-  private clientType: ClientType;
+  protected clientType: ClientType;
 
   constructor(protected tableName: string, clientType?: ClientType) {
     this.clientType = clientType || ClientType.ADMIN;

@@ -70,10 +70,21 @@ export class SessionService {
             const twilioAccountSid = this.extractTwilioAccountSid(sipHeaders);
             assert(twilioAccountSid, 'Twilio Account SID not found in SIP headers');
 
-            business = await businessRepository.findOne({
+            // Find businesses by Twilio Account SID and category
+            // Use findAll and take the first one to handle potential duplicates gracefully
+            const businesses = await businessRepository.findAll({}, {
               twilio_account_sid: twilioAccountSid,
               business_category: 'removalist'
             });
+
+            if (businesses.length > 0) {
+              business = businesses[0]; // Take the first matching business
+              if (businesses.length > 1) {
+                console.warn(`⚠️ [SessionService] Found ${businesses.length} businesses with Twilio SID ${twilioAccountSid}. Using first one: ${business.name}`);
+              }
+            } else {
+              business = null;
+            }
           }
 
           customer = await userRepository.findOne({ phone_number: phoneNumber });
@@ -185,7 +196,8 @@ export class SessionService {
 
         const { BusinessRepository } = await import('@/features/shared/lib/database/repositories/business-repository');
         const businessRepository = new BusinessRepository();
-        return await businessRepository.findOne({ id: businessId });
+        const business = await businessRepository.findOne({ id: businessId });
+        return business;
       }
     } catch (error) {
       console.log('🔍 [SessionService] Demo choice lookup failed (normal for production calls):', error);
