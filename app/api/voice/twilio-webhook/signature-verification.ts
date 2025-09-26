@@ -23,6 +23,12 @@ export async function verifyWebhookSignature(
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY!
     });
+    console.log('🔍 OpenAI API Key:', process.env.OPENAI_API_KEY);
+    console.log('🔍 Webhook secret:', webhookSecret);
+    console.log('🔍 Signature:', signature);
+    console.log('🔍 Timestamp:', timestamp);
+    console.log('🔍 Webhook ID:', webhookId);
+    console.log('🔍 Body:', body);
 
     // Use OpenAI SDK's built-in webhook verification with all required headers
     await openai.webhooks.unwrap(
@@ -34,6 +40,7 @@ export async function verifyWebhookSignature(
       },
       webhookSecret
     );
+
 
     console.log('✅ Signature verification passed via OpenAI SDK');
     return true;
