@@ -3,7 +3,6 @@ import { verifyWebhookSignature } from './signature-verification';
 import { SessionService } from '@/features/agent/sessions/sessionService';
 import { handleCallEvent } from '@/features/agent/twilio/callRouter';
 import { sentry } from '@/features/shared/utils/sentryService';
-import { voiceRedisClient } from '@/features/agent/sessions/redisClient';
 import assert from 'assert';
 
 // Define WebhookEvent locally for type safety
@@ -22,16 +21,6 @@ export interface WebhookEvent {
   };
 }
 
-// Helper function to check if this is a demo call from website
-async function checkIfDemoCall(): Promise<boolean> {
-  try {
-    const demoChoice = await voiceRedisClient.get('demo_choice:demo-user');
-    return !!demoChoice; // Returns true if there's a stored demo choice
-  } catch (error) {
-    console.log('🔍 [Webhook] Demo choice check failed:', error);
-    return false;
-  }
-}
 
 //Post request
 export async function POST(request: NextRequest) {
@@ -68,15 +57,6 @@ export async function POST(request: NextRequest) {
     assert(verified, 'Invalid webhook signature');
 
     console.log(`📞 Incoming call event: ${callId} (${event.type})`);
-
-    // Check if this is a demo website phone call
-    if (event.type === 'realtime.call.incoming') {
-      const isDemoCall = await checkIfDemoCall();
-      if (isDemoCall) {
-        event.type = 'demo.phone.call';
-        console.log(`🎭 [Webhook] Detected demo website phone call, switching event type`);
-      }
-    }
 
     // 2️⃣ Get or create session via SessionManager
     const session = await SessionService.createOrGet(callId, event);

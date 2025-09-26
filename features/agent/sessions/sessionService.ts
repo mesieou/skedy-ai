@@ -51,37 +51,33 @@ export class SessionService {
           phoneNumber = ''; // No phone for demo
           customer = undefined; // No customer for demo
 
-        } else if (event.type === 'demo.phone.call') {
-
-          // Demo website phone call: business choice stored in Redis
-          console.log('📞 [SessionService] Demo website phone call - checking stored choice...');
-          business = await this.tryFindDemoBusinessChoice();
-          assert(business, 'Business not found for demo phone call - no stored choice');
-
+        } else if (event.type === 'realtime.call.incoming') {
+          // All Twilio calls - check if demo from website first
           const sipHeaders = event.data.sip_headers;
           assert(sipHeaders, 'sip_headers required for Twilio sessions');
 
           phoneNumber = this.extractPhoneNumber(sipHeaders);
-          customer = phoneNumber ? await userRepository.findOne({ phone_number: phoneNumber }) : undefined;
 
-        } else if (event.type === 'realtime.call.incoming') {
-          // Real phone calls: use removalist business (simple approach)
-          const sipHeaders = event.data.sip_headers;
-          assert(sipHeaders, 'sip_headers required for Twilio sessions');
+          // Check for demo business choice first
+          const demoBusinessChoice = await this.tryFindDemoBusinessChoice();
 
-          const twilioAccountSid = this.extractTwilioAccountSid(sipHeaders);
-          assert(twilioAccountSid, 'Twilio Account SID not found in SIP headers');
+          if (demoBusinessChoice) {
+            // Demo call from website - use stored business choice
+            console.log('🎭 [SessionService] Demo phone call from website detected');
+            business = demoBusinessChoice;
+          } else {
+            // Real phone call - find by SID + removalist category
+            const twilioAccountSid = this.extractTwilioAccountSid(sipHeaders);
+            assert(twilioAccountSid, 'Twilio Account SID not found in SIP headers');
 
-          // Simple: Find removalist business by phone number
-          //temporary fix for demo phone call
-          const phoneNumber = this.extractPhoneNumber(sipHeaders);
-          business = await businessRepository.findOne({
-            twilio_account_sid: twilioAccountSid,
-            business_category: 'removalist'
-          });
+            business = await businessRepository.findOne({
+              twilio_account_sid: twilioAccountSid,
+              business_category: 'removalist'
+            });
+          }
 
           customer = await userRepository.findOne({ phone_number: phoneNumber });
-          assert(business, 'Business not found for phone call-temporary fix for demo phone call');
+          assert(business, 'Business not found for phone call');
 
         } else {
           // Other event types (future expansion)
