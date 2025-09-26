@@ -74,9 +74,9 @@ export class SessionService {
 
           // Simple: Find removalist business by phone number
           //temporary fix for demo phone call
-          const calledNumber = this.extractPhoneNumber(sipHeaders);
+          const phoneNumber = this.extractPhoneNumber(sipHeaders);
           business = await businessRepository.findOne({
-            phone_number: calledNumber || '+61468002102',
+            twilio_account_sid: twilioAccountSid,
             business_category: 'removalist'
           });
 
