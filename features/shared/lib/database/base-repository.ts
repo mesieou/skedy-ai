@@ -12,8 +12,11 @@ export class BaseRepository<T extends BaseEntity> {
   }
 
   protected async getClient(): Promise<SupabaseClient> {
+    console.log(`🔧 [BaseRepository] STEP A: Getting client with type: ${this.clientType}`);
     // Explicitly pass client type to override auto-detection
-    return await DatabaseClientFactory.getClient({ type: this.clientType });
+    const client = await DatabaseClientFactory.getClient({ type: this.clientType });
+    console.log(`🔧 [BaseRepository] STEP B: Client obtained successfully`);
+    return client;
   }
 
   // Find one record by any conditions
