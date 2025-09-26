@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { voiceRedisClient } from '@/features/agent/sessions/redisClient';
+import { voiceRedisClient } from '@/features/agent/sessions/unifiedRedisClient';
 
 export async function POST(request: NextRequest) {
   try {

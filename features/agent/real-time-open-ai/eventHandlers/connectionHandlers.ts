@@ -4,8 +4,8 @@ import { webSocketPool } from "../../sessions/websocketPool";
 import { attachWSHandlers } from "../coordinateWsEvents";
 import { updateOpenAiSession } from "./updateOpenAiSession";
 import { requestInitialResponse } from "./requestInitialResponse";
-// Removed broken import to demo services
 import { persistSessionAndInteractions } from "./persistSessionAndInteractions";
+import { redisSessionManager } from "../../sessions/redisClient";
 import WebSocket from "ws";
 import assert from "assert";
 
@@ -194,7 +194,38 @@ export async function handleWebSocketClose(
       // Don't throw - connection is already closed, just log the error
     }
 
-    // The session sync manager will automatically persist these changes to Redis
+    // Clean up Redis session data after successful database persistence
+    try {
+      console.log(`🧹 [ConnectionHandlers] Cleaning up Redis session data...`);
+
+      await redisSessionManager.deleteSession(session.id, session.businessId);
+
+      console.log(`✅ [ConnectionHandlers] Redis session data cleaned up successfully`);
+
+      // Add breadcrumb for Redis cleanup
+      sentry.addBreadcrumb(`Redis session cleanup completed`, 'redis-cleanup', {
+        sessionId: session.id,
+        businessId: session.businessId
+      });
+
+    } catch (redisCleanupError) {
+      console.error(`❌ [ConnectionHandlers] Failed to cleanup Redis session data:`, redisCleanupError);
+
+      // Track Redis cleanup error in Sentry
+      sentry.trackError(redisCleanupError as Error, {
+        sessionId: session.id,
+        businessId: session.businessId,
+        operation: 'websocket_close_redis_cleanup',
+        metadata: {
+          closeCode: code,
+          closeReason: reason,
+          sessionDuration: session.durationInMinutes || 0
+        }
+      });
+
+      // Don't throw - Redis cleanup failure shouldn't crash the close handler
+    }
+
     console.log(`📊 [ConnectionHandlers] Session ${session.id} ended after ${session.durationInMinutes || 0} minutes`);
 
   } catch (error) {

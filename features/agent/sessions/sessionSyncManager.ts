@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import type { Session } from './session';
 import { SessionManager } from './sessionManager';
-import { RedisSessionManager } from './redisSessionManager';
+import { redisSessionManager } from './redisClient';
 import { sentry } from '@/features/shared/utils/sentryService';
 
 /**
@@ -17,7 +17,7 @@ export class SessionSyncManager extends EventEmitter {
 
   constructor(
     private memoryManager: SessionManager,
-    private redisManager: RedisSessionManager
+    private redisManager: typeof redisSessionManager
   ) {
     super();
     this.setupSessionRecovery();
@@ -282,5 +282,4 @@ export class SessionSyncManager extends EventEmitter {
 
 // Create and export the session manager
 const memoryManager = new SessionManager();
-const redisManager = new RedisSessionManager();
-export const sessionManager = new SessionSyncManager(memoryManager, redisManager);
+export const sessionManager = new SessionSyncManager(memoryManager, redisSessionManager);
