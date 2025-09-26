@@ -6,6 +6,8 @@ import { UserRepository } from "@/features/shared/lib/database/repositories/user
 import { TokenSpent } from "../types";
 import { WebhookEvent } from "@/app/api/voice/twilio-webhook/route";
 import { sentry } from "@/features/shared/utils/sentryService";
+import { Business } from "@/features/shared/lib/database/types/business";
+import { BusinessCategory } from "@/features/shared/lib/database/types/business";
 import assert from "assert";
 
 export class SessionService {
@@ -39,7 +41,7 @@ export class SessionService {
         let business, customer, phoneNumber;
 
         if (event.type === 'demo.session.create') {
-          // Demo sessions: require business_id in event data
+          // Demo website chat: business_id provided in event data
           const businessId = event.data.business_id as string;
           assert(businessId, 'business_id required for demo sessions');
 
@@ -49,8 +51,21 @@ export class SessionService {
           phoneNumber = ''; // No phone for demo
           customer = undefined; // No customer for demo
 
-        } else {
-          // Twilio sessions: require SIP headers
+        } else if (event.type === 'demo.phone.call') {
+
+          // Demo website phone call: business choice stored in Redis
+          console.log('📞 [SessionService] Demo website phone call - checking stored choice...');
+          business = await this.tryFindDemoBusinessChoice();
+          assert(business, 'Business not found for demo phone call - no stored choice');
+
+          const sipHeaders = event.data.sip_headers;
+          assert(sipHeaders, 'sip_headers required for Twilio sessions');
+
+          phoneNumber = this.extractPhoneNumber(sipHeaders);
+          customer = phoneNumber ? await userRepository.findOne({ phone_number: phoneNumber }) : undefined;
+
+        } else if (event.type === 'realtime.call.incoming') {
+          // Real phone calls: find business by Twilio Account SID
           const sipHeaders = event.data.sip_headers;
           assert(sipHeaders, 'sip_headers required for Twilio sessions');
 
@@ -59,12 +74,14 @@ export class SessionService {
 
           phoneNumber = this.extractPhoneNumber(sipHeaders);
 
-          [business, customer] = await Promise.all([
-            businessRepository.findByTwilioAccountSid(twilioAccountSid),
-            userRepository.findOne({ phone_number: phoneNumber })
-          ]);
+          business = await businessRepository.findByTwilioAccountSid(twilioAccountSid);
+          customer = await userRepository.findOne({ phone_number: phoneNumber });
 
           assert(business, `Business not found for Twilio Account SID: ${twilioAccountSid}`);
+
+        } else {
+          // Other event types (future expansion)
+          throw new Error(`Unsupported event type: ${event.type}`);
         }
 
         // Assign API key index from pool when creating session
@@ -151,6 +168,27 @@ export class SessionService {
           return phoneMatch[1].replace(/[\s\-\(\)]/g, ''); // Clean up formatting
         }
       }
+    }
+    return null;
+  }
+
+  private static async tryFindDemoBusinessChoice(): Promise<Business | null> {
+    try {
+      // Simple demo fallback - try to get stored business choice
+      const { voiceRedisClient } = await import('../sessions/redisClient');
+      const businessType = await voiceRedisClient.get('demo_choice:demo-user');
+
+      if (businessType) {
+        console.log(`🎯 [SessionService] Found demo business choice: ${businessType}`);
+        const { getBusinessIdByCategory } = await import('@/features/shared/lib/demo-business-config');
+        const { businessId } = getBusinessIdByCategory(businessType as BusinessCategory);
+
+        const { BusinessRepository } = await import('@/features/shared/lib/database/repositories/business-repository');
+        const businessRepository = new BusinessRepository();
+        return await businessRepository.findOne({ id: businessId });
+      }
+    } catch (error) {
+      console.log('🔍 [SessionService] Demo choice lookup failed (normal for production calls):', error);
     }
     return null;
   }

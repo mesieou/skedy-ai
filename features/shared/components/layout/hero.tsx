@@ -7,6 +7,7 @@ import { WaitlistModal } from "../sections/waitlist-modal";
 import { Button } from "../ui/button";
 import { Play, Users } from "lucide-react";
 import { DemoModal } from "@/features/demo";
+import * as Sentry from "@sentry/nextjs";
 import dynamic from "next/dynamic";
 
 // Dynamic import to prevent server-side compilation issues
@@ -70,7 +71,39 @@ export function Hero() {
       setDemoSessionData(sessionData);
       console.log('✅ [Hero] Demo activated - DemoHero will handle connection!');
     } else {
-      alert(`Phone demo for ${businessType} coming soon!`);
+      // Phone demo - store business choice and redirect to single number
+      try {
+        // Store business choice before calling
+        await fetch('/api/demo/store-business-choice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            businessType,
+            userIP: 'demo-user' // Simple identifier
+          })
+        });
+
+        console.log('📞 [Hero] Stored business choice, redirecting to phone:', { businessType });
+        window.location.href = `tel:+61468002102`;
+      } catch (error) {
+        console.error('Failed to store business choice:', error);
+
+        // Track error in frontend Sentry
+        Sentry.captureException(error, {
+          tags: {
+            operation: 'store_business_choice',
+            userAction: 'call_now_button'
+          },
+          extra: {
+            businessType,
+            component: 'hero'
+          }
+        });
+
+        // Fallback: just call anyway
+        window.location.href = `tel:+61468002102`;
+      }
+      setIsDemoModalOpen(false);
     }
   };
 
