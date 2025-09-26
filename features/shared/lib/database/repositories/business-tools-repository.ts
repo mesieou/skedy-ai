@@ -85,7 +85,7 @@ export class BusinessToolsRepository extends BaseRepository<BusinessTool> {
           .eq('business_id', businessId)
           .eq('active', true),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Business tools query timeout after 10 seconds')), 10000)
+          setTimeout(() => reject(new Error('Business tools query timeout after 2 seconds')), 2000)
         )
       ]);
 
@@ -104,13 +104,30 @@ export class BusinessToolsRepository extends BaseRepository<BusinessTool> {
       const toolIds = businessToolsData.map((row: { tool_id: string }) => row.tool_id);
       console.log(`🔍 [BusinessTools] Found tool IDs:`, toolIds);
 
+      console.log(`🔍 [BusinessTools] About to query tools table with ${toolIds.length} IDs...`);
+
+      // Try a simple query first to see if tools table is accessible
+      try {
+        console.log(`🔍 [BusinessTools] Testing tools table access...`);
+        const { data: testData, error: testError } = await Promise.race([
+          client.from('tools').select('name').limit(1),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Test query timeout after 2 seconds')), 2000)
+          )
+        ]);
+        console.log(`🔍 [BusinessTools] Tools table test result:`, { testData, testError });
+      } catch (testErr) {
+        console.error(`❌ [BusinessTools] Tools table test failed:`, testErr);
+      }
+
+      // Now try the actual query with shorter timeout
       const { data: toolsData, error: toolsError } = await Promise.race([
         client
           .from('tools')
           .select('name')
           .in('id', toolIds),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Tools query timeout after 10 seconds')), 10000)
+          setTimeout(() => reject(new Error('Tools query timeout after 2 seconds')), 2000)
         )
       ]);
 
