@@ -12,6 +12,7 @@ export async function handleCallEvent(session: Session, event: WebhookEvent) {
   try {
     switch(event.type) {
       case 'realtime.call.incoming':
+      case 'demo.phone.call':
         // Generate prompt with all loaded tools
         await addPromptToSession(session);
         // Add initial requested tools

@@ -110,29 +110,10 @@ export class DatabaseClientFactory {
    */
   static getAdminClient(): SupabaseClient {
     if (!this.adminClient) {
-      // DETAILED LOGGING FOR ADMIN CLIENT
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const serviceKey = process.env.SUPABASE_SECRET_KEY;
-
-      console.log('🔑 [ADMIN CLIENT] Creating admin client with:', {
-        hasUrl: !!supabaseUrl,
-        urlPrefix: supabaseUrl?.substring(0, 30) + '...',
-        hasServiceKey: !!serviceKey,
-        serviceKeyPrefix: serviceKey?.substring(0, 15) + '...',
-        serviceKeyLength: serviceKey?.length,
-        serviceKeyType: serviceKey?.startsWith('eyJ') ? 'JWT_TOKEN' : 'CUSTOM_SECRET',
-        environment: this.isProduction() ? 'PRODUCTION' : 'DEVELOPMENT'
-      });
 
       this.adminClient = createSecretClient();
       console.log('🔑 Using ADMIN client (full access)');
 
-      // Validate service key format
-      if (serviceKey && !serviceKey.startsWith('eyJ')) {
-        console.warn('⚠️ SUPABASE_SECRET_KEY is CUSTOM SECRET, not JWT service_role token');
-      } else if (serviceKey?.startsWith('eyJ')) {
-        console.log('✅ SUPABASE_SECRET_KEY is JWT service_role token');
-      }
     }
     return this.adminClient;
   }
