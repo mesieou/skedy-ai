@@ -69,15 +69,29 @@ export class BusinessToolsRepository extends BaseRepository<BusinessTool> {
         operation: 'getActiveToolNamesForBusiness'
       });
 
+      console.log(`🔍 [BusinessTools] About to get database client...`);
+      console.log(`🔍 [BusinessTools] Business ID: ${businessId}`)
+    ;
       const client = await this.getClient();
+      console.log(`🔍 [BusinessTools] Got client successfully, about to execute query...`);
 
-      const { data, error } = await client
+      // Add timeout to the query
+      const queryPromise = client
         .from('business_tools')
         .select('tools(name)')
         .eq('business_id', businessId)
         .eq('active', true);
 
-      console.log(`🔍 [BusinessTools] Query result for business ${businessId}:`, { data, error });
+      console.log(`🔍 [BusinessTools] Query created, executing...`);
+
+      const { data, error } = await Promise.race([
+        queryPromise,
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Query timeout after 10 seconds')), 10000)
+        )
+      ]);
+
+      console.log(`🔍 [BusinessTools] Query completed for business ${businessId}:`, { data, error });
 
       if (error) {
         throw new Error(`Failed to get active tool names: ${error.message}`);
