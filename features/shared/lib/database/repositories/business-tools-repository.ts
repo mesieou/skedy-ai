@@ -72,7 +72,7 @@ export class BusinessToolsRepository extends BaseRepository<BusinessTool> {
       console.log(`🔍 [BusinessTools] About to get database client...`);
       console.log(`🔍 [BusinessTools] Business ID: ${businessId}`)
     ;
-      const client = await this.getClient();
+      // const client = await this.getClient();
       console.log(`🔍 [BusinessTools] Got client successfully, about to execute query...`);
 
       // Simplified query without JOIN to avoid hanging
