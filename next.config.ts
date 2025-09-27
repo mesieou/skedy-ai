@@ -2,14 +2,8 @@ import {withSentryConfig} from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Enable standalone output for Docker deployment
-  output: 'standalone',
-
-  // Optimize for production
-  experimental: {
-    // Enable server components optimization
-    serverComponentsExternalPackages: ['@sentry/nextjs'],
-  },
+  // Optimize for production - exclude packages that shouldn't be bundled
+  serverExternalPackages: ['@sentry/nextjs', 'ws', 'openai'],
 
   // Configure headers for WebRTC and WebSocket support
   async headers() {

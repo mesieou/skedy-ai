@@ -90,7 +90,7 @@ jobs:
         SENTRY_API_KEY=${{ secrets.SENTRY_API_KEY }}
         ENVEOF
 
-        # Build new Docker image
+        # Build new Docker image (GitHub Actions runs on Linux x86_64 natively)
         echo "🔨 Building Docker image..."
         docker build -t $IMAGE_NAME:$IMAGE_TAG .
         docker tag $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:latest

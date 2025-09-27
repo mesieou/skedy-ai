@@ -1,6 +1,4 @@
-import { EnvVarWarning } from "@/features/auth/components/env-var-warning";
 import { AuthButton } from "@/features/auth/components/auth-button";
-import { hasEnvVars } from "@/features/shared/utils/utils";
 import { NavbarClient } from "./navbar-client";
 
 const menuItems = [
@@ -14,7 +12,7 @@ export async function Navbar() {
   return (
     <NavbarClient
       menuItems={menuItems}
-      authSection={!hasEnvVars ? <EnvVarWarning /> : <AuthButton />}
+      authSection={<AuthButton />}
     />
   );
 }

@@ -1,6 +1,6 @@
 import { sessionManager } from "./sessionSyncManager";
 import { Session } from "./session";
-import { webSocketPool } from "./websocketPool";
+// Dynamic import to avoid build-time evaluation
 import { BusinessRepository } from "@/features/shared/lib/database/repositories/business-repository";
 import { UserRepository } from "@/features/shared/lib/database/repositories/user-repository";
 import { TokenSpent } from "../types";
@@ -96,6 +96,7 @@ export class SessionService {
         }
 
         // Assign API key index from pool when creating session
+        const { webSocketPool } = await import("./websocketPool");
         const poolAssignment = webSocketPool.assign();
         assignedApiKeyIndex = poolAssignment.index;
 
@@ -154,6 +155,7 @@ export class SessionService {
       });
       // Only release API key if it was actually assigned
       if (typeof assignedApiKeyIndex === 'number') {
+        const { webSocketPool } = await import("./websocketPool");
         webSocketPool.release(assignedApiKeyIndex);
         console.log(`🔄 [SessionService] Released API key ${assignedApiKeyIndex + 1} due to session creation failure`);
       }

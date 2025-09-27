@@ -1,6 +1,6 @@
 import { Session } from "../../sessions/session";
 import { sentry } from "@/features/shared/utils/sentryService";
-import { webSocketPool } from "../../sessions/websocketPool";
+// Dynamic import to avoid build-time evaluation
 import { attachWSHandlers } from "../coordinateWsEvents";
 import { updateOpenAiSession } from "./updateOpenAiSession";
 import { requestInitialResponse } from "./requestInitialResponse";
@@ -22,6 +22,7 @@ const WEBSOCKET_CONFIG = {
  */
 export async function createAndConnectWebSocket(session: Session): Promise<WebSocket> {
   const startTime = Date.now();
+  const { webSocketPool } = await import("../../sessions/websocketPool");
   const apiKey = webSocketPool.getApiKeyByIndex(session.assignedApiKeyIndex);
 
   try {
@@ -138,6 +139,7 @@ export async function handleWebSocketClose(
     // Release API key back to pool
     const apiKeyIndex = session.assignedApiKeyIndex;
     if (typeof apiKeyIndex === 'number') {
+      const { webSocketPool } = await import("../../sessions/websocketPool");
       webSocketPool.release(apiKeyIndex);
       console.log(`🔄 [ConnectionHandlers] Released API key ${apiKeyIndex + 1} back to pool`);
     }

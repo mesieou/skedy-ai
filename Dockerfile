@@ -1,57 +1,67 @@
-# Skedy AI - Production Dockerfile
-# Multi-stage build for optimal image size and security
-
+# ============================
 # Stage 1: Dependencies
+# ============================
 FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy package files
+# Install dependencies
 COPY package.json package-lock.json* ./
-RUN npm ci --only=production
+RUN npm ci
 
+# ============================
 # Stage 2: Builder
+# ============================
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copy dependencies from deps stage
+# Copy node_modules from deps
 COPY --from=deps /app/node_modules ./node_modules
+
+# Copy the app source
 COPY . .
 
-# Set build-time environment variables
-ENV NEXT_TELEMETRY_DISABLED 1
-ENV NODE_ENV production
+# Build-time envs
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
 
-# Build the application
+# Build Next.js
 RUN npm run build
 
-# Stage 3: Runner (Production)
+# ============================
+# Stage 3: Runner
+# ============================
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-# Create non-root user for security
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Add curl for healthcheck
+RUN apk add --no-cache curl
 
-# Set production environment
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+# Security: non-root user
+RUN addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 nextjs
 
-# Copy built application
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Copy built application and dependencies
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/package.json ./package.json
 
-# Set correct permissions
+# Copy node_modules for runtime dependencies (includes ws, openai, etc.)
+COPY --from=deps /app/node_modules ./node_modules
+
+# Set permissions
 RUN chown -R nextjs:nodejs /app
 USER nextjs
 
-# Expose port
+# Expose app port
 EXPOSE 3000
 
-# Health check for container monitoring
+# Healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:3000/api/health || exit 1
 
-# Start the application
-CMD ["node", "server.js"]
+# Start app (use standalone entrypoint)
+CMD ["npm", "start"]

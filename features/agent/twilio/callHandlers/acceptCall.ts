@@ -7,7 +7,7 @@
 
 import axios from "axios";
 import { sentry } from "@/features/shared/utils/sentryService";
-import { webSocketPool } from "../../sessions/websocketPool";
+// Dynamic import to avoid build-time evaluation
 import type { Session } from "../../sessions/session";
 import assert from "assert";
 import { createWebSocketSessionConfig, OPENAI_REALTIME_CONFIG } from "@/features/shared/lib/openai-realtime-config";
@@ -31,6 +31,7 @@ interface CallAcceptResponse {
  */
 export async function acceptCall(session: Session): Promise<CallAcceptResponse> {
    // Get API key by index from pool
+  const { webSocketPool } = await import("../../sessions/websocketPool");
   const apiKey = webSocketPool.getApiKeyByIndex(session.assignedApiKeyIndex);
   try {
     console.log(`📞 [AcceptCall] Accepting call for session: ${session.id}`);

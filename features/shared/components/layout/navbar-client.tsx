@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
+import { ThemeSwitcher } from "./theme-switcher";
 
 interface NavbarClientProps {
   menuItems: Array<{ label: string; href: string }>;
@@ -111,6 +112,7 @@ export function NavbarClient({ menuItems, authSection }: NavbarClientProps) {
               </a>
             </div>
 
+            <ThemeSwitcher />
             {authSection}
           </div>
 
@@ -174,7 +176,8 @@ export function NavbarClient({ menuItems, authSection }: NavbarClientProps) {
             </div>
 
             {/* Mobile Auth */}
-            <div className="pt-4 border-t border-primary/30">
+            <div className="pt-4 border-t border-primary/30 flex items-center justify-between">
+              <ThemeSwitcher />
               {authSection}
             </div>
           </div>
