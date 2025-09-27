@@ -149,7 +149,7 @@ export function Hero() {
           />
         </div>
       ) : (
-        <div className="relative flex flex-col gap-8 items-center min-h-screen justify-center overflow-hidden bg-transparent pt-20">
+        <div className="relative flex flex-col gap-8 items-center min-h-screen justify-center overflow-hidden bg-transparent pt-8">
           <FloatingTradieElements />
           <div className="relative z-20 flex flex-col gap-8 items-center">
             <HeroContent />

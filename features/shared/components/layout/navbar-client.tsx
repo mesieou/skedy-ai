@@ -14,9 +14,10 @@ export function NavbarClient({ menuItems, authSection }: NavbarClientProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 futuristic-card border-b-0 rounded-none accent-lines">
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16 lg:h-20">
+    <>
+      <nav className="fixed top-0 left-0 right-0 z-50">
+        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16 lg:h-20">
 
           {/* Logo */}
           <Link href="/" className="flex items-center group" aria-label="Home">
@@ -135,7 +136,7 @@ export function NavbarClient({ menuItems, authSection }: NavbarClientProps) {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden futuristic-card rounded-none border-t border-primary/30">
+        <div className="md:hidden rounded-none">
           <div className="px-6 py-6 space-y-4">
             {/* Navigation Items */}
             {menuItems.map((item) => (
@@ -150,7 +151,7 @@ export function NavbarClient({ menuItems, authSection }: NavbarClientProps) {
             ))}
 
             {/* Mobile Social Icons */}
-            <div className="flex items-center justify-center gap-6 pt-4 border-t border-white/10">
+            <div className="flex items-center justify-center gap-6 pt-4">
               <a
                 href="https://www.instagram.com/skedy.io"
                 target="_blank"
@@ -176,7 +177,7 @@ export function NavbarClient({ menuItems, authSection }: NavbarClientProps) {
             </div>
 
             {/* Mobile Auth */}
-            <div className="pt-4 border-t border-primary/30 flex items-center justify-between">
+            <div className="pt-4 flex items-center justify-between">
               <ThemeSwitcher />
               {authSection}
             </div>
@@ -184,5 +185,6 @@ export function NavbarClient({ menuItems, authSection }: NavbarClientProps) {
         </div>
       )}
     </nav>
+    </>
   );
 }

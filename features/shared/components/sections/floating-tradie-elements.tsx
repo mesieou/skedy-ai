@@ -60,7 +60,6 @@ export const FloatingTradieElements = () => {
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5" />
 
       {/* Futuristic floating data displays */}
       {elements.map((element, index) => {

@@ -21,7 +21,7 @@ const HeroContent = () => {
         <span className="block mb-1 sm:mb-3">
           handles your
         </span>
-        <span className="text-foreground bg-gradient-to-r from-secondary to-accent rounded-lg px-2 py-1 sm:px-3 sm:py-2 inline-block min-w-[200px] sm:min-w-[320px] text-2xl sm:text-4xl md:text-5xl lg:text-7xl shadow-lg shadow-secondary/30">
+        <span className="hero-rotating-text rounded-lg px-2 py-1 sm:px-3 sm:py-2 inline-block min-w-[200px] sm:min-w-[320px] text-2xl sm:text-4xl md:text-5xl lg:text-7xl shadow-lg shadow-secondary/30">
           <Typewriter
             words={words}
             loop={0}
@@ -34,7 +34,7 @@ const HeroContent = () => {
         </span>
       </h1>
 
-      <p className="text-base sm:text-lg md:text-xl text-white/80 mb-6 sm:mb-8 md:mb-10 max-w-3xl mx-auto px-4 leading-relaxed font-normal">
+      <p className="text-base sm:text-lg md:text-xl hero-subtitle mb-6 sm:mb-8 md:mb-10 max-w-3xl mx-auto px-4 leading-relaxed font-normal">
         Never miss another customer. Skedy answers every call, books every appointment, and grows your business 24/7.
       </p>
 
