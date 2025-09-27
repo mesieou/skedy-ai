@@ -19,54 +19,15 @@ export function NavbarClient({ menuItems, authSection }: NavbarClientProps) {
         <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16 lg:h-20">
 
-          {/* Logo */}
-          <Link href="/" className="flex items-center group" aria-label="Home">
-            <div className="relative flex items-center gap-3">
-              {/* AI Brain + Calendar Icon */}
-              <div className="relative w-10 h-10 lg:w-12 lg:h-12">
-                {/* Outer ring - represents 24/7 availability */}
-                <div className="absolute inset-0 border-2 border-primary/40 rounded-full">
-                  <div className="absolute top-0 left-1/2 w-1 h-1 bg-primary rounded-full transform -translate-x-1/2 -translate-y-1/2 animate-ping"></div>
-                  <div className="absolute top-1/4 right-0 w-1 h-1 bg-secondary rounded-full transform translate-x-1/2 -translate-y-1/2"></div>
-                  <div className="absolute bottom-1/4 left-0 w-1 h-1 bg-accent rounded-full transform -translate-x-1/2 translate-y-1/2"></div>
-                </div>
-
-                {/* Calendar grid inside */}
-                <div className="absolute inset-2 grid grid-cols-3 gap-0.5 p-1">
-                  <div className="bg-primary/60 rounded-sm"></div>
-                  <div className="bg-secondary/40 rounded-sm"></div>
-                  <div className="bg-accent/60 rounded-sm"></div>
-                  <div className="bg-secondary/60 rounded-sm"></div>
-                  <div className="bg-primary rounded-sm animate-pulse"></div>
-                  <div className="bg-accent/40 rounded-sm"></div>
-                  <div className="bg-accent/60 rounded-sm"></div>
-                  <div className="bg-primary/40 rounded-sm"></div>
-                  <div className="bg-secondary/60 rounded-sm"></div>
-                </div>
-              </div>
-
-              {/* Text logo */}
-              <div className="relative">
-                <div className="flex items-baseline">
-                  <span className="text-xl lg:text-2xl font-bold tracking-tight text-foreground glow-text group-hover:text-primary transition-colors duration-300">
-                    Skedy
-                  </span>
-                  <span className="ml-1 text-sm lg:text-base font-bold text-accent glow-text">
-                    AI
-                  </span>
-                  {/* Status indicator */}
-                  <div className="ml-2 flex items-center gap-1">
-                    <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse"></div>
-                    <span className="text-xs text-muted-foreground font-mono">ONLINE</span>
-                  </div>
-                </div>
-
-                {/* Data stream line */}
-                <div className="absolute -bottom-1 left-0 w-full h-px bg-gradient-to-r from-primary via-secondary to-accent opacity-60 group-hover:opacity-100 transition-opacity duration-300">
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary to-transparent animate-pulse"></div>
-                </div>
-              </div>
-            </div>
+          {/* Skedy Logo - PNG Image with Dark Theme Color Adaptation */}
+          <Link href="/" className="skedy-logo-image" aria-label="Skedy AI - Your Intelligent Scheduling Assistant">
+            <img
+              src="/SkedyLogo.png"
+              alt="Skedy AI Logo"
+              className="logo-image"
+              width="200"
+              height="60"
+            />
           </Link>
 
           {/* Center Navigation - Desktop */}

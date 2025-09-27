@@ -167,7 +167,7 @@ export function Hero() {
               <Button
                 variant="outline"
                 size="lg"
-                className="w-full sm:w-auto border border-primary/30 text-foreground hover:bg-primary/10 px-6 sm:px-8 py-3 backdrop-blur-sm text-sm sm:text-base transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 glow-text"
+                className="w-full sm:w-auto btn-futuristic-outline px-6 sm:px-8 py-3 text-sm sm:text-base"
                 onClick={() => setIsWaitlistOpen(true)}
               >
                 <Users className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
