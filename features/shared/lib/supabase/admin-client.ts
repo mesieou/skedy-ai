@@ -37,7 +37,7 @@ export function createSecretClient() {
     hasServiceKey: !!serviceKey,
     serviceKeyLength: serviceKey.length,
     serviceKeyPrefix: serviceKey.substring(0, 10) + '...',
-    environment: process.env.VERCEL_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development'
   });
 
   // Validate service key format

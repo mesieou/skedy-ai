@@ -172,7 +172,7 @@ export class DatabaseClientFactory {
   }
 
   static isProduction(): boolean {
-    return process.env.ENVIRONMENT === 'production';
+    return process.env.NODE_ENV === 'production';
   }
 
   static isDevelopment(): boolean {

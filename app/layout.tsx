@@ -3,8 +3,8 @@ import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 
-const defaultUrl = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
+const defaultUrl = process.env.NODE_ENV === 'production'
+  ? "https://skedy.ai"
   : "http://localhost:3000";
 
 export const metadata: Metadata = {

@@ -1,0 +1,158 @@
+name: Deploy Skedy AI to Kamatera
+
+on:
+  push:
+    branches: [ main ]  # Changed from master to main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: kamatera
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup SSH
+      run: |
+        mkdir -p ~/.ssh
+        printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+        chmod 644 ~/.ssh/known_hosts
+        eval "$(ssh-agent -s)"
+        ssh-add ~/.ssh/deploy_key
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+
+    - name: Deploy Skedy AI to Kamatera (Zero-Downtime)
+      run: |
+        IMAGE_TAG=$(date +%Y%m%d%H%M)
+        echo "🔖 Using image tag: $IMAGE_TAG"
+
+        ssh root@45.151.154.42 bash -s <<'EOF'
+        set -e
+
+        APP_DIR="/root/skedy-ai"
+        CONTAINER_NAME="skedy-ai"
+        IMAGE_NAME="skedy-ai"
+
+        # Pull latest code
+        if [ -d "$APP_DIR" ]; then
+          cd $APP_DIR
+          git reset --hard
+          git pull origin main
+        else
+          git clone https://github.com/mesieou/skedy-ai.git $APP_DIR
+          cd $APP_DIR
+        fi
+
+        # Create production environment file
+        cat > .env.production << 'ENVEOF'
+        NODE_ENV=production
+        NEXT_TELEMETRY_DISABLED=1
+
+        # Database - Supabase
+        NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY }}
+        SUPABASE_SECRET_KEY=${{ secrets.SUPABASE_SECRET_KEY }}
+
+        # Redis
+        VOICE_REDIS_HOST=${{ secrets.VOICE_REDIS_HOST }}
+        VOICE_REDIS_PORT=${{ secrets.VOICE_REDIS_PORT }}
+        VOICE_REDIS_DB=${{ secrets.VOICE_REDIS_DB }}
+        VOICE_REDIS_PASSWORD=${{ secrets.VOICE_REDIS_PASSWORD }}
+
+        # AI Services
+        OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+        OPENAI_WEBHOOK_SECRET=${{ secrets.OPENAI_WEBHOOK_SECRET }}
+
+        # Communication
+        TWILIO_ACCOUNT_SID=${{ secrets.TWILIO_ACCOUNT_SID }}
+        TWILIO_AUTH_TOKEN=${{ secrets.TWILIO_AUTH_TOKEN }}
+        TWILIO_PHONE_NUMBER=${{ secrets.TWILIO_PHONE_NUMBER }}
+
+        # Google Services
+        GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}
+
+        # Demo Business IDs
+        DEMO_REMOVALIST_BUSINESS_ID=${{ secrets.DEMO_REMOVALIST_BUSINESS_ID }}
+        DEMO_MANICURIST_BUSINESS_ID=${{ secrets.DEMO_MANICURIST_BUSINESS_ID }}
+        DEMO_PLUMBER_BUSINESS_ID=${{ secrets.DEMO_PLUMBER_BUSINESS_ID }}
+
+        # Security
+        CRON_SECRET=${{ secrets.CRON_SECRET }}
+
+        # Sentry Monitoring
+        SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+        SENTRY_API_KEY=${{ secrets.SENTRY_API_KEY }}
+        ENVEOF
+
+        # Build new Docker image
+        echo "🔨 Building Docker image..."
+        docker build -t $IMAGE_NAME:$IMAGE_TAG .
+        docker tag $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:latest
+
+        # Start new container on a temporary port
+        TEMP_PORT=3001
+        echo "🚀 Starting new container on port $TEMP_PORT..."
+        docker run -d -p $TEMP_PORT:3000 \
+          --env-file .env.production \
+          --name $CONTAINER_NAME-new \
+          --restart unless-stopped \
+          --memory="1g" \
+          --cpus="1.5" \
+          $IMAGE_NAME:$IMAGE_TAG
+
+        # Wait for app to be healthy
+        echo "⏳ Waiting for health check..."
+        for i in {1..30}; do
+          if curl -f http://localhost:$TEMP_PORT/api/health > /dev/null 2>&1; then
+            echo "✅ Health check passed!"
+            break
+          fi
+          if [ $i -eq 30 ]; then
+            echo "❌ Health check failed after 30 attempts"
+            docker logs --tail 20 $CONTAINER_NAME-new
+            exit 1
+          fi
+          sleep 2
+        done
+
+        # Stop old container (if exists) and remove
+        if docker ps | grep -q "$CONTAINER_NAME[^-]"; then
+          echo "🛑 Stopping old container..."
+          docker stop $CONTAINER_NAME
+          docker rm $CONTAINER_NAME
+        fi
+
+        # Update port mapping and rename new container
+        echo "🔄 Switching to new container..."
+        docker stop $CONTAINER_NAME-new
+        docker run -d -p 3000:3000 \
+          --env-file .env.production \
+          --name $CONTAINER_NAME \
+          --restart unless-stopped \
+          --memory="1g" \
+          --cpus="1.5" \
+          $IMAGE_NAME:$IMAGE_TAG
+
+        # Remove temporary container
+        docker rm $CONTAINER_NAME-new
+
+        # Final health check
+        sleep 5
+        if curl -f http://localhost:3000/api/health > /dev/null 2>&1; then
+          echo "✅ Deployment completed successfully!"
+        else
+          echo "⚠️ Deployment completed but health check failed"
+          docker logs --tail 10 $CONTAINER_NAME
+        fi
+
+        # Cleanup old images (keep last 3)
+        docker images $IMAGE_NAME --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}" | tail -n +2 | head -n -3 | awk '{print $3}' | xargs -r docker rmi
+
+        echo "🧹 Cleaned up old images"
+        EOF
