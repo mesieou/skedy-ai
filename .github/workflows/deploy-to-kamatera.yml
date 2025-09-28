@@ -32,7 +32,7 @@ jobs:
         IMAGE_TAG=$(date +%Y%m%d%H%M)
         echo "🔖 Using image tag: $IMAGE_TAG"
 
-        ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@45.151.154.42 bash -s <<'EOF'
+        ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@45.151.154.42 << 'EOF'
         set -e
 
         APP_DIR="/root/skedy-ai"
