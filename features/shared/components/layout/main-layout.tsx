@@ -1,5 +1,4 @@
 import { Navbar } from "./navbar";
-import { Footer } from "./footer";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -16,11 +15,6 @@ export function MainLayout({ children }: MainLayoutProps) {
       <div className="flex-1 w-full bg-transparent">
         {children}
       </div>
-      {/* Sleek separator before footer */}
-      <div className="py-8 bg-transparent">
-        <div className="section-separator"></div>
-      </div>
-      <Footer />
     </main>
   );
 }

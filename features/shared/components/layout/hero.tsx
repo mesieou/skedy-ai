@@ -149,7 +149,7 @@ export function Hero() {
           />
         </div>
       ) : (
-        <div className="relative flex flex-col gap-8 items-center min-h-screen justify-center overflow-hidden bg-transparent pt-8">
+        <div id="hero" className="relative flex flex-col gap-8 items-center min-h-screen justify-center overflow-hidden bg-transparent pt-8">
           <FloatingTradieElements />
           <div className="relative z-20 flex flex-col gap-8 items-center">
             <HeroContent />
@@ -160,6 +160,7 @@ export function Hero() {
                 onClick={() => {
                   setIsDemoModalOpen(true);
                 }}
+                data-demo-trigger
               >
                 <Play className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                 Try Demo
@@ -169,6 +170,7 @@ export function Hero() {
                 size="lg"
                 className="w-full sm:w-auto btn-futuristic-outline px-6 sm:px-8 py-3 text-sm sm:text-base"
                 onClick={() => setIsWaitlistOpen(true)}
+                data-waitlist-trigger
               >
                 <Users className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                 Join Waitlist

@@ -6,9 +6,13 @@ export { Hero } from './components/layout/hero';
 
 // Section components
 export { HeroContent } from './components/sections/hero-content';
-export { CTASection } from './components/sections/cta-section';
 export { FloatingTradieElements } from './components/sections/floating-tradie-elements';
 export { WaitlistModal } from './components/sections/waitlist-modal';
+export { ServicesSection } from './components/sections/services-section';
+export { AboutSection } from './components/sections/about-section';
+export { PricingSection } from './components/sections/pricing-section';
+export { ContactSection } from './components/sections/contact-section';
+export { FooterSection } from './components/sections/footer-section';
 
 // UI components
 export * from './components/ui/button';
