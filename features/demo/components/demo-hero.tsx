@@ -3,7 +3,6 @@
 import React, { useEffect } from 'react';
 import { useRealtimeSession } from '../hooks/use-realtime-session';
 import { ChatInterface } from './chat/chat-interface';
-import { LandingInterface } from './ui/landing-interface';
 import { SessionConfig } from '../lib/session/types';
 
 interface DemoHeroProps {
@@ -34,10 +33,8 @@ export function DemoHero({ businessType, sessionData, onEndDemo }: DemoHeroProps
     }
   }, [sessionData, status, connect]);
 
-  // Show landing interface when no session data
-  if (!sessionData) {
-    return <LandingInterface businessType={businessType} />;
-  }
+  // Always show chat interface - let it handle its own connection states
+  // The chat interface has its own beautiful futuristic connecting screen
 
   // Show chat interface when connected
   return (

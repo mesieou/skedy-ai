@@ -84,11 +84,11 @@ export function PricingSection() {
                 </div>
               </div>
 
-              <h3 className="text-4xl md:text-5xl font-bold text-card-foreground mb-6 glow-text">
+              <h3 className="text-3xl sm:text-4xl md:text-5xl font-bold text-card-foreground mb-6 glow-text">
                 Revolutionary Pricing
               </h3>
 
-              <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
+              <p className="text-lg sm:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
                 We&apos;re finalizing the most competitive pricing in the industry.
                 Be the first to know when we launch with exclusive early-bird rates.
               </p>

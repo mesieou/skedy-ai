@@ -90,7 +90,7 @@ export function AboutSection() {
                     </div>
                   </div>
 
-                  <h3 className="text-xl font-bold text-card-foreground mb-2 glow-text">
+                  <h3 className="text-lg sm:text-xl font-bold text-card-foreground mb-2 glow-text">
                     {step.title}
                   </h3>
                   <p className="text-primary font-semibold text-sm uppercase tracking-wider mb-4">
@@ -113,7 +113,7 @@ export function AboutSection() {
               <div className="p-4 bg-gradient-to-r from-primary to-secondary rounded-2xl shadow-2xl">
                 <Target className="h-8 w-8 text-white" />
               </div>
-              <h3 className="text-3xl font-bold text-foreground glow-text">Our Mission</h3>
+              <h3 className="text-2xl sm:text-3xl font-bold text-foreground glow-text">Our Mission</h3>
             </div>
             <p className="text-muted-foreground leading-relaxed text-lg">
               Increase sales and save time for small service businesses by automating customer service with natural AI.
@@ -127,7 +127,7 @@ export function AboutSection() {
               <div className="p-4 bg-gradient-to-r from-secondary to-accent rounded-2xl shadow-2xl">
                 <Globe className="h-8 w-8 text-white" />
               </div>
-              <h3 className="text-3xl font-bold text-foreground glow-text">Our Vision</h3>
+              <h3 className="text-2xl sm:text-3xl font-bold text-foreground glow-text">Our Vision</h3>
             </div>
             <p className="text-muted-foreground leading-relaxed text-lg">
               Be the world&apos;s fastest, most natural, and most capable AI virtual receptionist.
@@ -143,12 +143,12 @@ export function AboutSection() {
               <span className="text-3xl font-bold text-white">JB</span>
             </div>
             <div className="text-left">
-              <h4 className="text-2xl font-bold text-foreground glow-text">Juan Bernal</h4>
+              <h4 className="text-xl sm:text-2xl font-bold text-foreground glow-text">Juan Bernal</h4>
               <p className="text-primary font-semibold text-lg">Founder & CEO</p>
             </div>
           </div>
 
-          <blockquote className="text-xl md:text-2xl text-foreground italic leading-relaxed max-w-4xl mx-auto">
+          <blockquote className="text-lg sm:text-xl md:text-2xl text-foreground italic leading-relaxed max-w-4xl mx-auto">
             &quot;Every missed call is a missed opportunity. I built Skedy because every tradie deserves to capture every lead,
             provide instant quotes, and deliver professional service — without breaking the bank or missing jobs.&quot;
           </blockquote>

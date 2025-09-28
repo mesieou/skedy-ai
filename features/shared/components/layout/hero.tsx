@@ -54,6 +54,11 @@ export function Hero() {
       console.log('🎬 [Hero] Setting isDemoActive to true...');
       setIsDemoActive(true);
 
+      // Emit event to parent page
+      window.dispatchEvent(new CustomEvent('demoStateChange', {
+        detail: { isActive: true }
+      }));
+
       // Create session data for DemoHero
       const sessionData = {
         businessType: businessType,
@@ -122,6 +127,11 @@ export function Hero() {
     setIsDemoActive(false);
     setDemoBusinessType("");
     setDemoSessionData(null);
+
+    // Emit event to parent page
+    window.dispatchEvent(new CustomEvent('demoStateChange', {
+      detail: { isActive: false }
+    }));
   };
 
   return (
@@ -141,7 +151,7 @@ export function Hero() {
 
       {/* Main Content - CONDITIONAL */}
       {isDemoActive ? (
-        <div className="animate-in fade-in-0 duration-500">
+        <div className="fixed inset-0 z-[9999] bg-background">
           <DynamicDemoHero
             businessType={demoBusinessType}
             sessionData={demoSessionData}
@@ -149,7 +159,7 @@ export function Hero() {
           />
         </div>
       ) : (
-        <div id="hero" className="relative flex flex-col gap-8 items-center min-h-screen justify-center overflow-hidden bg-transparent pt-8">
+        <div id="hero" className="relative flex flex-col gap-8 items-center min-h-screen justify-center overflow-hidden bg-transparent">
           <FloatingTradieElements />
           <div className="relative z-20 flex flex-col gap-8 items-center">
             <HeroContent />

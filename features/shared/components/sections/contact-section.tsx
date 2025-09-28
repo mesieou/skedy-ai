@@ -128,7 +128,7 @@ export function ContactSection() {
                     <div className="absolute -top-2 -right-2 w-4 h-4 bg-accent rounded-full animate-pulse" />
                   </div>
 
-                  <h3 className="text-2xl font-bold text-foreground mb-3 glow-text">
+                  <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-3 glow-text">
                     {method.title}
                   </h3>
                   <p className="text-primary font-semibold text-sm uppercase tracking-wider mb-4">
@@ -178,7 +178,7 @@ export function ContactSection() {
 
         {/* Social Media & Location */}
         <div className="mt-16 text-center">
-          <h3 className="text-2xl font-bold text-foreground mb-8 glow-text">
+          <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-8 glow-text">
             Connect With Us
           </h3>
 

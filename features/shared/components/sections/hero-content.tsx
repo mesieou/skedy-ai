@@ -14,14 +14,14 @@ const HeroContent = () => {
 
   return (
     <div className="text-center">
-      <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight text-foreground mb-4 sm:mb-6 md:mb-8 leading-tight max-w-6xl mx-auto px-4 glow-text">
+      <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight text-foreground mb-4 sm:mb-6 md:mb-8 leading-tight max-w-6xl mx-auto px-4 glow-text">
         <span className="block mb-1 sm:mb-3">
-          Your <span className="bg-gradient-to-r from-primary to-secondary text-primary-foreground rounded-lg px-2 py-1 sm:px-3 sm:py-2 text-2xl sm:text-4xl md:text-5xl lg:text-7xl inline-block shadow-lg shadow-primary/30">AI receptionist</span>
+          Your <span className="bg-gradient-to-r from-primary to-secondary text-primary-foreground rounded-lg px-2 py-1 sm:px-3 sm:py-2 text-3xl sm:text-4xl md:text-5xl lg:text-7xl inline-block shadow-lg shadow-primary/30">AI receptionist</span>
         </span>
         <span className="block mb-1 sm:mb-3">
           handles your
         </span>
-        <span className="hero-rotating-text rounded-lg px-2 py-1 sm:px-3 sm:py-2 inline-block min-w-[200px] sm:min-w-[320px] text-2xl sm:text-4xl md:text-5xl lg:text-7xl shadow-lg shadow-secondary/30">
+        <span className="hero-rotating-text rounded-lg px-2 py-1 sm:px-3 sm:py-2 inline-block min-w-[200px] sm:min-w-[320px] text-3xl sm:text-4xl md:text-5xl lg:text-7xl shadow-lg shadow-secondary/30">
           <Typewriter
             words={words}
             loop={0}
@@ -34,7 +34,7 @@ const HeroContent = () => {
         </span>
       </h1>
 
-      <p className="text-base sm:text-lg md:text-xl hero-subtitle mb-6 sm:mb-8 md:mb-10 max-w-3xl mx-auto px-4 leading-relaxed font-normal">
+      <p className="text-lg md:text-xl hero-subtitle mb-6 sm:mb-8 md:mb-10 max-w-3xl mx-auto px-4 leading-relaxed font-normal">
         Never miss another customer. Skedy answers every call, books every appointment, and grows your business 24/7.
       </p>
 

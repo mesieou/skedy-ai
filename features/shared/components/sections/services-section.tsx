@@ -169,7 +169,7 @@ export function ServicesSection() {
                 {/* Service Content */}
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-2xl font-bold text-card-foreground mb-2 glow-text">
+                    <h3 className="text-xl sm:text-2xl font-bold text-card-foreground mb-2 glow-text">
                       {service.title}
                     </h3>
                     <p className="text-primary font-semibold text-sm uppercase tracking-wider">

@@ -15,16 +15,16 @@ const defaultUrl = process.env.NODE_ENV === 'production'
       // Primary keywords
       "ai receptionist", "virtual receptionist", "ai receptionist for tradies",
       "24/7 virtual receptionist", "automated phone receptionist", "ai call answering service",
-      
+
       // Tradie-specific
-      "ai receptionist for plumbers", "virtual receptionist for electricians", 
+      "ai receptionist for plumbers", "virtual receptionist for electricians",
       "ai receptionist for removalists", "ai receptionist for builders",
       "virtual receptionist for tradies", "after-hours receptionist for tradies",
-      
+
       // Business benefits
       "automated booking system", "ai appointment scheduling", "virtual assistant for small business",
       "ai customer service", "automated quote generation", "24/7 customer support",
-      
+
       // Location-based
       "ai receptionist australia", "virtual receptionist sydney", "ai assistant melbourne",
       "automated receptionist brisbane", "virtual receptionist perth"
@@ -131,7 +131,7 @@ export default function RootLayout({
     },
     "featureList": [
       "24/7 AI call answering",
-      "Automated appointment booking", 
+      "Automated appointment booking",
       "Smart quote generation",
       "Multi-person calendar management",
       "Customer service automation"
