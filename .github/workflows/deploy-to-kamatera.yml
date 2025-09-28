@@ -92,19 +92,19 @@ jobs:
 
         # Build new Docker image (GitHub Actions runs on Linux x86_64 natively)
         echo "🔨 Building Docker image..."
-        docker build -t $IMAGE_NAME:$IMAGE_TAG .
-        docker tag $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:latest
+        docker build -t skedy-ai:$IMAGE_TAG .
+        docker tag skedy-ai:$IMAGE_TAG skedy-ai:latest
 
         # Start new container on a temporary port
         TEMP_PORT=3001
         echo "🚀 Starting new container on port $TEMP_PORT..."
         docker run -d -p $TEMP_PORT:3000 \
           --env-file .env.production \
-          --name $CONTAINER_NAME-new \
+          --name skedy-ai-new \
           --restart unless-stopped \
           --memory="1g" \
           --cpus="1.5" \
-          $IMAGE_NAME:$IMAGE_TAG
+          skedy-ai:$IMAGE_TAG
 
         # Wait for app to be healthy
         echo "⏳ Waiting for health check..."
@@ -115,32 +115,32 @@ jobs:
           fi
           if [ $i -eq 30 ]; then
             echo "❌ Health check failed after 30 attempts"
-            docker logs --tail 20 $CONTAINER_NAME-new
+            docker logs --tail 20 skedy-ai-new
             exit 1
           fi
           sleep 2
         done
 
         # Stop old container (if exists) and remove
-        if docker ps | grep -q "$CONTAINER_NAME[^-]"; then
+        if docker ps | grep -q "skedy-ai[^-]"; then
           echo "🛑 Stopping old container..."
-          docker stop $CONTAINER_NAME
-          docker rm $CONTAINER_NAME
+          docker stop skedy-ai
+          docker rm skedy-ai
         fi
 
         # Update port mapping and rename new container
         echo "🔄 Switching to new container..."
-        docker stop $CONTAINER_NAME-new
+        docker stop skedy-ai-new
         docker run -d -p 3000:3000 \
           --env-file .env.production \
-          --name $CONTAINER_NAME \
+          --name skedy-ai \
           --restart unless-stopped \
           --memory="1g" \
           --cpus="1.5" \
-          $IMAGE_NAME:$IMAGE_TAG
+          skedy-ai:$IMAGE_TAG
 
         # Remove temporary container
-        docker rm $CONTAINER_NAME-new
+        docker rm skedy-ai-new
 
         # Final health check
         sleep 5
@@ -148,11 +148,11 @@ jobs:
           echo "✅ Deployment completed successfully!"
         else
           echo "⚠️ Deployment completed but health check failed"
-          docker logs --tail 10 $CONTAINER_NAME
+          docker logs --tail 10 skedy-ai
         fi
 
         # Cleanup old images (keep last 3)
-        docker images $IMAGE_NAME --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}" | tail -n +2 | head -n -3 | awk '{print $3}' | xargs -r docker rmi
+        docker images skedy-ai --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}" | tail -n +2 | head -n -3 | awk '{print $3}' | xargs -r docker rmi
 
         echo "🧹 Cleaned up old images"
         EOF
