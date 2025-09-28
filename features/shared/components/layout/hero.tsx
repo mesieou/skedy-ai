@@ -113,16 +113,8 @@ export function Hero() {
   };
 
   const handleEndDemo = async () => {
-    // End demo session via API
-    if (demoSessionData?.sessionId) {
-      try {
-        await fetch(`/api/realtime-session?sessionId=${demoSessionData.sessionId}`, {
-          method: 'DELETE'
-        });
-      } catch (error) {
-        console.error('Failed to end demo session:', error);
-      }
-    }
+    // Session cleanup is handled by RealtimeSessionManager.disconnect()
+    // No need for additional API calls here
 
     setIsDemoActive(false);
     setDemoBusinessType("");

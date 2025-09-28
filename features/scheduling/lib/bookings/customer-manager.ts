@@ -43,15 +43,15 @@ export class CustomerManager {
    * Create or find existing user with name and phone number
    */
   async createOrFindUser(input: UserCreationInput): Promise<UserCreationResult> {
-    const { phone_number, business_id } = input;
+    const { phone_number } = input;
 
     // Normalize phone number
     const normalizedPhone = DateUtils.normalizePhoneNumber(phone_number);
 
-    // Check if user already exists
+    // Check if user already exists (customers are global, not per-business)
     const existingUser = await this.userRepository.findOne({
       phone_number: normalizedPhone,
-      business_id
+      role: UserRole.CUSTOMER
     });
 
     if (existingUser) {
