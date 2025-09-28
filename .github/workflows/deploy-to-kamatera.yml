@@ -45,6 +45,7 @@ jobs:
           git reset --hard
           git pull origin main
         else
+          rm -rf $APP_DIR
           git clone https://github.com/mesieou/skedy-ai.git $APP_DIR
           cd $APP_DIR
         fi
