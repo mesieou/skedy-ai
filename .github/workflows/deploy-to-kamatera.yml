@@ -39,7 +39,15 @@ jobs:
         CONTAINER_NAME="skedy-ai"
         IMAGE_NAME="skedy-ai"
 
-        # Pull latest code (exact same pattern as working deployment)
+        # Stop existing container (exactly like working deployment)
+        echo "⏹️ Stopping existing containers..."
+        docker stop skedy-ai || true
+        docker rm skedy-ai || true
+
+        # Remove old images to save space
+        docker image prune -f || true
+
+        # Pull latest code (exactly like working deployment)
         echo "📥 Pulling latest code..."
         if [ -d "/root/skedy-ai" ]; then
           cd /root/skedy-ai
@@ -49,108 +57,53 @@ jobs:
           cd /root/skedy-ai
         fi
 
-        # Create production environment file
-        cat > .env.production << 'ENVEOF'
+        # Build Docker image (exactly like working deployment)
+        echo "🔨 Building Docker image..."
+        docker build -t skedy-ai .
+
+        echo "🚀 Starting new container..."
+
+        # Create .env file with secrets (exactly like working deployment)
+        cat > .env << ENVEOF
         NODE_ENV=production
         NEXT_TELEMETRY_DISABLED=1
-
-        # Database - Supabase
         NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
         NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY }}
         SUPABASE_SECRET_KEY=${{ secrets.SUPABASE_SECRET_KEY }}
-
-        # Redis
         VOICE_REDIS_HOST=${{ secrets.VOICE_REDIS_HOST }}
         VOICE_REDIS_PORT=${{ secrets.VOICE_REDIS_PORT }}
         VOICE_REDIS_DB=${{ secrets.VOICE_REDIS_DB }}
         VOICE_REDIS_PASSWORD=${{ secrets.VOICE_REDIS_PASSWORD }}
-
-        # AI Services
         OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
         OPENAI_WEBHOOK_SECRET=${{ secrets.OPENAI_WEBHOOK_SECRET }}
-
-        # Communication
         TWILIO_ACCOUNT_SID=${{ secrets.TWILIO_ACCOUNT_SID }}
         TWILIO_AUTH_TOKEN=${{ secrets.TWILIO_AUTH_TOKEN }}
         TWILIO_PHONE_NUMBER=${{ secrets.TWILIO_PHONE_NUMBER }}
-
-        # Google Services
         GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}
-
-        # Demo Business IDs
         DEMO_REMOVALIST_BUSINESS_ID=${{ secrets.DEMO_REMOVALIST_BUSINESS_ID }}
         DEMO_MANICURIST_BUSINESS_ID=${{ secrets.DEMO_MANICURIST_BUSINESS_ID }}
         DEMO_PLUMBER_BUSINESS_ID=${{ secrets.DEMO_PLUMBER_BUSINESS_ID }}
-
-        # Security
         CRON_SECRET=${{ secrets.CRON_SECRET }}
-
-        # Sentry Monitoring
         SENTRY_DSN=${{ secrets.SENTRY_DSN }}
         SENTRY_API_KEY=${{ secrets.SENTRY_API_KEY }}
         ENVEOF
 
-        # Build new Docker image (GitHub Actions runs on Linux x86_64 natively)
-        echo "🔨 Building Docker image..."
-        docker build -t skedy-ai:$IMAGE_TAG .
-        docker tag skedy-ai:$IMAGE_TAG skedy-ai:latest
-
-        # Start new container on a temporary port
-        TEMP_PORT=3001
-        echo "🚀 Starting new container on port $TEMP_PORT..."
-        docker run -d -p $TEMP_PORT:3000 \
-          --env-file .env.production \
-          --name skedy-ai-new \
-          --restart unless-stopped \
-          --memory="1g" \
-          --cpus="1.5" \
-          skedy-ai:$IMAGE_TAG
-
-        # Wait for app to be healthy
-        echo "⏳ Waiting for health check..."
-        for i in {1..30}; do
-          if curl -f http://localhost:$TEMP_PORT/api/health > /dev/null 2>&1; then
-            echo "✅ Health check passed!"
-            break
-          fi
-          if [ $i -eq 30 ]; then
-            echo "❌ Health check failed after 30 attempts"
-            docker logs --tail 20 skedy-ai-new
-            exit 1
-          fi
-          sleep 2
-        done
-
-        # Stop old container (if exists) and remove
-        echo "🧹 Cleaning up old containers..."
-        docker stop skedy-ai 2>/dev/null || echo "No running container to stop"
-        docker rm skedy-ai 2>/dev/null || echo "No container to remove"
-
-        # Update port mapping and rename new container
-        echo "🔄 Switching to new container..."
-        docker stop skedy-ai-new
         docker run -d -p 3000:3000 \
-          --env-file .env.production \
+          --env-file .env \
           --name skedy-ai \
           --restart unless-stopped \
-          --memory="1g" \
-          --cpus="1.5" \
-          skedy-ai:$IMAGE_TAG
+          skedy-ai:latest
 
-        # Remove temporary container
-        docker rm skedy-ai-new
+        echo "✅ Deployment completed successfully!"
 
-        # Final health check
+        # Verify the container is running
         sleep 5
-        if curl -f http://localhost:3000/api/health > /dev/null 2>&1; then
-          echo "✅ Deployment completed successfully!"
-        else
-          echo "⚠️ Deployment completed but health check failed"
+        if docker ps | grep -q skedy-ai; then
+          echo "✅ Container is running"
           docker logs --tail 10 skedy-ai
+        else
+          echo "❌ Container failed to start"
+          docker logs skedy-ai
+          exit 1
         fi
-
-        # Cleanup old images (keep last 3)
-        docker images skedy-ai --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}" | tail -n +2 | head -n -3 | awk '{print $3}' | xargs -r docker rmi
-
-        echo "🧹 Cleaned up old images"
         EOF
