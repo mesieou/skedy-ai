@@ -40,13 +40,17 @@ jobs:
         IMAGE_NAME="skedy-ai"
 
         # Pull latest code
-        if [ -d "$APP_DIR" ]; then
+        echo "🔍 Checking if $APP_DIR exists..."
+        if [ -d "$APP_DIR" ] && [ -d "$APP_DIR/.git" ]; then
+          echo "📁 Directory exists and is a git repo, pulling latest..."
           cd $APP_DIR
           git reset --hard
           git pull origin main
         else
+          echo "🗑️ Removing any existing files and cloning fresh..."
           rm -rf $APP_DIR
-          git clone https://github.com/mesieou/skedy-ai.git $APP_DIR
+          cd /root
+          git clone https://github.com/mesieou/skedy-ai.git skedy-ai
           cd $APP_DIR
         fi
 
