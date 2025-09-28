@@ -44,8 +44,8 @@ This script will:
 ### 2. Domain Configuration
 
 Ensure your domain DNS is configured:
-- `skedy.ai` → A record → `45.151.154.42`
-- `www.skedy.ai` → CNAME → `skedy.ai`
+- `skedy.io` → A record → `45.151.154.42`
+- `www.skedy.io` → CNAME → `skedy.io`
 
 ## 🔐 GitHub Secrets Configuration
 
@@ -211,7 +211,7 @@ nginx -t
 # Test WebSocket connection
 curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" \
   -H "Sec-WebSocket-Key: test" -H "Sec-WebSocket-Version: 13" \
-  https://skedy.ai/api/realtime-session
+  https://skedy.io/api/realtime-session
 ```
 
 ### Performance Optimization

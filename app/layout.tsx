@@ -4,7 +4,7 @@ import { ThemeProvider } from "next-themes";
 import "./globals.css";
 
 const defaultUrl = process.env.NODE_ENV === 'production'
-  ? "https://skedy.ai"
+  ? "https://skedy.io"
   : "http://localhost:3000";
 
   export const metadata: Metadata = {
@@ -29,7 +29,7 @@ const defaultUrl = process.env.NODE_ENV === 'production'
       "ai receptionist australia", "virtual receptionist sydney", "ai assistant melbourne",
       "automated receptionist brisbane", "virtual receptionist perth"
     ].join(", "),
-    authors: [{ name: "Juan Bernal", url: "https://skedy.ai" }],
+    authors: [{ name: "Juan Bernal", url: "https://skedy.io" }],
     creator: "Skedy AI",
     publisher: "Skedy AI",
     robots: {

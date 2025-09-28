@@ -35,11 +35,11 @@ systemctl start nginx
 
 # Setup SSL certificates with Let's Encrypt
 echo "🔒 Setting up SSL certificates..."
-echo "Please make sure your domain (skedy.ai) points to this server IP: 45.151.154.42"
+echo "Please make sure your domain (skedy.io) points to this server IP: 45.151.154.42"
 read -p "Press Enter when DNS is configured and ready..."
 
 # Get SSL certificates
-certbot --nginx -d skedy.ai -d www.skedy.ai --non-interactive --agree-tos --email your-email@example.com
+certbot --nginx -d skdy.io -d www.skedy.io --non-interactive --agree-tos --email info@skedy.io
 
 # Setup automatic certificate renewal
 echo "⏰ Setting up automatic certificate renewal..."
