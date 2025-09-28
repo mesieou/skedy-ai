@@ -39,40 +39,16 @@ jobs:
         CONTAINER_NAME="skedy-ai"
         IMAGE_NAME="skedy-ai"
 
-        # Pull latest code
-        echo "🔍 Checking if $APP_DIR exists..."
-        if [ -d "$APP_DIR" ] && [ -d "$APP_DIR/.git" ]; then
-          echo "📁 Directory exists and is a git repo, pulling latest..."
+        # Pull latest code (simplified approach like working deployment)
+        echo "📥 Pulling latest code..."
+        if [ -d "$APP_DIR" ]; then
+          echo "📁 Directory exists, pulling latest changes..."
           cd $APP_DIR
           git reset --hard
           git pull origin main
         else
-          echo "🗑️ Removing any existing files and cloning fresh..."
-          # Force remove directory with multiple attempts
-          for attempt in 1 2 3; do
-            rm -rf $APP_DIR
-            sleep 1
-            if [ ! -d "$APP_DIR" ]; then
-              echo "✅ Directory successfully removed on attempt $attempt"
-              break
-            fi
-            echo "⚠️ Directory still exists, attempt $attempt/3..."
-            if [ $attempt -eq 3 ]; then
-              echo "🔧 Using sudo for final removal attempt..."
-              sudo rm -rf $APP_DIR
-              sleep 1
-            fi
-          done
-
-          # Verify directory is gone before cloning
-          if [ -d "$APP_DIR" ]; then
-            echo "❌ Failed to remove directory after all attempts"
-            exit 1
-          fi
-
-          cd /root
-          echo "📥 Cloning repository..."
-          git clone https://github.com/mesieou/skedy-ai.git skedy-ai
+          echo "📥 Cloning fresh repository..."
+          git clone https://github.com/mesieou/skedy-ai.git $APP_DIR
           cd $APP_DIR
         fi
 
