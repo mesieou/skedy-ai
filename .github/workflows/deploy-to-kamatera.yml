@@ -39,17 +39,14 @@ jobs:
         CONTAINER_NAME="skedy-ai"
         IMAGE_NAME="skedy-ai"
 
-        # Pull latest code (simplified approach like working deployment)
+        # Pull latest code (exact same pattern as working deployment)
         echo "📥 Pulling latest code..."
-        if [ -d "$APP_DIR" ]; then
-          echo "📁 Directory exists, pulling latest changes..."
-          cd $APP_DIR
-          git reset --hard
+        if [ -d "/root/skedy-ai" ]; then
+          cd /root/skedy-ai
           git pull origin main
         else
-          echo "📥 Cloning fresh repository..."
-          git clone https://github.com/mesieou/skedy-ai.git $APP_DIR
-          cd $APP_DIR
+          git clone https://github.com/mesieou/skedy-ai.git /root/skedy-ai
+          cd /root/skedy-ai
         fi
 
         # Create production environment file
