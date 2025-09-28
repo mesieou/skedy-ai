@@ -66,12 +66,12 @@ export function DemoModal({ isOpen, onClose, onStartDemo }: DemoModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] bg-background/90 backdrop-blur-lg"
+      className="fixed inset-0 z-[100] bg-white/20 dark:bg-background/90 backdrop-blur-lg"
       onClick={onClose}
     >
       <div className="fixed inset-0 flex items-center justify-center p-4">
         <div
-          className="relative w-full max-w-2xl bg-background/95 backdrop-blur-xl rounded-3xl border border-primary/30 shadow-2xl overflow-visible"
+          className="relative w-full max-w-2xl bg-white/95 dark:bg-background/95 backdrop-blur-xl rounded-3xl border border-primary/30 shadow-2xl overflow-visible"
           onClick={(e) => e.stopPropagation()}
         >
 
@@ -91,7 +91,7 @@ export function DemoModal({ isOpen, onClose, onStartDemo }: DemoModalProps) {
               <h2 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-4">
                 AI Assistant Demo
               </h2>
-              <p className="text-muted-foreground text-lg">
+              <p className="text-gray-700 dark:text-muted-foreground text-lg">
                 Choose a business type to demo our AI assistant:
               </p>
             </div>
@@ -127,7 +127,7 @@ export function DemoModal({ isOpen, onClose, onStartDemo }: DemoModalProps) {
                     console.log('📞 [DemoModal] Try Phone Demo clicked!', { selectedBusiness });
                     onStartDemo(selectedBusiness, "phone");
                   }}
-                  className="w-full sm:w-auto btn-outline text-sm sm:text-base"
+                  className="w-full sm:w-auto btn-futuristic-outline px-6 sm:px-8 py-3 text-sm sm:text-base"
                 >
                   <Phone className="mr-2 h-4 w-4" />
                   Try Phone Demo
@@ -142,7 +142,7 @@ export function DemoModal({ isOpen, onClose, onStartDemo }: DemoModalProps) {
               e.stopPropagation();
               onClose();
             }}
-            className="absolute top-6 right-6 p-2 rounded-full hover:bg-background/50 transition-colors text-muted-foreground hover:text-foreground z-10"
+            className="absolute top-6 right-6 p-2 rounded-full hover:bg-gray-200/50 dark:hover:bg-background/50 transition-colors text-gray-600 dark:text-muted-foreground hover:text-gray-800 dark:hover:text-foreground z-10"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

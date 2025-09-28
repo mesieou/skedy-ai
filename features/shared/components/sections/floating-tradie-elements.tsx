@@ -83,7 +83,7 @@ export const FloatingTradieElements = () => {
               animationDuration: `${element.duration}s`,
             }}
           >
-            <div className={`data-display ${data.border} glow-text`}>
+            <div className={`floating-data-display ${data.border} glow-text`}>
               <div className="flex items-center gap-2">
                 <div className={`w-1.5 h-1.5 ${data.color.replace('text-', 'bg-')} rounded-full animate-pulse`}></div>
                 <span className={`${data.color} font-mono text-xs font-bold tracking-wider`}>

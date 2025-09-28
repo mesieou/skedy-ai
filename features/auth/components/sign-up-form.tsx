@@ -1,7 +1,7 @@
 "use client";
 
 import { cn, createClient } from "@/features/shared";
-import { 
+import {
   Button,
   Card,
   CardContent,
@@ -14,6 +14,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { X } from "lucide-react";
 
 export function SignUpForm({
   className,
@@ -58,7 +59,15 @@ export function SignUpForm({
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
-        <CardHeader>
+        <CardHeader className="relative">
+          <Link
+            href="/"
+            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            aria-label="Close and return to home"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </Link>
           <CardTitle className="text-2xl">Sign up</CardTitle>
           <CardDescription>Create a new account</CardDescription>
         </CardHeader>

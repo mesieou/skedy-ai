@@ -110,7 +110,7 @@ export function FormCard({
     .every(field => formData[field.id]?.trim());
 
   return (
-    <Card className={`w-full max-w-md mx-auto futuristic-card ${className}`}>
+    <Card className={`w-full max-w-md mx-auto modal-card ${className}`}>
       <CardHeader className="relative pb-4">
         {onClose && (
           <button
