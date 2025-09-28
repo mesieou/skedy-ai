@@ -48,8 +48,30 @@ jobs:
           git pull origin main
         else
           echo "🗑️ Removing any existing files and cloning fresh..."
-          rm -rf $APP_DIR
+          # Force remove directory with multiple attempts
+          for attempt in 1 2 3; do
+            rm -rf $APP_DIR
+            sleep 1
+            if [ ! -d "$APP_DIR" ]; then
+              echo "✅ Directory successfully removed on attempt $attempt"
+              break
+            fi
+            echo "⚠️ Directory still exists, attempt $attempt/3..."
+            if [ $attempt -eq 3 ]; then
+              echo "🔧 Using sudo for final removal attempt..."
+              sudo rm -rf $APP_DIR
+              sleep 1
+            fi
+          done
+
+          # Verify directory is gone before cloning
+          if [ -d "$APP_DIR" ]; then
+            echo "❌ Failed to remove directory after all attempts"
+            exit 1
+          fi
+
           cd /root
+          echo "📥 Cloning repository..."
           git clone https://github.com/mesieou/skedy-ai.git skedy-ai
           cd $APP_DIR
         fi
