@@ -49,6 +49,28 @@ jobs:
           cd /root/skedy-ai
         fi
 
+        # Clean up Docker resources to free disk space before building
+        echo "🧹 Cleaning up Docker resources to free disk space..."
+
+        # Show disk usage before cleanup
+        echo "📊 Disk usage before cleanup:"
+        df -h / | grep -E '^/dev/' || true
+
+        # Remove stopped containers, unused networks, and dangling images
+        docker container prune -f || true
+        docker network prune -f || true
+        docker image prune -f || true
+
+        # Remove old skedy-ai images (keep only latest and last 2 timestamped versions)
+        docker images skedy-ai --format "table {{.Tag}}" | grep -E '^[0-9]{12,14}\$' | sort -r | tail -n +3 | xargs -r -I {} docker rmi "skedy-ai:{}" 2>/dev/null || true
+
+        # Clean build cache
+        docker builder prune -f || true
+
+        # Show disk usage after cleanup
+        echo "📊 Disk usage after cleanup:"
+        df -h / | grep -E '^/dev/' || true
+
         # Build new Docker image with timestamp tag (don't overwrite existing)
         TIMESTAMP=\$(date +%Y%m%d%H%M%S)
         NEW_IMAGE="skedy-ai:\$TIMESTAMP"

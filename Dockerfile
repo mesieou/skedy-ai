@@ -1,16 +1,27 @@
 # ============================
-# Stage 1: Dependencies
+# Stage 1: Dependencies (All)
 # ============================
 FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install dependencies
+# Install all dependencies (including dev dependencies for build)
 COPY package.json package-lock.json* ./
 RUN npm ci
 
 # ============================
-# Stage 2: Builder
+# Stage 2: Production Dependencies Only
+# ============================
+FROM node:20-alpine AS prod-deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+# Install only production dependencies
+COPY package.json package-lock.json* ./
+RUN npm ci --only=production && npm cache clean --force
+
+# ============================
+# Stage 3: Builder
 # ============================
 FROM node:20-alpine AS builder
 WORKDIR /app
@@ -29,7 +40,7 @@ ENV NODE_ENV=production
 RUN npm run build
 
 # ============================
-# Stage 3: Runner
+# Stage 4: Runner
 # ============================
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -52,8 +63,8 @@ COPY --from=builder /app/package.json ./package.json
 # Copy scripts directly from source (not from builder)
 COPY scripts ./scripts
 
-# Copy node_modules for runtime dependencies (includes ws, openai, etc.)
-COPY --from=deps /app/node_modules ./node_modules
+# Copy production-only node_modules for runtime dependencies
+COPY --from=prod-deps /app/node_modules ./node_modules
 
 # Set permissions
 RUN chown -R nextjs:nodejs /app
