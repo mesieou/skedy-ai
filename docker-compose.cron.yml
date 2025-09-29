@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # Main Next.js Application
+  skedy-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - skedy-network
+
+  # Availability Rollover Cron Job
+  availability-cron:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    command: ["node", "scripts/availability-cron.mjs"]
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+    env_file:
+      - .env
+    restart: unless-stopped
+    depends_on:
+      - skedy-app
+    networks:
+      - skedy-network
+
+networks:
+  skedy-network:
+    driver: bridge

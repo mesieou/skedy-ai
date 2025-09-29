@@ -2,6 +2,7 @@ import { TimeSlot, BookingWithProvider, DURATION_INTERVALS } from "../lib/types/
 import { User } from "@/features/shared/lib/database/types/user";
 import { CalendarSettings } from "@/features/shared/lib/database/types/calendar-settings";
 import { Business } from "@/features/shared/lib/database/types/business";
+import { AvailabilitySlot } from "@/features/shared/lib/database/types/availability-slots";
 
 import { DateUtils } from "@/features/shared/utils/date-utils";
 import { BusinessRepository } from "@/features/shared/lib/database/repositories/business-repository";
@@ -47,12 +48,13 @@ export function getWorkingHoursForDay(
   date: string, // UTC ISO string
   businessTimezone: string
 ) {
-  const dateStr = DateUtils.extractDateString(date);
-  const jsDate = new Date(dateStr + 'T00:00:00.000Z'); // Parse as UTC to get correct day
+  // Convert UTC date to business timezone to get the correct local day
+  const { date: businessDate } = DateUtils.convertUTCToTimezone(date, businessTimezone);
+  const jsDate = new Date(businessDate + 'T00:00:00'); // Parse as local date
   const dayNames = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-  const dayKey = dayNames[jsDate.getUTCDay()]; // Use UTC day to match UTC date
+  const dayKey = dayNames[jsDate.getDay()]; // Use local day
 
-  console.log(`[getWorkingHoursForDay] Processing ${dateStr} (${dayKey}) for ${providers.length} providers in timezone ${businessTimezone}`);
+  console.log(`[getWorkingHoursForDay] Processing UTC ${DateUtils.extractDateString(date)} → Business ${businessDate} (${dayKey}) for ${providers.length} providers in timezone ${businessTimezone}`);
 
   return providers
     .map((provider) => {
@@ -69,23 +71,24 @@ export function getWorkingHoursForDay(
         return null;
       }
 
-      console.log(`[getWorkingHoursForDay] Provider ${provider.id} working hours on ${dayKey}: ${hours.start} - ${hours.end}`);
+      console.log(`[getWorkingHoursForDay] Provider ${provider.id} working hours on ${dayKey}: ${hours.start} - ${hours.end} (local time)`);
 
-      // Working hours are now stored in UTC format
-      const start = DateUtils.createSlotTimestamp(dateStr, hours.start + ':00');
+      // Convert local working hours to UTC
+      const start = DateUtils.convertBusinessTimeToUTC(businessDate, hours.start + ':00', businessTimezone);
 
-      // Handle cross-day working hours (e.g., 21:00 to 07:00 next day)
+      // Handle cross-day working hours (e.g., 07:00 to 17:00 same day, or 22:00 to 06:00 next day)
       let end: string;
       if (hours.end < hours.start) {
-        // End time is next day
-        const nextDay = DateUtils.addDaysUTC(DateUtils.createSlotTimestamp(dateStr, '00:00:00'), 1);
-        const nextDateStr = DateUtils.extractDateString(nextDay);
-        end = DateUtils.createSlotTimestamp(nextDateStr, hours.end + ':00');
+        // End time is next day in local time
+        const nextBusinessDay = DateUtils.addDaysUTC(businessDate + 'T00:00:00.000Z', 1);
+        const nextBusinessDate = DateUtils.extractDateString(nextBusinessDay);
+        end = DateUtils.convertBusinessTimeToUTC(nextBusinessDate, hours.end + ':00', businessTimezone);
       } else {
-        end = DateUtils.createSlotTimestamp(dateStr, hours.end + ':00');
+        // Same day
+        end = DateUtils.convertBusinessTimeToUTC(businessDate, hours.end + ':00', businessTimezone);
       }
 
-      console.log(`[getWorkingHoursForDay] Using UTC working hours: ${start} - ${end}`);
+      console.log(`[getWorkingHoursForDay] Converted to UTC working hours: ${start} - ${end}`);
 
       return { providerId: provider.id, start, end };
     })
@@ -179,6 +182,7 @@ export function aggregateSlotsAcrossProviders(
 
 /**
  * Generate availability slots for all duration intervals for a single date
+ * Returns slots with precomputed timestamps for performance
  */
 export async function generateAvailabilitySlotsForDate(
   providers: User[],
@@ -197,7 +201,8 @@ export async function generateAvailabilitySlotsForDate(
       businessTimezone
     );
 
-    // Convert TimeSlot[] to [string, number][] format
+    // Convert TimeSlot[] to [string, number][] format (without timestamps here)
+    // Timestamps will be added in the AvailabilityManager when assigning to UTC date keys
     slots[duration.key] = timeSlots.map(slot => [
       DateUtils.extractTimeString(slot.start).substring(0, 5), // "07:00", "08:00", etc.
       slot.count
@@ -205,6 +210,59 @@ export async function generateAvailabilitySlotsForDate(
   }
 
   return slots;
+}
+
+/**
+ * Add days to a business date while staying in business timezone
+ * Handles daylight saving transitions correctly
+ */
+export function addDaysBusinessDate(dateStr: string, days: number, timezone: string): string {
+  // Create a UTC timestamp for the business date at noon (avoids DST edge cases)
+  const utcTimestamp = DateUtils.convertBusinessTimeToUTC(dateStr, '12:00:00', timezone);
+
+  // Add days in UTC
+  const newUtcTimestamp = DateUtils.addDaysUTC(utcTimestamp, days);
+
+  // Convert back to business date
+  const { date: newBusinessDate } = DateUtils.convertUTCToTimezone(newUtcTimestamp, timezone);
+
+  return newBusinessDate;
+}
+
+/**
+ * Get UTC date range that covers a complete business day
+ * Used for querying availability slots that span multiple UTC dates
+ * Returns millisecond timestamps for efficient filtering
+ */
+export function getBusinessDayUTCRange(businessDate: string, businessTimezone: string): {
+  startUTC: string;
+  endUTC: string;
+  startMs: number;
+  endMs: number;
+  utcDateKeys: string[];
+} {
+  // Start of business day (00:00 local time)
+  const startUTC = DateUtils.convertBusinessTimeToUTC(businessDate, '00:00:00', businessTimezone);
+
+  // End of business day (23:59:59 local time)
+  const endUTC = DateUtils.convertBusinessTimeToUTC(businessDate, '23:59:59', businessTimezone);
+
+  // Get millisecond timestamps for efficient filtering
+  const startMs = DateUtils.getTimestamp(startUTC);
+  const endMs = DateUtils.getTimestamp(endUTC);
+
+  // Get all UTC date keys that this business day spans
+  const startDateKey = DateUtils.extractDateString(startUTC);
+  const endDateKey = DateUtils.extractDateString(endUTC);
+
+  const utcDateKeys = [startDateKey];
+  if (startDateKey !== endDateKey) {
+    utcDateKeys.push(endDateKey);
+  }
+
+  console.log(`[getBusinessDayUTCRange] Business ${businessDate} spans UTC ${startUTC} to ${endUTC} (date keys: ${utcDateKeys.join(', ')})`);
+
+  return { startUTC, endUTC, startMs, endMs, utcDateKeys };
 }
 
 // =====================================
@@ -317,7 +375,16 @@ export async function rolloverSingleBusinessAvailability(business: Business): Pr
           business.time_zone
         );
 
-        updatedSlots[dateKey] = daySlots;
+        // Convert to enhanced format with precomputed timestamps
+        const enhancedSlots: { [durationKey: string]: AvailabilitySlot[] } = {};
+        for (const durationKey in daySlots) {
+          enhancedSlots[durationKey] = daySlots[durationKey].map(([time, count]) => {
+            const timestampMs = DateUtils.getTimestamp(DateUtils.createSlotTimestamp(dateKey, time + ':00'));
+            return [time, count, timestampMs] as AvailabilitySlot;
+          });
+        }
+
+        updatedSlots[dateKey] = enhancedSlots;
         datesAdded++;
       }
 

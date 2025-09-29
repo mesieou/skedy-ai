@@ -1,5 +1,5 @@
 import { DURATION_INTERVALS } from "../types/availability-manager";
-import { AvailabilitySlots } from "@/features/shared/lib/database/types/availability-slots";
+import { AvailabilitySlots, AvailabilitySlot } from "@/features/shared/lib/database/types/availability-slots";
 import { Booking } from "@/features/shared/lib/database/types/bookings";
 import { DateUtils } from "@/features/shared/utils/date-utils";
 import { Business } from "@/features/shared/lib/database/types/business";
@@ -9,7 +9,9 @@ import {
   generateAvailabilitySlotsForDate,
   findBusinessesNeedingRollover,
   rolloverBusinessesAvailability,
-  findBestDurationMatch
+  findBestDurationMatch,
+  getBusinessDayUTCRange,
+  addDaysBusinessDate
 } from "../../utils/availability-helpers";
 
 // Class AvailabilityManager
@@ -22,27 +24,42 @@ export class AvailabilityManager {
   }
 
   updateAvailabilityAfterBooking(booking: Booking): AvailabilitySlots {
-    // Extract date and timestamps using utility functions
-    const dateStr = DateUtils.extractDateString(booking.start_at);
-
     const updatedSlots = { ...this.availabilitySlots.slots };
 
-    // Get slots for the booking date
-    if (updatedSlots[dateStr]) {
-      const dateSlots = { ...updatedSlots[dateStr] };
+    // Get all UTC dates that this booking spans (handles multi-day bookings)
+    const affectedUtcDates = this.getBookingSpanUtcDates(booking.start_at, booking.end_at);
+
+    console.log(`[AvailabilityManager] Booking ${booking.id} affects ${affectedUtcDates.length} UTC dates: ${affectedUtcDates.join(', ')}`);
+
+    for (const utcDateKey of affectedUtcDates) {
+      const dateSlots = updatedSlots[utcDateKey];
+      if (!dateSlots) continue;
 
       for (const duration of DURATION_INTERVALS) {
         const durationKey = duration.key;
-        const slots = dateSlots[durationKey] || [];
-        dateSlots[durationKey] = this.processSlots(
-          slots,
-          dateStr,
-          duration,
-          booking
-        );
+        const slots = dateSlots[durationKey];
+        if (!slots) continue;
+
+        // Process each slot using precomputed timestampMs
+        dateSlots[durationKey] = slots
+          .map(([time, providerCount, timestampMs]) => {
+            // Check if this slot overlaps with the booking using millisecond timestamps
+            const slotEndMs = timestampMs + duration.minutes * 60_000;
+            const bookingStartMs = DateUtils.getTimestamp(booking.start_at);
+            const bookingEndMs = DateUtils.getTimestamp(booking.end_at);
+
+            // Fast millisecond-based overlap check
+            if (timestampMs < bookingEndMs && slotEndMs > bookingStartMs) {
+              const newCount = providerCount - 1;
+              console.log(`[AvailabilityManager] Reducing providers for ${durationKey}min slot at ${time} from ${providerCount} to ${newCount}`);
+              return newCount > 0 ? [time, newCount, timestampMs] as AvailabilitySlot : null;
+            }
+            return [time, providerCount, timestampMs] as AvailabilitySlot;
+          })
+          .filter((slot): slot is AvailabilitySlot => slot !== null);
       }
-      //
-      updatedSlots[dateStr] = dateSlots;
+
+      updatedSlots[utcDateKey] = dateSlots;
     }
 
     return {
@@ -51,32 +68,74 @@ export class AvailabilityManager {
     };
   }
 
+  /**
+   * Get all UTC date keys that a booking spans (handles multi-day bookings)
+   */
+  private getBookingSpanUtcDates(startUTC: string, endUTC: string): string[] {
+    const startDate = DateUtils.extractDateString(startUTC);
+    const endDate = DateUtils.extractDateString(endUTC);
+
+    const affectedDates: string[] = [startDate];
+
+    // Add all dates between start and end (for multi-day bookings)
+    let currentDate = startDate;
+    while (currentDate !== endDate) {
+      currentDate = DateUtils.extractDateString(
+        DateUtils.addDaysUTC(currentDate + 'T00:00:00.000Z', 1)
+      );
+      affectedDates.push(currentDate);
+    }
+
+    return affectedDates;
+  }
+
   async generateInitialBusinessAvailability(
     providers: User[],
     calendarSettings: CalendarSettings[],
-    fromBusinessDate: string, // Business date (e.g., "2025-09-27" in Melbourne)
+    fromBusinessDate: string, // Business date (e.g., "2025-09-27")
     days: number = 30
   ): Promise<AvailabilitySlots> {
-    const allSlots: { [dateKey: string]: { [durationKey: string]: [string, number][] } } = {};
+    const allSlots: { [utcDateKey: string]: { [durationKey: string]: AvailabilitySlot[] } } = {};
+    // Added third element: timestampMs for faster filtering
+    const processedBusinessDates = new Set<string>();
 
-    // Convert business date to UTC for generation
-    const fromUTC = DateUtils.convertBusinessTimeToUTC(fromBusinessDate, '00:00:00', this.business.time_zone);
+    console.log(`[AvailabilityManager] Generating ${days} days of availability from business date: ${fromBusinessDate}`);
 
-    console.log(`[AvailabilityManager] Generating from business date: ${fromBusinessDate} → UTC: ${DateUtils.extractDateString(fromUTC)}`);
+    for (let offset = 0; offset < days; offset++) {
+      const businessDate = addDaysBusinessDate(fromBusinessDate, offset, this.business.time_zone);
 
-    // Generate availability for the specified number of days
-    for (let dayOffset = 0; dayOffset < days; dayOffset++) {
-      const currentDate = DateUtils.addDaysUTC(fromUTC, dayOffset);
-      const dateKey = DateUtils.extractDateString(currentDate); // "2025-01-15"
+      // Skip if we've already processed this business date
+      if (processedBusinessDates.has(businessDate)) {
+        console.log(`[AvailabilityManager] Skipping already processed business date: ${businessDate}`);
+        continue;
+      }
+      processedBusinessDates.add(businessDate);
 
-      // Generate availability for all duration intervals for this day
-      allSlots[dateKey] = await generateAvailabilitySlotsForDate(
+      const { utcDateKeys } = getBusinessDayUTCRange(businessDate, this.business.time_zone);
+      console.log(`[AvailabilityManager] Business date ${businessDate} spans UTC dates: ${utcDateKeys.join(', ')}`);
+
+      // Generate slots once per business date
+      const businessDaySlots = await generateAvailabilitySlotsForDate(
         providers,
         calendarSettings,
-        currentDate,
+        DateUtils.createSlotTimestamp(businessDate, '12:00:00'), // noon UTC timestamp
         this.business.time_zone
       );
+
+      // Assign slots to all UTC dates this business day spans
+      for (const utcKey of utcDateKeys) {
+        allSlots[utcKey] = {};
+
+        for (const durationKey in businessDaySlots) {
+          allSlots[utcKey][durationKey] = businessDaySlots[durationKey].map(([time, count]) => {
+            const timestampMs = DateUtils.getTimestamp(DateUtils.createSlotTimestamp(utcKey, time + ':00'));
+            return [time, count, timestampMs] as AvailabilitySlot;
+          });
+        }
+      }
     }
+
+    console.log(`[AvailabilityManager] Generated slots for ${processedBusinessDates.size} unique business dates across ${days} days`);
 
     return {
       ...this.availabilitySlots,
@@ -95,86 +154,49 @@ export class AvailabilityManager {
     formattedMessage: string;
     error?: string;
   } {
-    try {
-      console.log(`[AvailabilityManager.checkDayAvailability] Checking availability for date: ${dateStr}`);
+    if (!DateUtils.isValidDateFormat(dateStr)) {
+      return { success: false, date: dateStr, availableSlots: [], formattedMessage: "", error: "Invalid date format" };
+    }
 
-      // Validate date format using DateUtils
-      if (!DateUtils.isValidDateFormat(dateStr)) {
-        return {
-          success: false,
-          date: dateStr,
-          availableSlots: [],
-          formattedMessage: "",
-          error: "Invalid date format. Please use YYYY-MM-DD format."
-        };
+    if (!serviceDurationMinutes) {
+      return { success: false, date: dateStr, availableSlots: [], formattedMessage: "Service duration required", error: "Missing service duration" };
+    }
+
+    const durationKey = findBestDurationMatch(serviceDurationMinutes);
+    const { startMs, endMs, utcDateKeys } = getBusinessDayUTCRange(dateStr, this.business.time_zone);
+
+    const allSlots: Array<{ time: string; providerCount: number; timestampMs: number }> = [];
+
+    for (const utcKey of utcDateKeys) {
+      const daySlots = this.availabilitySlots.slots[utcKey]?.[durationKey] || [];
+      for (const [time, providerCount, timestampMs] of daySlots) {
+        if (timestampMs >= startMs && timestampMs <= endMs) {
+          const { time: businessTime } = DateUtils.convertUTCToTimezone(DateUtils.createSlotTimestamp(utcKey, time + ':00'), this.business.time_zone);
+          allSlots.push({ time: businessTime, providerCount, timestampMs });
+        }
       }
+    }
 
-      // Convert business date to UTC date for database lookup
-      const businessDate = dateStr; // Business timezone date (e.g., "2025-09-27" in Melbourne)
-      const utcTimestamp = DateUtils.convertBusinessTimeToUTC(businessDate, '12:00:00', this.business.time_zone);
-      const utcDate = DateUtils.extractDateString(utcTimestamp); // UTC date for database lookup
-
-      console.log(`[AvailabilityManager] Business date: ${businessDate} → UTC date: ${utcDate}`);
-
-      // Get slots for the UTC date key
-      const daySlots = this.availabilitySlots.slots[utcDate];
-
-      if (!daySlots) {
-        return {
-          success: false,
-          date: dateStr,
-          availableSlots: [],
-          formattedMessage: `Sorry, we don't have availability data for ${this.formatDateForDisplay(dateStr)}.`,
-          error: "No availability data for this date"
-        };
-      }
-
-      // Get slots for the appropriate duration (use service duration or default to 60-min)
-      const durationKey = findBestDurationMatch(serviceDurationMinutes || 60);
-      const durationSlots = daySlots[durationKey] || [];
-
-      console.log(`[AvailabilityManager] Checking ${durationKey}-minute slots for ${serviceDurationMinutes || 60}-minute service`);
-
-      if (durationSlots.length === 0) {
-        return {
-          success: true,
-          date: dateStr,
-          availableSlots: [],
-          formattedMessage: `Unfortunately, we're fully booked on ${this.formatDateForDisplay(dateStr)}.`
-        };
-      }
-
-      // Convert UTC slot times to business timezone for user display
-      const availableSlots = durationSlots.map(([utcTime, providerCount]) => {
-        // utcTime is stored as "14:00" but represents UTC time, convert to business timezone
-        const utcTimestamp = DateUtils.createSlotTimestamp(utcDate, utcTime + ':00');
-        const { time: businessTime } = DateUtils.convertUTCToTimezone(utcTimestamp, this.business.time_zone);
-        return {
-          time: businessTime, // Returns HH:MM in business timezone
-          providerCount
-        };
-      });
-
-      // Create natural receptionist message
-      const formattedMessage = this.formatAvailabilityMessage(dateStr, availableSlots);
-
+    if (!allSlots.length) {
       return {
         success: true,
-        date: businessDate, // Return original business date
-        availableSlots,
-        formattedMessage
-      };
-
-    } catch (error) {
-      console.error(`[AvailabilityManager.checkDayAvailability] Error checking availability:`, error);
-      return {
-        success: false,
         date: dateStr,
         availableSlots: [],
-        formattedMessage: "Sorry, I couldn't check availability right now. Please try again.",
-        error: error instanceof Error ? error.message : "Unknown error"
+        formattedMessage: `Unfortunately, we're fully booked on ${this.formatDateForDisplay(dateStr)}.`
       };
     }
+
+    // Sort by timestampMs
+    allSlots.sort((a, b) => a.timestampMs - b.timestampMs);
+
+    const formattedMessage = this.formatAvailabilityMessage(dateStr, allSlots);
+
+    return {
+      success: true,
+      date: dateStr,
+      availableSlots: allSlots.map(({ time, providerCount }) => ({ time, providerCount })),
+      formattedMessage
+    };
   }
 
   /**
@@ -210,10 +232,8 @@ export class AvailabilityManager {
    * Format date for natural display (e.g., "Monday, 15th January")
    */
   private formatDateForDisplay(dateStr: string): string {
-    const { date: localDate } = this.convertToBusinessTimezone(dateStr, '00:00:00');
-
-    // Create date object for formatting
-    const date = new Date(localDate + 'T00:00:00');
+    // dateStr is already a business date (YYYY-MM-DD), format it directly
+    const date = new Date(dateStr + 'T12:00:00'); // Use noon to avoid timezone edge cases
     const formatted = date.toLocaleDateString('en-AU', {
       weekday: 'long',
       day: 'numeric',
@@ -232,37 +252,23 @@ export class AvailabilityManager {
   // TIMEZONE & FORMATTING HELPERS
   // ============================================================================
 
-  /**
-   * Convert UTC slot time to business timezone
-   */
-  private convertSlotToBusinessTime(dateStr: string, time: string): string {
-    const { time: businessTime } = this.convertToBusinessTimezone(dateStr, time);
-    return businessTime.substring(0, 5); // "17:00" format
-  }
-
-  /**
-   * Convert UTC timestamp to business timezone (centralized helper)
-   */
-  private convertToBusinessTimezone(dateStr: string, time: string): { date: string; time: string } {
-    const utcTimestamp = DateUtils.createSlotTimestamp(dateStr, time);
-    return DateUtils.convertUTCToTimezone(utcTimestamp, this.business.time_zone);
-  }
 
 
   /**
    * Format time for natural display (e.g., "10:30 AM", "1:00 PM", "1:30 PM")
+   * Optimized to avoid repeated Date object creation
    */
   private formatTimeForDisplay(timeStr: string): string {
-    // timeStr is already in Melbourne timezone (17:00), so just format it for display
+    // timeStr is already in business timezone (e.g., "17:00"), format directly
     const [hours, minutes] = timeStr.split(':').map(Number);
-    const date = new Date();
-    date.setHours(hours, minutes, 0, 0);
 
-    return date.toLocaleTimeString('en-AU', {
+    // Create a single date object for formatting
+    const tempDate = new Date(2000, 0, 1, hours, minutes); // Use fixed date, only time matters
+
+    return tempDate.toLocaleTimeString('en-AU', {
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true,
-      timeZone: this.business.time_zone
+      hour12: true
     });
   }
 
@@ -310,48 +316,5 @@ export class AvailabilityManager {
   }
 
 
-  // ============================================================================
-  // SLOT PROCESSING HELPERS
-  // ============================================================================
 
-  private processSlots(
-    slots: [string, number][],
-    dateStr: string,
-    duration: { key: string; minutes: number },
-    booking: Booking
-  ): [string, number][] {
-    return slots
-      .map(([slotTime, providerCount]) =>
-        this.processIndividualSlot(slotTime, providerCount, dateStr, duration, booking)
-      )
-      .filter((slot): slot is [string, number] => slot !== null);
-  }
-
-  private processIndividualSlot(
-    slotTime: string,
-    providerCount: number,
-    dateStr: string,
-    duration: { key: string; minutes: number },
-    booking: Booking
-  ): [string, number] | null {
-    const slotStartMs = DateUtils.createSlotTimestamp(dateStr, slotTime);
-    const slotEndMs = DateUtils.calculateEndTimestamp(slotStartMs, duration.minutes);
-
-    const hasOverlap = DateUtils.doPeriodsOverlap(
-      slotStartMs,
-      slotEndMs,
-      booking.start_at,
-      booking.end_at
-    );
-
-    if (hasOverlap) {
-      const newProviderCount = providerCount - 1;
-      console.log(
-        `[AvailabilityManager] Reducing providers for ${duration.key}min slot at ${slotTime} from ${providerCount} to ${newProviderCount}`
-      );
-      return newProviderCount > 0 ? [slotTime, newProviderCount] : null;
-    }
-
-    return [slotTime, providerCount];
-  }
 }
