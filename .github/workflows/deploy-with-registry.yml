@@ -172,8 +172,8 @@ jobs:
         SENTRY_API_KEY=${{ secrets.SENTRY_API_KEY }}
         ENVEOF
 
-        # Create docker-compose file with new image
-        cat > docker-compose.registry.yml << COMPOSEEOF
+        # Create docker compose file with new image
+        cat > docker compose.registry.yml << COMPOSEEOF
         version: '3.8'
 
         services:
@@ -221,13 +221,13 @@ jobs:
         echo "🧪 Starting new containers for testing on port 3001..."
 
         # Create test compose file
-        sed 's|"3000:3000"|"3001:3000"|g' docker-compose.registry.yml > docker-compose.test.yml
+        sed 's|"3000:3000"|"3001:3000"|g' docker compose.registry.yml > docker compose.test.yml
 
         # Try to start test containers
-        if ! docker-compose -f docker-compose.test.yml up -d; then
+        if ! docker compose -f docker compose.test.yml up -d; then
           echo "❌ Failed to start test containers - keeping old containers running"
-          docker-compose -f docker-compose.test.yml down || true
-          rm -f docker-compose.test.yml
+          docker compose -f docker compose.test.yml down || true
+          rm -f docker compose.test.yml
           echo "🔄 Old containers remain active - no downtime occurred"
           exit 1
         fi
@@ -247,9 +247,9 @@ jobs:
             break
           elif [ \$attempt -eq \$MAX_RETRIES ]; then
             echo "❌ Health check failed after \$MAX_RETRIES attempts - keeping old containers running"
-            docker-compose -f docker-compose.test.yml logs
-            docker-compose -f docker-compose.test.yml down || true
-            rm -f docker-compose.test.yml
+            docker compose -f docker compose.test.yml logs
+            docker compose -f docker compose.test.yml down || true
+            rm -f docker compose.test.yml
             echo "🔄 Old containers remain active - no downtime occurred"
             exit 1
           else
@@ -264,38 +264,38 @@ jobs:
 
           # Stop old containers ONLY after confirming new ones are healthy
           echo "⏹️ Stopping old containers..."
-          docker-compose -f docker-compose.cron.yml down || true
-          docker-compose -f docker-compose.registry.yml down || true
+          docker compose -f docker compose.cron.yml down || true
+          docker compose -f docker compose.registry.yml down || true
 
           # Stop test containers
           echo "🔄 Switching from test containers to production..."
-          docker-compose -f docker-compose.test.yml down
+          docker compose -f docker compose.test.yml down
 
           # Start production containers with the same healthy image
           echo "🚀 Starting production containers..."
-          docker-compose -f docker-compose.registry.yml up -d
+          docker compose -f docker compose.registry.yml up -d
 
           # Final verification
           sleep 10
           if curl -f http://localhost:3000/api/health --max-time 10; then
             echo "✅ Zero-downtime deployment completed successfully!"
             echo "📱 Application logs:"
-            docker-compose -f docker-compose.registry.yml logs --tail 5 skedy-app
+            docker compose -f docker compose.registry.yml logs --tail 5 skedy-app
             echo "⏰ Cron service logs:"
-            docker-compose -f docker-compose.registry.yml logs --tail 5 availability-cron
+            docker compose -f docker compose.registry.yml logs --tail 5 availability-cron
 
             echo "📊 Final disk usage:"
             df -h / | grep -E '^/dev/' || true
           else
             echo "❌ Final health check failed - attempting rollback"
-            docker-compose -f docker-compose.registry.yml logs
+            docker compose -f docker compose.registry.yml logs
             echo "🔄 This should not happen as test containers were healthy"
             exit 1
           fi
         fi
 
         # Cleanup
-        rm -f docker-compose.test.yml
+        rm -f docker compose.test.yml
 
         echo "🎉 Registry-based deployment completed!"
         echo "📦 Deployed image: \$NEW_IMAGE"
