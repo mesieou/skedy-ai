@@ -1,6 +1,6 @@
 "use client";
 
-import { Truck, Code, Brain, Target, Globe, Zap, User, ArrowRight } from "lucide-react";
+import { Truck, Code, Brain, Target, Globe, User } from "lucide-react";
 
 export function AboutSection() {
   const journey = [
@@ -58,7 +58,7 @@ export function AboutSection() {
           </h2>
 
           <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            The story of how a removalist's frustration became the solution for thousands of tradies worldwide.
+            The story of how a removalist&apos;s frustration became the solution for thousands of tradies worldwide.
           </p>
         </div>
 

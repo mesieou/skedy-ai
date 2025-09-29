@@ -60,4 +60,30 @@ export class BaseSeeder<T extends BaseEntity> {
   async deleteOne(conditions: import('../types/base').QueryConditions): Promise<void> {
     return await this.repository.deleteOne(conditions);
   }
+
+  // Cleanup only records created by this seeder instance
+  async cleanup(): Promise<void> {
+    this.checkTestEnvironment();
+
+    if (this.createdIds.length > 0) {
+      console.log(`🧹 [${this.constructor.name}] Cleaning up ${this.createdIds.length} records created by this test`);
+      for (const id of this.createdIds) {
+        await this.repository.deleteOne({ id });
+      }
+      this.createdIds = []; // Clear tracking array
+    } else {
+      console.log(`🧹 [${this.constructor.name}] No records to cleanup for this test`);
+    }
+  }
+
+  private checkTestEnvironment(): void {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Cleanup operations not allowed in production environment');
+    }
+
+    // Additional protection: Check if we're actually in a Jest test runner
+    if (typeof (global as typeof globalThis & { expect?: unknown }).expect === 'undefined' || typeof jest === 'undefined') {
+      throw new Error('Cleanup operations only allowed within Jest test environment');
+    }
+  }
 }

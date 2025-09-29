@@ -111,10 +111,10 @@ export class AvailabilityManager {
       }
       processedBusinessDates.add(businessDate);
 
-      const { utcDateKeys } = getBusinessDayUTCRange(businessDate, this.business.time_zone);
+      const { utcDateKeys, startMs, endMs } = getBusinessDayUTCRange(businessDate, this.business.time_zone);
       console.log(`[AvailabilityManager] Business date ${businessDate} spans UTC dates: ${utcDateKeys.join(', ')}`);
 
-      // Generate slots once per business date
+      // Generate slots for this business date
       const businessDaySlots = await generateAvailabilitySlotsForDate(
         providers,
         calendarSettings,
@@ -122,15 +122,24 @@ export class AvailabilityManager {
         this.business.time_zone
       );
 
-      // Assign slots to all UTC dates this business day spans
+      // Distribute slots to correct UTC dates based on their actual timestamps
       for (const utcKey of utcDateKeys) {
         allSlots[utcKey] = {};
 
         for (const durationKey in businessDaySlots) {
-          allSlots[utcKey][durationKey] = businessDaySlots[durationKey].map(([time, count]) => {
-            const timestampMs = DateUtils.getTimestamp(DateUtils.createSlotTimestamp(utcKey, time + ':00'));
-            return [time, count, timestampMs] as AvailabilitySlot;
-          });
+          allSlots[utcKey][durationKey] = businessDaySlots[durationKey]
+            .map(([time, count]) => {
+              // Create timestamp for this time on this specific UTC date
+              const candidateTimestamp = DateUtils.createSlotTimestamp(utcKey, time + ':00');
+              const timestampMs = DateUtils.getTimestamp(candidateTimestamp);
+
+              // Only include this slot if the timestamp falls within the business day range
+              if (timestampMs >= startMs && timestampMs <= endMs) {
+                return [time, count, timestampMs] as AvailabilitySlot;
+              }
+              return null;
+            })
+            .filter((slot): slot is AvailabilitySlot => slot !== null);
         }
       }
     }
@@ -314,7 +323,5 @@ export class AvailabilityManager {
       throw error;
     }
   }
-
-
 
 }
