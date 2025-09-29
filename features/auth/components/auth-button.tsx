@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Button } from "@/features/shared";
 import { createAuthenticatedServerClient as createClient } from "@/features/shared/lib/supabase/server";
 import { LogoutButton } from "./logout-button";
