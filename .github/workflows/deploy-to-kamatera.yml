@@ -39,16 +39,7 @@ jobs:
         CONTAINER_NAME="skedy-ai"
         IMAGE_NAME="skedy-ai"
 
-        # Stop existing containers (both app and cron)
-        echo "⏹️ Stopping existing containers..."
-        docker-compose -f docker-compose.cron.yml down || true
-        docker stop skedy-ai || true  # fallback for old single container
-        docker rm skedy-ai || true
-
-        # Remove old images to save space
-        docker image prune -f || true
-
-        # Pull latest code (exactly like working deployment)
+        # Pull latest code first (before stopping anything)
         echo "📥 Pulling latest code..."
         if [ -d "/root/skedy-ai" ]; then
           cd /root/skedy-ai
@@ -58,13 +49,17 @@ jobs:
           cd /root/skedy-ai
         fi
 
-        # Build Docker image (exactly like working deployment)
-        echo "🔨 Building Docker image..."
-        docker build -t skedy-ai .
+        # Build new Docker image with timestamp tag (don't overwrite existing)
+        TIMESTAMP=\$(date +%Y%m%d%H%M%S)
+        NEW_IMAGE="skedy-ai:\$TIMESTAMP"
+        echo "🔨 Building new Docker image: \$NEW_IMAGE"
 
-        echo "🚀 Starting services with docker-compose..."
+        if ! docker build -t "\$NEW_IMAGE" .; then
+          echo "❌ Docker build failed - keeping existing containers running"
+          exit 1
+        fi
 
-        # Create .env file with secrets (exactly like working deployment)
+        # Create .env file with secrets
         cat > .env << ENVEOF
         NODE_ENV=production
         NEXT_TELEMETRY_DISABLED=1
@@ -89,23 +84,88 @@ jobs:
         SENTRY_API_KEY=${{ secrets.SENTRY_API_KEY }}
         ENVEOF
 
-        # Deploy with docker-compose (app + cron services)
-        echo "🚀 Starting services with docker-compose..."
+        # Create temporary docker-compose file with new image
+        sed "s|skedy-ai:latest|\$NEW_IMAGE|g" docker-compose.cron.yml > docker-compose.new.yml
+
+        # Start new containers on different ports for testing
+        echo "🧪 Starting new containers for testing..."
+        sed -i 's|"3000:3000"|"3001:3000"|g' docker-compose.new.yml
+
+        if ! docker-compose -f docker-compose.new.yml up -d; then
+          echo "❌ Failed to start new containers - keeping existing ones running"
+          docker-compose -f docker-compose.new.yml down || true
+          rm -f docker-compose.new.yml
+          exit 1
+        fi
+
+        # Wait for new containers to be ready
+        echo "⏳ Waiting for new containers to be ready..."
+        sleep 10
+
+        # Health check on new containers
+        NEW_APP_CONTAINER=\$(docker-compose -f docker-compose.new.yml ps -q skedy-app)
+        NEW_CRON_CONTAINER=\$(docker-compose -f docker-compose.new.yml ps -q availability-cron)
+
+        if [ -z "\$NEW_APP_CONTAINER" ] || [ -z "\$NEW_CRON_CONTAINER" ]; then
+          echo "❌ New containers not found - rolling back"
+          docker-compose -f docker-compose.new.yml down || true
+          rm -f docker-compose.new.yml
+          exit 1
+        fi
+
+        # Test new app container health
+        echo "🔍 Testing new app container health..."
+        if ! curl -f http://localhost:3001/api/health --max-time 30; then
+          echo "❌ New app failed health check - rolling back"
+          docker-compose -f docker-compose.new.yml down || true
+          rm -f docker-compose.new.yml
+          exit 1
+        fi
+
+        # Check if new containers are still running
+        if ! docker ps | grep -q "\$NEW_APP_CONTAINER" || ! docker ps | grep -q "\$NEW_CRON_CONTAINER"; then
+          echo "❌ New containers crashed - rolling back"
+          docker-compose -f docker-compose.new.yml down || true
+          rm -f docker-compose.new.yml
+          exit 1
+        fi
+
+        echo "✅ New containers are healthy - switching traffic"
+
+        # Now stop old containers and start new ones on correct ports
+        echo "⏹️ Stopping old containers..."
+        docker-compose -f docker-compose.cron.yml down || true
+        docker stop skedy-ai || true  # fallback for old single container
+        docker rm skedy-ai || true
+
+        # Stop test containers
+        docker-compose -f docker-compose.new.yml down
+
+        # Tag new image as latest
+        docker tag "\$NEW_IMAGE" "skedy-ai:latest"
+
+        # Start new containers on production ports
+        echo "🚀 Starting new containers on production ports..."
         docker-compose -f docker-compose.cron.yml up -d
 
-        echo "✅ Deployment completed successfully!"
-
-        # Verify both containers are running
+        # Final verification
         sleep 5
         if docker ps | grep -q skedy-app && docker ps | grep -q availability-cron; then
-          echo "✅ Both services are running"
+          echo "✅ Deployment completed successfully!"
           echo "📱 Main app logs:"
           docker logs --tail 5 \$(docker-compose -f docker-compose.cron.yml ps -q skedy-app)
           echo "⏰ Cron service logs:"
           docker logs --tail 5 \$(docker-compose -f docker-compose.cron.yml ps -q availability-cron)
+
+          # Clean up old images (keep last 2 versions)
+          echo "🧹 Cleaning up old images..."
+          docker images skedy-ai --format "table {{.Tag}}" | grep -E '^[0-9]{14}\$' | sort -r | tail -n +3 | xargs -r -I {} docker rmi "skedy-ai:{}" || true
         else
-          echo "❌ One or more services failed to start"
+          echo "❌ Final verification failed"
           docker-compose -f docker-compose.cron.yml logs
           exit 1
         fi
+
+        # Cleanup
+        rm -f docker-compose.new.yml
         EOF
