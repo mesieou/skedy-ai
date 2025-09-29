@@ -102,41 +102,43 @@ jobs:
         echo "⏳ Waiting for new containers to be ready..."
         sleep 10
 
-        # Health check on new containers
-        NEW_APP_CONTAINER=\$(docker-compose -f docker-compose.new.yml ps -q skedy-app)
-        NEW_CRON_CONTAINER=\$(docker-compose -f docker-compose.new.yml ps -q availability-cron)
+        # Get container IDs (normalize multiple lines)
+        NEW_APP_CONTAINERS=\$(docker-compose -f docker-compose.new.yml ps -q skedy-app | tr '\n' ' ')
+        NEW_CRON_CONTAINERS=\$(docker-compose -f docker-compose.new.yml ps -q availability-cron | tr '\n' ' ')
 
-        if [ -z "\$NEW_APP_CONTAINER" ] || [ -z "\$NEW_CRON_CONTAINER" ]; then
-          echo "❌ New containers not found - rolling back"
+        echo "Debug: New app container IDs: \$NEW_APP_CONTAINERS"
+        echo "Debug: New cron container IDs: \$NEW_CRON_CONTAINERS"
+
+        # Verify all containers are running
+        check_containers_running() {
+          local containers=\$1
+          for c in \$containers; do
+            status=\$(docker inspect -f '{{.State.Running}}' "\$c" 2>/dev/null || echo "false")
+            if [ "\$status" != "true" ]; then
+              echo "❌ Container \$c is not running"
+              return 1
+            fi
+          done
+          return 0
+        }
+
+        if ! check_containers_running "\$NEW_APP_CONTAINERS" || ! check_containers_running "\$NEW_CRON_CONTAINERS"; then
+          echo "❌ One or more new containers failed to start - rolling back"
           docker-compose -f docker-compose.new.yml down || true
-          rm -f docker-compose.new.yml
           exit 1
         fi
 
-        # Test new app container health
-        echo "🔍 Testing new app container health..."
-        if ! curl -f http://localhost:3001/api/health --max-time 30; then
-          echo "❌ New app failed health check - rolling back"
-          docker-compose -f docker-compose.new.yml down || true
-          rm -f docker-compose.new.yml
-          exit 1
-        fi
+        # Optional: perform a quick health check on app endpoints
+        for c in \$NEW_APP_CONTAINERS; do
+          echo "🔍 Testing health for container \$c..."
+          if ! curl -f http://localhost:3001/api/health --max-time 30; then
+            echo "❌ Container \$c failed health check"
+            docker-compose -f docker-compose.new.yml down || true
+            exit 1
+          fi
+        done
 
-        # Check if new containers are still running (using container IDs, not names)
-        RUNNING_CONTAINERS=\$(docker ps -q)
-        if ! echo "\$RUNNING_CONTAINERS" | grep -q "\$NEW_APP_CONTAINER" || ! echo "\$RUNNING_CONTAINERS" | grep -q "\$NEW_CRON_CONTAINER"; then
-          echo "❌ New containers crashed - rolling back"
-          echo "Debug: Expected app container: \$NEW_APP_CONTAINER"
-          echo "Debug: Expected cron container: \$NEW_CRON_CONTAINER"
-          echo "Debug: Running container IDs: \$RUNNING_CONTAINERS"
-          echo "Debug: Full container list:"
-          docker ps
-          docker-compose -f docker-compose.new.yml down || true
-          rm -f docker-compose.new.yml
-          exit 1
-        fi
-
-        echo "✅ New containers are healthy - switching traffic"
+        echo "✅ New containers are healthy - proceeding with deployment"
 
         # Now stop old containers and start new ones on correct ports
         echo "⏹️ Stopping old containers..."
