@@ -82,12 +82,9 @@ export function LoginForm({
               <div className="grid gap-2">
                 <div className="flex items-center">
                   <Label htmlFor="password">Password</Label>
-                  <Link
-                    href="/auth/forgot-password"
-                    className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
-                  >
+                  <span className="ml-auto inline-block text-sm opacity-50 cursor-not-allowed text-muted-foreground">
                     Forgot your password?
-                  </Link>
+                  </span>
                 </div>
                 <Input
                   id="password"
@@ -98,18 +95,15 @@ export function LoginForm({
                 />
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Logging in..." : "Login"}
+              <Button type="button" className="w-full opacity-50 cursor-not-allowed" disabled>
+                Login (Temporarily Disabled)
               </Button>
             </div>
             <div className="mt-4 text-center text-sm">
               Don&apos;t have an account?{" "}
-              <Link
-                href="/auth/sign-up"
-                className="underline underline-offset-4"
-              >
+              <span className="opacity-50 cursor-not-allowed text-muted-foreground">
                 Sign up
-              </Link>
+              </span>
             </div>
           </form>
         </CardContent>

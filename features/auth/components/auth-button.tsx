@@ -17,13 +17,26 @@ export async function AuthButton() {
       <LogoutButton />
     </div>
   ) : (
-    <div className="flex gap-2">
-      <Button asChild size="sm" variant={"outline"} className="btn-futuristic-outline">
-        <Link href="/auth/login">Sign in</Link>
+    <div className="flex gap-2 relative">
+      <Button
+        size="sm"
+        variant={"outline"}
+        className="btn-futuristic-outline opacity-50 cursor-not-allowed"
+        disabled
+      >
+        Sign in
       </Button>
-      <Button asChild size="sm" className="btn text-sm">
-        <Link href="/auth/sign-up">Sign up</Link>
+      <Button
+        size="sm"
+        className="btn text-sm opacity-50 cursor-not-allowed"
+        disabled
+      >
+        Sign up
       </Button>
+      {/* Small notification bubble */}
+      <div className="absolute -top-2 -right-2 bg-yellow-500 text-yellow-900 text-xs px-2 py-1 rounded-full shadow-lg animate-pulse">
+        Soon
+      </div>
     </div>
   );
 }
