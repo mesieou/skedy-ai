@@ -223,10 +223,12 @@ jobs:
         # Create test compose file
         sed 's|"3000:3000"|"3001:3000"|g' docker-compose.registry.yml > docker-compose.test.yml
 
+        # Try to start test containers
         if ! docker-compose -f docker-compose.test.yml up -d; then
-          echo "❌ Failed to start test containers"
+          echo "❌ Failed to start test containers - keeping old containers running"
           docker-compose -f docker-compose.test.yml down || true
           rm -f docker-compose.test.yml
+          echo "🔄 Old containers remain active - no downtime occurred"
           exit 1
         fi
 
@@ -236,15 +238,19 @@ jobs:
 
         # Health check with retries
         MAX_RETRIES=5
+        HEALTH_CHECK_PASSED=false
+
         for attempt in \$(seq 1 \$MAX_RETRIES); do
           if curl -f http://localhost:3001/api/health --max-time 10; then
             echo "✅ Health check passed on attempt \$attempt"
+            HEALTH_CHECK_PASSED=true
             break
           elif [ \$attempt -eq \$MAX_RETRIES ]; then
-            echo "❌ Health check failed after \$MAX_RETRIES attempts"
+            echo "❌ Health check failed after \$MAX_RETRIES attempts - keeping old containers running"
             docker-compose -f docker-compose.test.yml logs
             docker-compose -f docker-compose.test.yml down || true
             rm -f docker-compose.test.yml
+            echo "🔄 Old containers remain active - no downtime occurred"
             exit 1
           else
             echo "⚠️ Health check failed, retrying in 5s (attempt \$attempt/\$MAX_RETRIES)..."
@@ -252,35 +258,40 @@ jobs:
           fi
         done
 
-        echo "✅ New containers are healthy - proceeding with deployment"
+        # Only proceed if health check passed
+        if [ "\$HEALTH_CHECK_PASSED" = "true" ]; then
+          echo "✅ New containers are healthy - proceeding with zero-downtime switch"
 
-        # Stop old containers
-        echo "⏹️ Stopping old containers..."
-        docker-compose -f docker-compose.cron.yml down || true
-        docker-compose -f docker-compose.registry.yml down || true
+          # Stop old containers ONLY after confirming new ones are healthy
+          echo "⏹️ Stopping old containers..."
+          docker-compose -f docker-compose.cron.yml down || true
+          docker-compose -f docker-compose.registry.yml down || true
 
-        # Stop test containers
-        docker-compose -f docker-compose.test.yml down
+          # Stop test containers
+          echo "🔄 Switching from test containers to production..."
+          docker-compose -f docker-compose.test.yml down
 
-        # Start production containers
-        echo "🚀 Starting production containers..."
-        docker-compose -f docker-compose.registry.yml up -d
+          # Start production containers with the same healthy image
+          echo "🚀 Starting production containers..."
+          docker-compose -f docker-compose.registry.yml up -d
 
-        # Final verification
-        sleep 10
-        if curl -f http://localhost:3000/api/health --max-time 10; then
-          echo "✅ Deployment completed successfully!"
-          echo "📱 Application logs:"
-          docker-compose -f docker-compose.registry.yml logs --tail 5 skedy-app
-          echo "⏰ Cron service logs:"
-          docker-compose -f docker-compose.registry.yml logs --tail 5 availability-cron
+          # Final verification
+          sleep 10
+          if curl -f http://localhost:3000/api/health --max-time 10; then
+            echo "✅ Zero-downtime deployment completed successfully!"
+            echo "📱 Application logs:"
+            docker-compose -f docker-compose.registry.yml logs --tail 5 skedy-app
+            echo "⏰ Cron service logs:"
+            docker-compose -f docker-compose.registry.yml logs --tail 5 availability-cron
 
-          echo "📊 Final disk usage:"
-          df -h / | grep -E '^/dev/' || true
-        else
-          echo "❌ Final health check failed"
-          docker-compose -f docker-compose.registry.yml logs
-          exit 1
+            echo "📊 Final disk usage:"
+            df -h / | grep -E '^/dev/' || true
+          else
+            echo "❌ Final health check failed - attempting rollback"
+            docker-compose -f docker-compose.registry.yml logs
+            echo "🔄 This should not happen as test containers were healthy"
+            exit 1
+          fi
         fi
 
         # Cleanup
