@@ -128,14 +128,22 @@ jobs:
           exit 1
         fi
 
-        # Optional: perform a quick health check on app endpoints
+        # Retry health checks with multiple attempts
+        MAX_RETRIES=5
         for c in \$NEW_APP_CONTAINERS; do
           echo "🔍 Testing health for container \$c..."
-          if ! curl -f http://localhost:3001/api/health --max-time 30; then
-            echo "❌ Container \$c failed health check"
-            docker-compose -f docker-compose.new.yml down || true
-            exit 1
-          fi
+          attempt=1
+          until curl -f http://localhost:3001/api/health --max-time 10; do
+            if [ \$attempt -ge \$MAX_RETRIES ]; then
+              echo "❌ Container \$c failed health check after \$MAX_RETRIES attempts"
+              docker-compose -f docker-compose.new.yml down || true
+              exit 1
+            fi
+            echo "⚠️ Health check failed, retrying in 5s (attempt \$attempt/\$MAX_RETRIES)..."
+            attempt=\$((attempt+1))
+            sleep 5
+          done
+          echo "✅ Container \$c passed health check"
         done
 
         echo "✅ New containers are healthy - proceeding with deployment"

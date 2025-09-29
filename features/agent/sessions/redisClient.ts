@@ -44,7 +44,7 @@ export class VoiceRedisClient {
       db: parseInt(process.env.VOICE_REDIS_DB || '0'),
       password: process.env.VOICE_REDIS_PASSWORD,
       maxRetriesPerRequest: 3,
-      enableOfflineQueue: false
+      enableOfflineQueue: true
     };
   }
 
