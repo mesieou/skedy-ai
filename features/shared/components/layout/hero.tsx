@@ -155,27 +155,28 @@ export function Hero() {
           <FloatingTradieElements />
           <div className="relative z-20 flex flex-col gap-8 items-center">
             <HeroContent />
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center px-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center px-4 w-full max-w-md sm:max-w-none">
               <Button
                 size="lg"
-                className="w-full sm:w-auto btn text-sm sm:text-base"
+                className="w-full sm:w-auto btn text-sm sm:text-base min-h-[48px] sm:min-h-[44px]"
                 onClick={() => {
                   setIsDemoModalOpen(true);
                 }}
                 data-demo-trigger
               >
-                <Play className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+                <Play className="h-4 w-4 sm:h-5 sm:w-5 mr-2 flex-shrink-0" />
                 Try Demo
               </Button>
               <Button
                 variant="outline"
                 size="lg"
-                className="w-full sm:w-auto btn-futuristic-outline px-6 sm:px-8 py-3 text-sm sm:text-base"
+                className="w-full sm:w-auto btn-futuristic-outline px-4 sm:px-8 py-3 text-sm sm:text-base min-h-[48px] sm:min-h-[44px] font-medium"
                 onClick={() => setIsWaitlistOpen(true)}
                 data-waitlist-trigger
               >
-                <Users className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                Join Waitlist
+                <Users className="h-4 w-4 sm:h-5 sm:w-5 mr-2 flex-shrink-0" />
+                <span className="block sm:hidden">Join Waitlist</span>
+                <span className="hidden sm:block">Get notified when we launch</span>
               </Button>
             </div>
           </div>

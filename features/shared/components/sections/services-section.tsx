@@ -144,7 +144,7 @@ export function ServicesSection() {
                           animationDelay: `${elemIndex * 0.5}s`
                         }}
                       >
-                        <ElementIcon className={`h-4 w-4 ${element.color}`} />
+                        <ElementIcon className={`h-3 w-3 sm:h-4 sm:w-4 ${element.color}`} />
                       </div>
                     );
                   })}
@@ -158,8 +158,8 @@ export function ServicesSection() {
 
                 {/* Service Icon */}
                 <div className={`relative mb-6 inline-block z-10`}>
-                  <div className={`p-6 bg-gradient-to-r ${service.gradient} rounded-2xl shadow-2xl border-2 border-white/20`}>
-                    <IconComponent className="h-10 w-10 text-white" />
+                  <div className={`p-4 sm:p-6 bg-gradient-to-r ${service.gradient} rounded-2xl shadow-2xl border-2 border-white/20`}>
+                    <IconComponent className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
                   </div>
                   <div className="absolute -top-2 -right-2 w-5 h-5 bg-white rounded-full animate-pulse flex items-center justify-center">
                     <div className="w-2 h-2 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full" />
@@ -186,7 +186,7 @@ export function ServicesSection() {
                     {service.features.map((feature, featureIndex) => (
                       <li key={featureIndex} className="flex items-start gap-3">
                         <div className="flex-shrink-0 mt-1">
-                          <CheckCircle className="h-4 w-4 text-primary" />
+                          <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                         </div>
                         <span className="text-sm text-card-foreground font-medium">
                           {feature}

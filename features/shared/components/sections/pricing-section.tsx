@@ -112,11 +112,12 @@ export function PricingSection() {
                 <Button
                   size="lg"
                   onClick={handleJoinWaitlist}
-                  className="btn text-lg px-8 py-4"
+                  className="w-full sm:w-auto btn text-sm sm:text-base px-4 sm:px-8 py-3 sm:py-4 min-h-[48px] sm:min-h-[44px]"
                 >
-                  <Bell className="mr-2 h-5 w-5" />
-                  Get Notified When We Launch
-                  <ArrowRight className="ml-2 h-5 w-5" />
+                  <Bell className="mr-2 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                  <span className="block sm:hidden">Join Waitlist</span>
+                  <span className="hidden sm:block">Get Notified When We Launch</span>
+                  <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
                 </Button>
               </div>
             </div>

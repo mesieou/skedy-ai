@@ -82,7 +82,7 @@ export function NavbarClient({ menuItems, authSection }: NavbarClientProps) {
           <div className="md:hidden">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg text-white hover:bg-white/10 transition-colors duration-300"
+              className="p-2 rounded-lg text-foreground hover:bg-foreground/10 transition-colors duration-300"
               aria-label="Toggle mobile menu"
             >
               {mobileMenuOpen ? (
@@ -97,7 +97,7 @@ export function NavbarClient({ menuItems, authSection }: NavbarClientProps) {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden rounded-none">
+        <div className="md:hidden rounded-none bg-background/95 backdrop-blur-sm border-b border-border">
           <div className="px-6 py-6 space-y-4">
             {/* Navigation Items */}
             {menuItems.map((item) => (
@@ -117,7 +117,7 @@ export function NavbarClient({ menuItems, authSection }: NavbarClientProps) {
                 href="https://www.instagram.com/skedy.io"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-3 text-white/70 hover:text-primary transition-colors duration-200 rounded-full hover:bg-white/10"
+                className="p-3 text-foreground/70 hover:text-primary transition-colors duration-200 rounded-full hover:bg-foreground/10"
                 aria-label="Instagram"
               >
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -128,7 +128,7 @@ export function NavbarClient({ menuItems, authSection }: NavbarClientProps) {
                 href="https://www.linkedin.com/company/skedy-io"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-3 text-white/70 hover:text-secondary transition-colors duration-200 rounded-full hover:bg-white/10"
+                className="p-3 text-foreground/70 hover:text-secondary transition-colors duration-200 rounded-full hover:bg-foreground/10"
                 aria-label="LinkedIn"
               >
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
