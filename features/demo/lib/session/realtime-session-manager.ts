@@ -1,6 +1,7 @@
 import { SessionStatus, SessionConfig, SessionCallbacks } from './types';
 import { AgentBridge } from '../services/agent-bridge';
 import * as Sentry from '@sentry/nextjs';
+import { sentry } from '@/features/shared/utils/sentryService';
 import { createWebRTCSessionConfig, createSessionUpdateConfig } from '@/features/shared/lib/openai-realtime-config';
 
 // Increase max listeners to prevent memory leak warnings (Node.js only)
@@ -12,6 +13,7 @@ export class RealtimeSessionManager {
   private peerConnection: RTCPeerConnection | null = null;
   private dataChannel: RTCDataChannel | null = null;
   private audioElement: HTMLAudioElement | null = null;
+  private mediaStream: MediaStream | null = null; // Track microphone stream
   private status: SessionStatus = 'DISCONNECTED';
   private callbacks: SessionCallbacks;
   private isConnecting = false;
@@ -80,8 +82,25 @@ export class RealtimeSessionManager {
       };
 
       // Add local audio track for microphone input
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      this.peerConnection.addTrack(mediaStream.getTracks()[0]);
+      try {
+        this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        this.peerConnection.addTrack(this.mediaStream.getTracks()[0]);
+
+        // Track successful microphone access
+        sentry.addBreadcrumb('Microphone access granted', 'demo-microphone', {
+          sessionId: this.backendSessionId,
+          tracksCount: this.mediaStream.getTracks().length
+        });
+
+        console.log('🎤 [SessionManager] Microphone access granted and track added');
+      } catch (micError) {
+        console.error('❌ [SessionManager] Failed to access microphone:', micError);
+        sentry.trackError(micError as Error, {
+          sessionId: this.backendSessionId || 'unknown',
+          operation: 'microphone_access_denied'
+        });
+        throw new Error(`Microphone access denied: ${(micError as Error).message}`);
+      }
 
       // Set up data channel for events
       this.dataChannel = this.peerConnection.createDataChannel("oai-events");
@@ -146,6 +165,13 @@ export class RealtimeSessionManager {
       this.isConnecting = false;
       this.updateStatus('DISCONNECTED');
       this.callbacks.onError?.(error instanceof Error ? error.message : String(error));
+
+      // Capture connection error in Sentry
+      sentry.trackError(error as Error, {
+        sessionId: this.backendSessionId || 'unknown',
+        operation: 'demo_connection_failed'
+      });
+
       throw error;
     }
   }
@@ -177,6 +203,10 @@ export class RealtimeSessionManager {
 
     this.dataChannel.addEventListener("error", (error) => {
       console.error('❌ [SessionManager] Data channel error:', error);
+      sentry.trackError(new Error(`Data channel error: ${error}`), {
+        sessionId: this.backendSessionId || 'unknown',
+        operation: 'data_channel_error'
+      });
       this.callbacks.onError?.('Data channel error');
     });
 
@@ -187,6 +217,11 @@ export class RealtimeSessionManager {
         await this.handleRealtimeEvent(event);
       } catch (error) {
         console.error('❌ [SessionManager] Failed to parse event:', error);
+        sentry.trackError(error as Error, {
+          sessionId: this.backendSessionId || 'unknown',
+          operation: 'realtime_event_parse_failed',
+          metadata: { rawEventData: e.data }
+        });
       }
     });
   }
@@ -294,6 +329,18 @@ export class RealtimeSessionManager {
 
     } catch (error) {
       console.error(`❌ [SessionManager] Tool execution failed:`, error);
+
+      // Track tool execution error
+      sentry.trackError(error as Error, {
+        sessionId: this.backendSessionId || 'unknown',
+        operation: 'demo_tool_execution_failed',
+        metadata: {
+          toolName,
+          callId,
+          argsString: argsString.substring(0, 500) // Limit args length for Sentry
+        }
+      });
+
       this.callbacks.onError?.(`Tool execution failed: ${error}`);
 
       // Send error result back to OpenAI if we have a call ID
@@ -328,6 +375,10 @@ export class RealtimeSessionManager {
       }
     } catch (error) {
       console.error('❌ [SessionManager] Failed to update session with new tools:', error);
+      sentry.trackError(error as Error, {
+        sessionId: this.backendSessionId || 'unknown',
+        operation: 'session_tools_update_failed'
+      });
     }
   }
 
@@ -358,6 +409,11 @@ export class RealtimeSessionManager {
 
     } catch (error) {
       console.error('❌ [SessionManager] Failed to send tool result:', error);
+      sentry.trackError(error as Error, {
+        sessionId: this.backendSessionId || 'unknown',
+        operation: 'tool_result_send_failed',
+        metadata: { callId, resultSuccess: result.success }
+      });
     }
   }
 
@@ -376,27 +432,66 @@ export class RealtimeSessionManager {
   }
 
   disconnect(): void {
+    console.log('🔌 [SessionManager] Starting disconnect cleanup...');
+
+    // Add Sentry breadcrumb for disconnect
+    sentry.addBreadcrumb('Demo session disconnect initiated', 'demo-disconnect', {
+      sessionId: this.backendSessionId,
+      status: this.status
+    });
+
     // Clean up backend session first
     this.cleanupBackendSession();
 
+    // CRITICAL: Stop microphone stream and release permissions
+    if (this.mediaStream) {
+      console.log('🎤 [SessionManager] Stopping microphone stream...');
+      try {
+        const tracksCount = this.mediaStream.getTracks().length;
+        this.mediaStream.getTracks().forEach(track => {
+          track.stop();
+          console.log(`🛑 [SessionManager] Stopped track: ${track.kind} (${track.label})`);
+        });
+        this.mediaStream = null;
+        console.log('✅ [SessionManager] Microphone stream stopped and permissions released');
+
+        // Track successful microphone cleanup
+        sentry.addBreadcrumb('Microphone stream stopped successfully', 'demo-cleanup', {
+          sessionId: this.backendSessionId,
+          tracksCount
+        });
+      } catch (error) {
+        console.error('❌ [SessionManager] Error stopping microphone stream:', error);
+        sentry.trackError(error as Error, {
+          sessionId: this.backendSessionId || 'unknown',
+          operation: 'microphone_cleanup_failed'
+        });
+        this.mediaStream = null; // Still clear the reference
+      }
+    }
+
     // Clean up WebRTC connections
     if (this.peerConnection) {
+      console.log('🔌 [SessionManager] Closing peer connection...');
       this.peerConnection.close();
       this.peerConnection = null;
     }
 
     if (this.dataChannel) {
+      console.log('📡 [SessionManager] Closing data channel...');
       this.dataChannel.close();
       this.dataChannel = null;
     }
 
     if (this.audioElement && document.body.contains(this.audioElement)) {
+      console.log('🔊 [SessionManager] Removing audio element...');
       document.body.removeChild(this.audioElement);
       this.audioElement = null;
     }
 
     this.isConnecting = false;
     this.updateStatus('DISCONNECTED');
+    console.log('✅ [SessionManager] Disconnect cleanup complete');
   }
 
   private async cleanupBackendSession(): Promise<void> {
@@ -440,7 +535,13 @@ export class RealtimeSessionManager {
           }
         });
       } else {
-        console.warn(`⚠️ [SessionManager] Failed to cleanup backend session: ${response.status}`);
+        const errorMsg = `Failed to cleanup backend session: ${response.status}`;
+        console.warn(`⚠️ [SessionManager] ${errorMsg}`);
+        sentry.trackError(new Error(errorMsg), {
+          sessionId: this.backendSessionId || 'unknown',
+          operation: 'backend_session_cleanup_failed',
+          metadata: { httpStatus: response.status }
+        });
       }
 
     } catch (error) {
@@ -487,11 +588,30 @@ export class RealtimeSessionManager {
       if (response.ok) {
         console.log(`✅ [SessionManager] ${type} transcript stored via API`);
       } else {
-        console.warn(`⚠️ [SessionManager] Failed to store ${type} transcript: ${response.status}`);
+        const errorMsg = `Failed to store ${type} transcript: ${response.status}`;
+        console.warn(`⚠️ [SessionManager] ${errorMsg}`);
+        sentry.trackError(new Error(errorMsg), {
+          sessionId: this.backendSessionId || 'unknown',
+          operation: 'transcript_api_failed',
+          metadata: {
+            transcriptType: type,
+            httpStatus: response.status,
+            itemId
+          }
+        });
       }
 
     } catch (error) {
       console.error(`❌ [SessionManager] Error storing ${type} transcript:`, error);
+      sentry.trackError(error as Error, {
+        sessionId: this.backendSessionId || 'unknown',
+        operation: 'transcript_storage_failed',
+        metadata: {
+          transcriptType: type,
+          itemId,
+          transcriptLength: transcript.length
+        }
+      });
     }
   }
 

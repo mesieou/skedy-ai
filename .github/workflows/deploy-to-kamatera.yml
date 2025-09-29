@@ -39,9 +39,10 @@ jobs:
         CONTAINER_NAME="skedy-ai"
         IMAGE_NAME="skedy-ai"
 
-        # Stop existing container (exactly like working deployment)
+        # Stop existing containers (both app and cron)
         echo "⏹️ Stopping existing containers..."
-        docker stop skedy-ai || true
+        docker-compose -f docker-compose.cron.yml down || true
+        docker stop skedy-ai || true  # fallback for old single container
         docker rm skedy-ai || true
 
         # Remove old images to save space
@@ -61,7 +62,7 @@ jobs:
         echo "🔨 Building Docker image..."
         docker build -t skedy-ai .
 
-        echo "🚀 Starting new container..."
+        echo "🚀 Starting services with docker-compose..."
 
         # Create .env file with secrets (exactly like working deployment)
         cat > .env << ENVEOF
@@ -88,22 +89,23 @@ jobs:
         SENTRY_API_KEY=${{ secrets.SENTRY_API_KEY }}
         ENVEOF
 
-        docker run -d -p 3000:3000 \
-          --env-file .env \
-          --name skedy-ai \
-          --restart unless-stopped \
-          skedy-ai:latest
+        # Deploy with docker-compose (app + cron services)
+        echo "🚀 Starting services with docker-compose..."
+        docker-compose -f docker-compose.cron.yml up -d
 
         echo "✅ Deployment completed successfully!"
 
-        # Verify the container is running
+        # Verify both containers are running
         sleep 5
-        if docker ps | grep -q skedy-ai; then
-          echo "✅ Container is running"
-          docker logs --tail 10 skedy-ai
+        if docker ps | grep -q skedy-app && docker ps | grep -q availability-cron; then
+          echo "✅ Both services are running"
+          echo "📱 Main app logs:"
+          docker logs --tail 5 \$(docker-compose -f docker-compose.cron.yml ps -q skedy-app)
+          echo "⏰ Cron service logs:"
+          docker logs --tail 5 \$(docker-compose -f docker-compose.cron.yml ps -q availability-cron)
         else
-          echo "❌ Container failed to start"
-          docker logs skedy-ai
+          echo "❌ One or more services failed to start"
+          docker-compose -f docker-compose.cron.yml logs
           exit 1
         fi
         EOF

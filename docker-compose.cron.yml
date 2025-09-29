@@ -30,7 +30,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runner
-    command: ["node", "scripts/availability-cron.mjs"]
+    command: ["npx", "tsx", "scripts/availability-cron.ts"]
     environment:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
