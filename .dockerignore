@@ -135,8 +135,8 @@ temp/
 dist/
 build/
 
-# Scripts (not needed in container)
-scripts/
+# Scripts are now needed for cron jobs
+# scripts/
 
 # Backup files
 *.backup
