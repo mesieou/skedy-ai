@@ -102,13 +102,39 @@ jobs:
         cd \$APP_DIR
         git pull origin main
 
-        echo "🧹 Cleaning up Docker resources..."
-        # Clean up old containers and images to free space
+        echo "🧹 Aggressive Docker cleanup to free maximum space..."
+
+        # Show disk usage before cleanup
+        echo "📊 Disk usage before cleanup:"
+        df -h / | grep -E '^/dev/' || true
+        docker system df || true
+
+        # Stop and remove all stopped containers
         docker container prune -f || true
+
+        # Remove all unused networks
+        docker network prune -f || true
+
+        # Remove all unused volumes (be careful - this removes unused volumes)
+        docker volume prune -f || true
+
+        # Remove only dangling images (untagged) - SAFE
         docker image prune -f || true
 
-        # Keep only last 3 skedy-ai images
+        # Clean build cache (safe to remove)
+        docker builder prune -a -f || true
+
+        # SAFE: Remove old skedy-ai images but keep last 3 versions (for rollback safety)
+        # This targets only our specific images, not all unused images
         docker images ghcr.io/mesieou/skedy-ai --format "table {{.Tag}}" | grep -E '^[0-9]{8}-[0-9]{6}\$' | sort -r | tail -n +4 | xargs -r -I {} docker rmi "ghcr.io/mesieou/skedy-ai:{}" 2>/dev/null || true
+
+        # SAFE: Remove only unused networks and stopped containers (not images)
+        docker system prune -f || true
+
+        # Show disk usage after cleanup
+        echo "📊 Disk usage after aggressive cleanup:"
+        df -h / | grep -E '^/dev/' || true
+        docker system df || true
 
         echo "📊 Disk usage before deployment:"
         df -h / | grep -E '^/dev/' || true

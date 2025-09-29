@@ -49,27 +49,40 @@ jobs:
           cd /root/skedy-ai
         fi
 
-        # Clean up Docker resources to free disk space before building
-        echo "🧹 Cleaning up Docker resources to free disk space..."
+        # Aggressive Docker cleanup to free maximum space before building
+        echo "🧹 Aggressive Docker cleanup to free maximum space..."
 
         # Show disk usage before cleanup
         echo "📊 Disk usage before cleanup:"
         df -h / | grep -E '^/dev/' || true
+        docker system df || true
 
-        # Remove stopped containers, unused networks, and dangling images
+        # Stop and remove all stopped containers
         docker container prune -f || true
+
+        # Remove all unused networks
         docker network prune -f || true
+
+        # Remove all unused volumes (be careful - this removes unused volumes)
+        docker volume prune -f || true
+
+        # Remove only dangling images (untagged) - SAFE
         docker image prune -f || true
 
-        # Remove old skedy-ai images (keep only latest and last 2 timestamped versions)
-        docker images skedy-ai --format "table {{.Tag}}" | grep -E '^[0-9]{12,14}\$' | sort -r | tail -n +3 | xargs -r -I {} docker rmi "skedy-ai:{}" 2>/dev/null || true
+        # Clean build cache (safe to remove)
+        docker builder prune -a -f || true
 
-        # Clean build cache
-        docker builder prune -f || true
+        # SAFE: Remove old skedy-ai images but keep last 3 versions (for rollback safety)
+        # This targets only our specific images, not all unused images
+        docker images skedy-ai --format "table {{.Tag}}" | grep -E '^[0-9]{12,14}\$' | sort -r | tail -n +4 | xargs -r -I {} docker rmi "skedy-ai:{}" 2>/dev/null || true
 
-        # Show disk usage after cleanup
-        echo "📊 Disk usage after cleanup:"
+        # SAFE: Remove only unused networks and stopped containers (not images)
+        docker system prune -f || true
+
+        # Show disk usage after aggressive cleanup
+        echo "📊 Disk usage after aggressive cleanup:"
         df -h / | grep -E '^/dev/' || true
+        docker system df || true
 
         # Build new Docker image with timestamp tag (don't overwrite existing)
         TIMESTAMP=\$(date +%Y%m%d%H%M%S)
