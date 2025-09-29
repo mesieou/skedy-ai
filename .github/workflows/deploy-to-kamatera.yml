@@ -123,11 +123,13 @@ jobs:
         fi
 
         # Check if new containers are still running (using container IDs, not names)
-        if ! docker ps -q | grep -q "\$NEW_APP_CONTAINER" || ! docker ps -q | grep -q "\$NEW_CRON_CONTAINER"; then
+        RUNNING_CONTAINERS=\$(docker ps -q)
+        if ! echo "\$RUNNING_CONTAINERS" | grep -q "\$NEW_APP_CONTAINER" || ! echo "\$RUNNING_CONTAINERS" | grep -q "\$NEW_CRON_CONTAINER"; then
           echo "❌ New containers crashed - rolling back"
           echo "Debug: Expected app container: \$NEW_APP_CONTAINER"
           echo "Debug: Expected cron container: \$NEW_CRON_CONTAINER"
-          echo "Debug: Running containers:"
+          echo "Debug: Running container IDs: \$RUNNING_CONTAINERS"
+          echo "Debug: Full container list:"
           docker ps
           docker-compose -f docker-compose.new.yml down || true
           rm -f docker-compose.new.yml
@@ -156,8 +158,9 @@ jobs:
         sleep 5
         FINAL_APP_CONTAINER=\$(docker-compose -f docker-compose.cron.yml ps -q skedy-app)
         FINAL_CRON_CONTAINER=\$(docker-compose -f docker-compose.cron.yml ps -q availability-cron)
+        FINAL_RUNNING_CONTAINERS=\$(docker ps -q)
 
-        if [ -n "\$FINAL_APP_CONTAINER" ] && [ -n "\$FINAL_CRON_CONTAINER" ] && docker ps -q | grep -q "\$FINAL_APP_CONTAINER" && docker ps -q | grep -q "\$FINAL_CRON_CONTAINER"; then
+        if [ -n "\$FINAL_APP_CONTAINER" ] && [ -n "\$FINAL_CRON_CONTAINER" ] && echo "\$FINAL_RUNNING_CONTAINERS" | grep -q "\$FINAL_APP_CONTAINER" && echo "\$FINAL_RUNNING_CONTAINERS" | grep -q "\$FINAL_CRON_CONTAINER"; then
           echo "✅ Deployment completed successfully!"
           echo "📱 Main app logs:"
           docker logs --tail 5 \$(docker-compose -f docker-compose.cron.yml ps -q skedy-app)
