@@ -124,9 +124,11 @@ jobs:
         # Clean build cache (safe to remove)
         docker builder prune -a -f || true
 
-        # SAFE: Remove old skedy-ai images but keep last 3 versions (for rollback safety)
-        # This targets only our specific images, not all unused images
-        docker images ghcr.io/mesieou/skedy-ai --format "table {{.Tag}}" | grep -E '^[0-9]{8}-[0-9]{6}\$' | sort -r | tail -n +4 | xargs -r -I {} docker rmi "ghcr.io/mesieou/skedy-ai:{}" 2>/dev/null || true
+        # Remove ALL timestamped images (keep only 'latest' locally)
+        # GHCR stores the history, so we don't need local copies
+        docker images ghcr.io/mesieou/skedy-ai --format "{{.Repository}}:{{.Tag}}" \
+          | grep -E ':[0-9]{8}-[0-9]{6}$' \
+          | xargs -r docker rmi -f 2>/dev/null || true
 
         # SAFE: Remove only unused networks and stopped containers (not images)
         docker system prune -f || true
