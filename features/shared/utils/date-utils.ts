@@ -1,6 +1,8 @@
+import { DateTime } from 'luxon';
+
 /**
  * Date utility functions for scheduling operations - ALL DATES IN UTC
- * Uses only native JavaScript Date methods with UTC ISO strings
+ * Uses modern Luxon library for reliable timezone handling
  */
 export class DateUtils {
   /**
@@ -135,54 +137,46 @@ export class DateUtils {
 
   /**
    * Format date for natural display using Australian conventions
+   * Uses Luxon for reliable timezone handling
    */
   static formatDateForDisplay(dateStr: string): string {
-    // Use DateUtils to create proper UTC timestamp
-    const utcTimestamp = this.createSlotTimestamp(dateStr, '00:00:00');
+    try {
+      const dt = DateTime.fromISO(`${dateStr}T00:00:00`, { zone: 'UTC' }).setZone('Australia/Melbourne');
 
-    // Convert to Australian timezone
-    const { date: localDate } = this.convertUTCToTimezone(utcTimestamp, 'Australia/Melbourne');
+      if (!dt.isValid) {
+        throw new Error(`Invalid date string: ${dateStr}`);
+      }
 
-    // Create date object for formatting
-    const date = new Date(localDate + 'T00:00:00');
-    const options: Intl.DateTimeFormatOptions = {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      timeZone: 'Australia/Melbourne'
-    };
+      const formatted = dt.toFormat('cccc d MMMM'); // "Thursday 2 October"
+      const day = dt.day;
+      const suffix = this.getOrdinalSuffix(day);
 
-    const formatted = date.toLocaleDateString('en-AU', options);
-
-    // Add ordinal suffix to day
-    const day = date.getDate();
-    const suffix = this.getOrdinalSuffix(day);
-
-    return formatted.replace(`${day}`, `${day}${suffix}`);
+      return formatted.replace(`${day}`, `${day}${suffix}`);
+    } catch (error) {
+      console.error(`Error formatting date for display: ${dateStr}`, error);
+      return dateStr; // Fallback to original string
+    }
   }
 
   /**
    * Format time for natural display using Australian conventions
+   * Uses Luxon for reliable timezone handling
    */
   static formatTimeForDisplay(timeStr: string): string {
-    // Create a UTC timestamp for the time
-    const today = this.extractDateString(this.nowUTC());
-    const utcTimestamp = this.createSlotTimestamp(today, timeStr + ':00');
+    try {
+      // Parse the time string (assumes it's already in the correct timezone context)
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      const dt = DateTime.fromObject({ hour: hours, minute: minutes }, { zone: 'Australia/Melbourne' });
 
-    // Convert to Australian timezone
-    const { time: localTime } = this.convertUTCToTimezone(utcTimestamp, 'Australia/Melbourne');
+      if (!dt.isValid) {
+        throw new Error(`Invalid time string: ${timeStr}`);
+      }
 
-    // Parse the local time and format for display
-    const [hours, minutes] = localTime.split(':').map(Number);
-    const date = new Date();
-    date.setHours(hours, minutes, 0, 0);
-
-    return date.toLocaleTimeString('en-AU', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-      timeZone: 'Australia/Melbourne'
-    });
+      return dt.toFormat('h:mm a'); // "7:00 AM", "5:00 PM"
+    } catch (error) {
+      console.error(`Error formatting time for display: ${timeStr}`, error);
+      return timeStr; // Fallback to original string
+    }
   }
 
   /**
@@ -333,19 +327,18 @@ export class DateUtils {
 
   /**
    * Check if it's midnight (00:00) in a specific timezone for a given UTC time
+   * Uses Luxon for reliable timezone conversion
    */
   static isMidnightInTimezone(utcIsoString: string, timezone: string): boolean {
     try {
-      const date = new Date(utcIsoString);
-      const localTime = new Intl.DateTimeFormat('en-CA', {
-        timeZone: timezone,
-        hour12: false,
-        hour: '2-digit',
-        minute: '2-digit'
-      }).format(date);
+      const dt = DateTime.fromISO(utcIsoString, { zone: 'UTC' }).setZone(timezone);
 
-      // Handle both "00:00" and "24:00" as midnight (JavaScript quirk)
-      return localTime === '00:00' || localTime === '24:00';
+      if (!dt.isValid) {
+        console.error(`Invalid UTC ISO string: ${utcIsoString}`);
+        return false;
+      }
+
+      return dt.hour === 0 && dt.minute === 0;
     } catch (error) {
       console.error(`Invalid timezone: ${timezone}`, error);
       return false;
@@ -354,25 +347,20 @@ export class DateUtils {
 
   /**
    * Convert UTC time to local time in a specific timezone
+   * Uses Luxon for reliable timezone conversion
    */
   static convertUTCToTimezone(utcIsoString: string, timezone: string): { date: string; time: string } {
     try {
-      const date = new Date(utcIsoString);
-      const localDate = new Intl.DateTimeFormat('en-CA', {
-        timeZone: timezone,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      }).format(date);
+      const dt = DateTime.fromISO(utcIsoString, { zone: 'UTC' }).setZone(timezone);
 
-      const localTime = new Intl.DateTimeFormat('en-CA', {
-        timeZone: timezone,
-        hour12: false,
-        hour: '2-digit',
-        minute: '2-digit'
-      }).format(date);
+      if (!dt.isValid) {
+        throw new Error(`Invalid UTC ISO string: ${utcIsoString}`);
+      }
 
-      return { date: localDate, time: localTime };
+      return {
+        date: dt.toFormat('yyyy-MM-dd'),
+        time: dt.toFormat('HH:mm')
+      };
     } catch (error) {
       console.error(`Error converting UTC to timezone ${timezone}:`, error);
       throw new Error(`Invalid timezone: ${timezone}`);
@@ -381,25 +369,23 @@ export class DateUtils {
 
   /**
    * Convert business local time to UTC ISO string
+   * Uses modern Luxon library for reliable timezone conversion
    */
   static convertBusinessTimeToUTC(dateStr: string, timeStr: string, timezone: string): string {
     try {
-      // Create a date object in the business timezone
-      const localDateTime = `${dateStr}T${timeStr}`;
+      const dt = DateTime.fromISO(`${dateStr}T${timeStr}`, { zone: timezone });
 
-      // Parse as local time in the specified timezone
-      const date = new Date(localDateTime);
+      if (!dt.isValid) {
+        throw new Error(`Invalid date/time: ${dateStr}T${timeStr} in ${timezone}`);
+      }
 
-      // Get timezone offset for the specific date (handles DST)
-      const tempDate = new Date(localDateTime);
-      const utcTime = tempDate.getTime();
-      const localTime = new Date(tempDate.toLocaleString("en-US", { timeZone: timezone })).getTime();
-      const timezoneOffset = utcTime - localTime;
+      const utcResult = dt.toUTC().toISO();
 
-      // Adjust for timezone offset
-      const utcDate = new Date(date.getTime() + timezoneOffset);
+      if (!utcResult) {
+        throw new Error(`Failed to convert to UTC: ${dateStr}T${timeStr} in ${timezone}`);
+      }
 
-      return utcDate.toISOString();
+      return utcResult;
     } catch (error) {
       console.error(`Error converting business time to UTC: ${dateStr} ${timeStr} in ${timezone}`, error);
       throw new Error(`Invalid date/time conversion: ${dateStr} ${timeStr}`);
@@ -424,5 +410,61 @@ export class DateUtils {
     // Return the day after the latest date
     const nextDay = this.addDaysUTC(`${latestDate}T00:00:00.000Z`, 1);
     return this.extractDateString(nextDay);
+  }
+
+  /**
+   * Add days to a business date while staying in business timezone
+   * Uses Luxon to handle daylight saving transitions correctly
+   */
+  static addDaysBusinessDate(dateStr: string, days: number, timezone: string): string {
+    try {
+      const dt = DateTime.fromISO(`${dateStr}T12:00:00`, { zone: timezone });
+
+      if (!dt.isValid) {
+        throw new Error(`Invalid date string: ${dateStr}`);
+      }
+
+      const newDt = dt.plus({ days });
+      return newDt.toFormat('yyyy-MM-dd');
+    } catch (error) {
+      console.error(`Error adding days to business date: ${dateStr} + ${days} days in ${timezone}`, error);
+      throw new Error(`Invalid date operation: ${dateStr} + ${days} days`);
+    }
+  }
+
+  /**
+   * Get UTC date range that covers a complete business day
+   * Used for querying availability slots that span multiple UTC dates
+   * Returns millisecond timestamps for efficient filtering
+   */
+  static getBusinessDayUTCRange(businessDate: string, businessTimezone: string): {
+    startUTC: string;
+    endUTC: string;
+    startMs: number;
+    endMs: number;
+    utcDateKeys: string[];
+  } {
+    // Start of business day (00:00 local time)
+    const startUTC = this.convertBusinessTimeToUTC(businessDate, '00:00:00', businessTimezone);
+
+    // End of business day (23:59:59 local time)
+    const endUTC = this.convertBusinessTimeToUTC(businessDate, '23:59:59', businessTimezone);
+
+    // Get millisecond timestamps for efficient filtering
+    const startMs = this.getTimestamp(startUTC);
+    const endMs = this.getTimestamp(endUTC);
+
+    // Get all UTC date keys that this business day spans
+    const startDateKey = this.extractDateString(startUTC);
+    const endDateKey = this.extractDateString(endUTC);
+
+    const utcDateKeys = [startDateKey];
+    if (startDateKey !== endDateKey) {
+      utcDateKeys.push(endDateKey);
+    }
+
+    console.log(`[getBusinessDayUTCRange] Business ${businessDate} spans UTC ${startUTC} to ${endUTC} (date keys: ${utcDateKeys.join(', ')})`);
+
+    return { startUTC, endUTC, startMs, endMs, utcDateKeys };
   }
 }

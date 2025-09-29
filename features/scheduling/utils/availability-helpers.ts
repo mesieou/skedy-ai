@@ -212,58 +212,6 @@ export async function generateAvailabilitySlotsForDate(
   return slots;
 }
 
-/**
- * Add days to a business date while staying in business timezone
- * Handles daylight saving transitions correctly
- */
-export function addDaysBusinessDate(dateStr: string, days: number, timezone: string): string {
-  // Create a UTC timestamp for the business date at noon (avoids DST edge cases)
-  const utcTimestamp = DateUtils.convertBusinessTimeToUTC(dateStr, '12:00:00', timezone);
-
-  // Add days in UTC
-  const newUtcTimestamp = DateUtils.addDaysUTC(utcTimestamp, days);
-
-  // Convert back to business date
-  const { date: newBusinessDate } = DateUtils.convertUTCToTimezone(newUtcTimestamp, timezone);
-
-  return newBusinessDate;
-}
-
-/**
- * Get UTC date range that covers a complete business day
- * Used for querying availability slots that span multiple UTC dates
- * Returns millisecond timestamps for efficient filtering
- */
-export function getBusinessDayUTCRange(businessDate: string, businessTimezone: string): {
-  startUTC: string;
-  endUTC: string;
-  startMs: number;
-  endMs: number;
-  utcDateKeys: string[];
-} {
-  // Start of business day (00:00 local time)
-  const startUTC = DateUtils.convertBusinessTimeToUTC(businessDate, '00:00:00', businessTimezone);
-
-  // End of business day (23:59:59 local time)
-  const endUTC = DateUtils.convertBusinessTimeToUTC(businessDate, '23:59:59', businessTimezone);
-
-  // Get millisecond timestamps for efficient filtering
-  const startMs = DateUtils.getTimestamp(startUTC);
-  const endMs = DateUtils.getTimestamp(endUTC);
-
-  // Get all UTC date keys that this business day spans
-  const startDateKey = DateUtils.extractDateString(startUTC);
-  const endDateKey = DateUtils.extractDateString(endUTC);
-
-  const utcDateKeys = [startDateKey];
-  if (startDateKey !== endDateKey) {
-    utcDateKeys.push(endDateKey);
-  }
-
-  console.log(`[getBusinessDayUTCRange] Business ${businessDate} spans UTC ${startUTC} to ${endUTC} (date keys: ${utcDateKeys.join(', ')})`);
-
-  return { startUTC, endUTC, startMs, endMs, utcDateKeys };
-}
 
 // =====================================
 // AVAILABILITY ROLLOVER FUNCTIONS

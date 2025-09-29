@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import { DURATION_INTERVALS } from "../types/availability-manager";
 import { AvailabilitySlots, AvailabilitySlot } from "@/features/shared/lib/database/types/availability-slots";
 import { Booking } from "@/features/shared/lib/database/types/bookings";
@@ -9,9 +10,7 @@ import {
   generateAvailabilitySlotsForDate,
   findBusinessesNeedingRollover,
   rolloverBusinessesAvailability,
-  findBestDurationMatch,
-  getBusinessDayUTCRange,
-  addDaysBusinessDate
+  findBestDurationMatch
 } from "../../utils/availability-helpers";
 
 // Class AvailabilityManager
@@ -102,7 +101,7 @@ export class AvailabilityManager {
     console.log(`[AvailabilityManager] Generating ${days} days of availability from business date: ${fromBusinessDate}`);
 
     for (let offset = 0; offset < days; offset++) {
-      const businessDate = addDaysBusinessDate(fromBusinessDate, offset, this.business.time_zone);
+      const businessDate = DateUtils.addDaysBusinessDate(fromBusinessDate, offset, this.business.time_zone);
 
       // Skip if we've already processed this business date
       if (processedBusinessDates.has(businessDate)) {
@@ -111,36 +110,44 @@ export class AvailabilityManager {
       }
       processedBusinessDates.add(businessDate);
 
-      const { utcDateKeys, startMs, endMs } = getBusinessDayUTCRange(businessDate, this.business.time_zone);
+      const { utcDateKeys, startMs, endMs } = DateUtils.getBusinessDayUTCRange(businessDate, this.business.time_zone);
       console.log(`[AvailabilityManager] Business date ${businessDate} spans UTC dates: ${utcDateKeys.join(', ')}`);
 
-      // Generate slots for this business date
+      // Generate slots once for this business date
       const businessDaySlots = await generateAvailabilitySlotsForDate(
         providers,
         calendarSettings,
-        DateUtils.createSlotTimestamp(businessDate, '12:00:00'), // noon UTC timestamp
+        DateUtils.createSlotTimestamp(businessDate, '12:00:00'),
         this.business.time_zone
       );
 
       // Distribute slots to correct UTC dates based on their actual timestamps
-      for (const utcKey of utcDateKeys) {
-        allSlots[utcKey] = {};
+      for (const durationKey in businessDaySlots) {
+        businessDaySlots[durationKey].forEach(([time, count]) => {
+          // For each slot, determine which UTC date it belongs to by converting the time
+          // The time is already in UTC format (e.g., "21:00", "00:00")
 
-        for (const durationKey in businessDaySlots) {
-          allSlots[utcKey][durationKey] = businessDaySlots[durationKey]
-            .map(([time, count]) => {
-              // Create timestamp for this time on this specific UTC date
-              const candidateTimestamp = DateUtils.createSlotTimestamp(utcKey, time + ':00');
-              const timestampMs = DateUtils.getTimestamp(candidateTimestamp);
+          // Try each UTC date to see which one this slot belongs to
+          for (const utcKey of utcDateKeys) {
+            const slotTimestamp = DateUtils.createSlotTimestamp(utcKey, time + ':00');
+            const timestampMs = DateUtils.getTimestamp(slotTimestamp);
 
-              // Only include this slot if the timestamp falls within the business day range
-              if (timestampMs >= startMs && timestampMs <= endMs) {
-                return [time, count, timestampMs] as AvailabilitySlot;
+            // Check if this timestamp falls within the business day range
+            if (timestampMs >= startMs && timestampMs <= endMs) {
+              // Initialize the structure if needed
+              if (!allSlots[utcKey]) {
+                allSlots[utcKey] = {};
               }
-              return null;
-            })
-            .filter((slot): slot is AvailabilitySlot => slot !== null);
-        }
+              if (!allSlots[utcKey][durationKey]) {
+                allSlots[utcKey][durationKey] = [];
+              }
+
+              // Add the slot to this UTC date
+              allSlots[utcKey][durationKey].push([time, count, timestampMs] as AvailabilitySlot);
+              break; // Found the right UTC date, no need to check others
+            }
+          }
+        });
       }
     }
 
@@ -172,7 +179,7 @@ export class AvailabilityManager {
     }
 
     const durationKey = findBestDurationMatch(serviceDurationMinutes);
-    const { startMs, endMs, utcDateKeys } = getBusinessDayUTCRange(dateStr, this.business.time_zone);
+    const { startMs, endMs, utcDateKeys } = DateUtils.getBusinessDayUTCRange(dateStr, this.business.time_zone);
 
     const allSlots: Array<{ time: string; providerCount: number; timestampMs: number }> = [];
 
@@ -239,22 +246,25 @@ export class AvailabilityManager {
 
   /**
    * Format date for natural display (e.g., "Monday, 15th January")
+   * Uses Luxon for reliable timezone handling
    */
   private formatDateForDisplay(dateStr: string): string {
-    // dateStr is already a business date (YYYY-MM-DD), format it directly
-    const date = new Date(dateStr + 'T12:00:00'); // Use noon to avoid timezone edge cases
-    const formatted = date.toLocaleDateString('en-AU', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      timeZone: this.business.time_zone
-    });
+    try {
+      const dt = DateTime.fromISO(`${dateStr}T12:00:00`, { zone: this.business.time_zone });
 
-    // Add ordinal suffix to day
-    const day = date.getDate();
-    const suffix = this.getOrdinalSuffix(day);
+      if (!dt.isValid) {
+        throw new Error(`Invalid date string: ${dateStr}`);
+      }
 
-    return formatted.replace(`${day}`, `${day}${suffix}`);
+      const formatted = dt.toFormat('cccc d MMMM'); // "Thursday 2 October"
+      const day = dt.day;
+      const suffix = this.getOrdinalSuffix(day);
+
+      return formatted.replace(`${day}`, `${day}${suffix}`);
+    } catch (error) {
+      console.error(`Error formatting date for display: ${dateStr}`, error);
+      return dateStr; // Fallback to original string
+    }
   }
 
   // ============================================================================
@@ -265,20 +275,22 @@ export class AvailabilityManager {
 
   /**
    * Format time for natural display (e.g., "10:30 AM", "1:00 PM", "1:30 PM")
-   * Optimized to avoid repeated Date object creation
+   * Uses Luxon for consistent formatting
    */
   private formatTimeForDisplay(timeStr: string): string {
-    // timeStr is already in business timezone (e.g., "17:00"), format directly
-    const [hours, minutes] = timeStr.split(':').map(Number);
+    try {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      const dt = DateTime.fromObject({ hour: hours, minute: minutes }, { zone: this.business.time_zone });
 
-    // Create a single date object for formatting
-    const tempDate = new Date(2000, 0, 1, hours, minutes); // Use fixed date, only time matters
+      if (!dt.isValid) {
+        throw new Error(`Invalid time string: ${timeStr}`);
+      }
 
-    return tempDate.toLocaleTimeString('en-AU', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
+      return dt.toFormat('h:mm a'); // "7:00 AM", "5:00 PM"
+    } catch (error) {
+      console.error(`Error formatting time for display: ${timeStr}`, error);
+      return timeStr; // Fallback to original string
+    }
   }
 
   /**
