@@ -26,10 +26,6 @@ RUN npm ci --only=production && npm cache clean --force
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Accept build arguments for client-side environment variables
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
-
 # Copy node_modules from deps
 COPY --from=deps /app/node_modules ./node_modules
 
@@ -39,9 +35,6 @@ COPY . .
 # Build-time envs
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
-# Set client-side environment variables for build
-ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
-ENV NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
 
 # Build Next.js
 RUN npm run build

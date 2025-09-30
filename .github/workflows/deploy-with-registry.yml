@@ -58,9 +58,6 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
         platforms: linux/amd64
-        build-args: |
-          NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY }}
 
   deploy:
     needs: build-and-push
@@ -174,6 +171,9 @@ jobs:
         SENTRY_DSN=${{ secrets.SENTRY_DSN }}
         SENTRY_API_KEY=${{ secrets.SENTRY_API_KEY }}
         ENVEOF
+
+        # Also create .env.local for Next.js runtime environment loading
+        cp .env .env.local
 
         # Create docker-compose file with new image
         cat > docker-compose.registry.yml << COMPOSEEOF
