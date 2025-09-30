@@ -13,7 +13,7 @@ import {
   Label
 } from "@/features/shared";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { X } from "lucide-react";
 
@@ -26,6 +26,10 @@ export function LoginForm({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Get the return URL from query parameters
+  const returnUrl = searchParams.get('returnUrl');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,8 +43,10 @@ export function LoginForm({
         password,
       });
       if (error) throw error;
-      // Update this route to redirect to an authenticated route. The user already has an active session.
-      router.push("/protected");
+
+      // Redirect to returnUrl if provided, otherwise to protected area
+      const redirectPath = returnUrl ? decodeURIComponent(returnUrl) : "/protected";
+      router.push(redirectPath);
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {

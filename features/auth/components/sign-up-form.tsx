@@ -12,7 +12,7 @@ import {
   Label
 } from "@/features/shared";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { X } from "lucide-react";
 
@@ -26,6 +26,10 @@ export function SignUpForm({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Get the return URL from query parameters
+  const returnUrl = searchParams.get('returnUrl');
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,13 +44,18 @@ export function SignUpForm({
     }
 
     try {
+      // Use consistent site URL configuration
+      const siteUrl = process.env.NODE_ENV === 'production'
+        ? 'https://skedy.io'
+        : window.location.origin;
+
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: process.env.NODE_ENV === 'production'
-            ? `https://skedy.io/auth/confirm`
-            : `${window.location.origin}/auth/confirm`,
+          emailRedirectTo: returnUrl
+            ? `${siteUrl}/auth/confirm?returnUrl=${encodeURIComponent(returnUrl)}`
+            : `${siteUrl}/auth/confirm`,
         },
       });
       if (error) throw error;

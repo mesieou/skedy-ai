@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/protected";
+  const returnUrl = searchParams.get("returnUrl");
 
   // Use a more reliable method to determine the correct origin
   // In production, always use the production URL regardless of the request origin
@@ -16,6 +17,7 @@ export async function GET(request: NextRequest) {
   console.log("Confirmation route called with:", {
     code: !!code,
     next,
+    returnUrl,
     requestUrl: request.url,
     determinedOrigin: origin,
     nodeEnv: process.env.NODE_ENV
@@ -33,8 +35,19 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      console.log("✅ Email confirmation successful, redirecting to:", `${origin}${next}`);
-      return NextResponse.redirect(`${origin}${next}`);
+      // Check for returnUrl first (from sign-up with return URL), then next, then default to protected
+      let redirectPath = "/protected";
+
+      if (returnUrl) {
+        // Decode the return URL and redirect to it
+        const decodedReturnUrl = decodeURIComponent(returnUrl);
+        redirectPath = decodedReturnUrl;
+      } else if (next && next !== "/protected") {
+        redirectPath = next;
+      }
+
+      console.log("✅ Email confirmation successful, redirecting to:", `${origin}${redirectPath}`);
+      return NextResponse.redirect(`${origin}${redirectPath}`);
     } else {
       console.error("❌ Email confirmation error with code:", error);
       return NextResponse.redirect(`${origin}/auth/error?error=${encodeURIComponent(error?.message || 'Confirmation failed')}`);
