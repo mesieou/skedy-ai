@@ -52,9 +52,9 @@ export async function updateSession(request: NextRequest) {
   const user = data?.claims;
 
   const shouldRedirectToLogin = (pathname: string, user: unknown) => {
-    return pathname !== "/" && 
-           !user && 
-           !pathname.startsWith("/login") && 
+    return pathname !== "/" &&
+           !user &&
+           !pathname.startsWith("/login") &&
            !pathname.startsWith("/auth");
   };
 

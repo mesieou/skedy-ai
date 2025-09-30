@@ -44,7 +44,9 @@ export function SignUpForm({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/confirm`,
+          emailRedirectTo: process.env.NODE_ENV === 'production'
+            ? `https://skedy.io/auth/confirm`
+            : `${window.location.origin}/auth/confirm`,
         },
       });
       if (error) throw error;
