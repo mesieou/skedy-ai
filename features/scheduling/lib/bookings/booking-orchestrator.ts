@@ -50,7 +50,8 @@ export class BookingOrchestrator {
       const availabilityCheck = await this.validateTimeSlotAvailability(
         preferredDate,
         preferredTime,
-        business.id
+        business.id,
+        quoteResultData.total_estimate_time_in_minutes
       );
 
       if (!availabilityCheck.available) {
@@ -96,7 +97,8 @@ export class BookingOrchestrator {
   private async validateTimeSlotAvailability(
     dateStr: string,
     timeStr: string,
-    businessId: string
+    businessId: string,
+    serviceDurationMinutes: number
   ): Promise<{ available: boolean; message: string }> {
     try {
       // Get current availability slots for the business
@@ -114,22 +116,36 @@ export class BookingOrchestrator {
       // Use AvailabilityManager for all availability logic
       const business = { id: businessId } as Business; // Minimal business object for AvailabilityManager
       const availabilityManager = new AvailabilityManager(currentAvailabilitySlots, business);
-      const dayAvailability = availabilityManager.checkDayAvailability(dateStr);
+      const dayAvailability = availabilityManager.checkDayAvailability(dateStr, serviceDurationMinutes);
 
       if (!dayAvailability.success || dayAvailability.availableSlots.length === 0) {
+        // This is a system error - log it but handle gracefully for the user
+        console.error('❌ [BookingOrchestrator] AvailabilityManager returned unsuccessful result:', {
+          dateStr,
+          serviceDurationMinutes,
+          error: dayAvailability.error,
+          formattedMessage: dayAvailability.formattedMessage
+        });
         return {
           available: false,
-          message: `Sorry, ${dateStr} is fully booked. Please choose another date.`
+          message: "Sorry, we're experiencing a temporary system issue. Please try again in a moment or contact us directly."
         };
       }
+
 
       // Check if the specific time slot is available
       const requestedSlot = dayAvailability.availableSlots.find(slot => slot.time === timeStr);
 
       if (!requestedSlot || requestedSlot.providerCount === 0) {
+        // The specific time is not available, but we have other slots
+        const availableTimes = dayAvailability.availableSlots
+          .filter(slot => slot.providerCount > 0)
+          .map(slot => slot.time)
+          .join(', ');
+
         return {
           available: false,
-          message: `Sorry, ${timeStr} on ${dateStr} is no longer available. Please choose another time.`
+          message: `Sorry, ${timeStr} on ${dateStr} seems to have just been booked. We still have these times available: ${availableTimes}.`
         };
       }
 
