@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, Clock, Calculator, MessageCircle, Zap, CheckCircle, Phone, Smartphone, Users, DollarSign, MapPin, ClipboardList } from "lucide-react";
+import { Calendar, Clock, Calculator, MessageCircle, Zap, CheckCircle, Phone, Smartphone, Users, DollarSign, MapPin, ClipboardList, Brain, TrendingUp } from "lucide-react";
 
 export function ServicesSection() {
   const services = [
@@ -68,21 +68,21 @@ export function ServicesSection() {
       shadowColor: "shadow-purple/30"
     },
     {
-      icon: MessageCircle,
-      title: "Complete Customer Service",
-      subtitle: "Answer Everything",
-      description: "Handles all customer inquiries with intelligent responses. From service questions to booking changes - your AI knows it all.",
+      icon: Brain,
+      title: "Natural Language AI",
+      subtitle: "Conversations That Feel Human",
+      description: "Advanced natural language processing that understands context, handles complex requests, and learns from every interaction to get better daily.",
       features: [
-        "Comprehensive FAQ knowledge base",
-        "Service details and explanations",
-        "Booking modifications and cancellations",
-        "Intelligent escalation when needed"
+        "Human-like conversation flow",
+        "Context-aware responses",
+        "Continuous learning from interactions",
+        "Daily performance improvements"
       ],
       visualElements: [
-        { icon: MessageCircle, label: "Chat", position: "top-4 left-4", color: "text-green-400", bg: "bg-green-400/20" },
-        { icon: Phone, label: "Call", position: "top-4 right-4", color: "text-blue-400", bg: "bg-blue-400/20" },
-        { icon: CheckCircle, label: "Resolved", position: "bottom-4 left-4", color: "text-purple-400", bg: "bg-purple-400/20" },
-        { icon: Zap, label: "Instant", position: "bottom-4 right-4", color: "text-yellow-400", bg: "bg-yellow-400/20" }
+        { icon: Brain, label: "AI Brain", position: "top-4 left-4", color: "text-green-400", bg: "bg-green-400/20" },
+        { icon: MessageCircle, label: "Natural", position: "top-4 right-4", color: "text-blue-400", bg: "bg-blue-400/20" },
+        { icon: TrendingUp, label: "Learning", position: "bottom-4 left-4", color: "text-purple-400", bg: "bg-purple-400/20" },
+        { icon: Zap, label: "Improving", position: "bottom-4 right-4", color: "text-yellow-400", bg: "bg-yellow-400/20" }
       ],
       gradient: "from-red-500 to-pink-600",
       borderColor: "border-red/50",

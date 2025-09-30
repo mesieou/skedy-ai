@@ -1,30 +1,30 @@
 "use client";
 
-import { Truck, Code, Brain, Target, Globe, User } from "lucide-react";
+import { PhoneOff, DollarSign, Bot, User } from "lucide-react";
 
 export function AboutSection() {
   const journey = [
     {
-      icon: Truck,
-      title: "The Problem",
-      subtitle: "Life as a Removalist",
-      description: "Working as a removalist, I constantly missed calls while on jobs. Customers needed immediate responses, but I couldn't afford a full-time receptionist.",
+      icon: PhoneOff,
+      title: "Missed Calls",
+      subtitle: "Lost Revenue/ bad user experience",
+      description: "Tradies constantly miss calls while on jobs. Every missed call is a lost customer, lost revenue, and damaged reputation. You can't be in two places at once.",
       gradient: "from-destructive to-destructive/80",
       borderColor: "border-destructive/50"
     },
     {
-      icon: Code,
-      title: "The Learning",
-      subtitle: "3 Years of AI & Programming",
-      description: "I spent 3 years learning programming and AI technology. Initially wanted to build 'Uber for removalists' but realized the scope was too massive.",
+      icon: DollarSign,
+      title: "Money",
+      subtitle: "Can't Afford a Receptionist",
+      description: "Hiring a full-time receptionist costs $50,000+ per year. Most small businesses can't justify this expense, leaving them stuck between missing calls or going broke.",
       gradient: "from-secondary to-secondary/80",
       borderColor: "border-secondary/50"
     },
     {
-      icon: Brain,
-      title: "The Pivot",
-      subtitle: "From Chatbot to Voice AI",
-      description: "Started with a booking chatbot, but fellow tradies said customers prefer voice calls. So I built the world's most natural AI voice receptionist.",
+      icon: Bot,
+      title: "Unnatural chatbots",
+      subtitle: "Current bots is robotic and unnatural",
+      description: "Existing chatbots and phone systems are robotic, frustrating, and drive customers away. They can't handle real conversations or complex booking requirements.",
       gradient: "from-primary to-primary/80",
       borderColor: "border-primary/50"
     }
@@ -53,12 +53,11 @@ export function AboutSection() {
           </div>
 
           <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 glow-text">
-            From <span className="bg-gradient-to-r from-destructive to-primary bg-clip-text text-transparent">Tradie</span> to
-            <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent"> AI Pioneer</span>
+            Born from <span className="bg-gradient-to-r from-destructive to-primary bg-clip-text text-transparent">3 Big Problems</span> Every Tradie Faces
           </h2>
 
           <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            The story of how a removalist&apos;s frustration became the solution for thousands of tradies worldwide.
+            How missing calls, tight budgets, and terrible automation sparked a revolution.
           </p>
         </div>
 
@@ -105,36 +104,6 @@ export function AboutSection() {
           })}
         </div>
 
-        {/* Mission & Vision */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-16 md:gap-20">
-          {/* Mission */}
-          <div className="text-center md:text-left">
-            <div className="flex items-center justify-center md:justify-start gap-4 mb-6">
-              <div className="p-3 sm:p-4 bg-gradient-to-r from-primary to-secondary rounded-2xl shadow-2xl border-2 border-white/20">
-                <Target className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
-              </div>
-              <h3 className="text-xl sm:text-2xl font-bold text-foreground glow-text">Our Mission</h3>
-            </div>
-            <p className="text-muted-foreground leading-relaxed">
-              Increase sales and save time for small service businesses by automating customer service with natural AI.
-              Every tradie deserves professional customer service without the overhead.
-            </p>
-          </div>
-
-          {/* Vision */}
-          <div className="text-center md:text-left">
-            <div className="flex items-center justify-center md:justify-start gap-4 mb-6">
-              <div className="p-3 sm:p-4 bg-gradient-to-r from-secondary to-accent rounded-2xl shadow-2xl border-2 border-white/20">
-                <Globe className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
-              </div>
-              <h3 className="text-xl sm:text-2xl font-bold text-foreground glow-text">Our Vision</h3>
-            </div>
-            <p className="text-muted-foreground leading-relaxed">
-              Be the world&apos;s fastest, most natural, and most capable AI virtual receptionist.
-              We want every customer to get instant, high-quality service — and every business to focus on what they do best.
-            </p>
-          </div>
-        </div>
 
         {/* Founder Quote */}
         <div className="mt-20 text-center">
