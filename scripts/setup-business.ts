@@ -70,7 +70,7 @@ import {
 import { weekdayCalendarSettingsData, weekendCalendarSettingsData } from '../features/shared/lib/database/seeds/data/calendar-settings-data';
 
 // Configuration
-const PROMPT_VERSION = 'v1.0.13'; // Use latest prompt version
+const PROMPT_VERSION = 'v1.0.15'; // Use latest prompt version
 
 // Business type configurations
 const businessConfigs = {

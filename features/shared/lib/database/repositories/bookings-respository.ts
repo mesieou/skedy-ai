@@ -55,7 +55,7 @@ export class BookingsRepository extends BaseRepository<Booking> {
       const bookingData: CreateBookingData = {
         user_id,
         business_id: quoteRequestData.business.id,
-        status: BookingStatus.PENDING,
+        status: BookingStatus.CONFIRMED, // Bookings created through AI agent are confirmed
         start_at,
         end_at: DateUtils.addMinutesUTC(start_at, calculationResult.total_estimate_time_in_minutes),
         total_estimate_amount: calculationResult.total_estimate_amount,
