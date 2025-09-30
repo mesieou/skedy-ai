@@ -24,18 +24,18 @@ export function SignUpForm({
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  // const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     const supabase = createClient();
-    // setIsLoading(true);
+    setIsLoading(true);
     setError(null);
 
     if (password !== repeatPassword) {
       setError("Passwords do not match");
-      // setIsLoading(false);
+      setIsLoading(false);
       return;
     }
 
@@ -52,7 +52,7 @@ export function SignUpForm({
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
-      // setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -110,15 +110,15 @@ export function SignUpForm({
                 />
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="button" className="w-full opacity-50 cursor-not-allowed" disabled>
-                Sign up (Temporarily Disabled)
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Creating an account..." : "Sign up"}
               </Button>
             </div>
             <div className="mt-4 text-center text-sm">
               Already have an account?{" "}
-              <span className="opacity-50 cursor-not-allowed text-muted-foreground">
+              <Link href="/auth/login" className="underline underline-offset-4">
                 Login
-              </span>
+              </Link>
             </div>
           </form>
         </CardContent>
