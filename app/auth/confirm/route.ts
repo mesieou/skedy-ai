@@ -1,4 +1,4 @@
-import { createAuthenticatedServerClient as createClient } from "@/features/shared/lib/supabase/server";
+import { createAuthenticatedServerClient } from "@/features/shared/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { type NextRequest } from "next/server";
 
@@ -26,20 +26,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/auth/error?error=${encodeURIComponent('Invalid confirmation link - missing confirmation code')}`);
   }
 
-  const supabase = await createClient();
+  const supabase = await createAuthenticatedServerClient();
 
   try {
     // Use exchangeCodeForSession instead of verifyOtp for email confirmation
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
+      console.log("✅ Email confirmation successful, redirecting to:", `${origin}${next}`);
       return NextResponse.redirect(`${origin}${next}`);
     } else {
-      console.error("Email confirmation error with code:", error);
+      console.error("❌ Email confirmation error with code:", error);
       return NextResponse.redirect(`${origin}/auth/error?error=${encodeURIComponent(error?.message || 'Confirmation failed')}`);
     }
   } catch (err) {
-    console.error("Unexpected error during code confirmation:", err);
+    console.error("💥 Unexpected error during code confirmation:", err);
     return NextResponse.redirect(`${origin}/auth/error?error=${encodeURIComponent('Unexpected error during confirmation')}`);
   }
 }
