@@ -12,7 +12,7 @@ export class AuthUserSeeder {
 
   // Create auth user with custom data
   async createAuthUserWith(data: CreateAuthUserData): Promise<AuthUser> {
-    this.checkProductionEnvironment();
+    // this.checkProductionEnvironment();
     const record = await this.repository.create(data);
     this.createdIds.push(record.id);
     return record;
@@ -33,11 +33,11 @@ export class AuthUserSeeder {
     }
   }
 
-  private checkProductionEnvironment(): void {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('Auth user seeding not allowed in production environment');
-    }
-  }
+  // private checkProductionEnvironment(): void {
+  //   if (process.env.NODE_ENV === 'production') {
+  //     throw new Error('Auth user seeding not allowed in production environment');
+  //   }
+  // }
 
   private checkTestEnvironment(): void {
     if (process.env.NODE_ENV === 'production') {

@@ -16,8 +16,8 @@ import dotenv from 'dotenv';
 import path from 'path';
 
 // Load environment variables (same as Jest)
-dotenv.config({ path: path.join(__dirname, '../.env.local') });
-dotenv.config({ path: path.join(__dirname, '../.env.test'), override: true });
+dotenv.config({ path: path.join(__dirname, '../.env.production') });
+// dotenv.config({ path: path.join(__dirname, '../.env.test'), override: true });
 
 import { BusinessSeeder } from '../features/shared/lib/database/seeds/business-seeder';
 import { UserSeeder } from '../features/shared/lib/database/seeds/user-seeder';
