@@ -6,11 +6,19 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/protected";
-  const origin = request.url.split('/auth/confirm')[0]; // Get the origin from the request
+
+  // Use a more reliable method to determine the correct origin
+  // In production, always use the production URL regardless of the request origin
+  const origin = process.env.NODE_ENV === 'production'
+    ? 'https://skedy.io'
+    : new URL(request.url).origin;
 
   console.log("Confirmation route called with:", {
     code: !!code,
-    next
+    next,
+    requestUrl: request.url,
+    determinedOrigin: origin,
+    nodeEnv: process.env.NODE_ENV
   });
 
   if (!code) {
