@@ -1,4 +1,5 @@
 import { createBrowserClient } from "@supabase/ssr";
+import { getSupabaseUrl, getSupabasePublishableKey } from "../client-env";
 
 /**
  * Browser Supabase client with publishable key
@@ -7,8 +8,8 @@ import { createBrowserClient } from "@supabase/ssr";
  */
 export function createPublishableClient() {
   return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!,
+    getSupabaseUrl(),
+    getSupabasePublishableKey(),
   );
 }
 
