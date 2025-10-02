@@ -18,19 +18,19 @@ export class BusinessContextProvider {
 
 
   /**
-   * Get complete business data by Twilio SID (for incoming calls)
+   * Get complete business data by Twilio number (for incoming calls)
    */
-  async getBusinessDataByTwilioSid(twilioAccountSid: string): Promise<{
+  async getBusinessDataByTwilioNumber(twilioNumber: string): Promise<{
     businessContext: BusinessContext;  // For user-facing purposes (AI prompts, conversations)
     businessEntity: Business;          // For backend purposes (calculations, database operations)
   }> {
-    console.log(`📋 Building business data for Twilio SID: ${twilioAccountSid}`);
+    console.log(`📋 Building business data for Twilio number: ${twilioNumber}`);
     console.log(`📋 Business data building stack:`, new Error().stack?.split('\n').slice(1, 5).join('\n'));
 
-    // Fetch business data by Twilio Account SID
-    const business = await this.businessRepo.findOne({ twilio_account_sid: twilioAccountSid });
+    // Fetch business data by Twilio number
+    const business = await this.businessRepo.findOne({ twilio_number: twilioNumber });
     if (!business) {
-      throw new Error(`Business not found for Twilio Account SID: ${twilioAccountSid}`);
+      throw new Error(`Business not found for Twilio number: ${twilioNumber}`);
     }
 
     const businessContext = await this.buildContextFromBusiness(business);
@@ -44,8 +44,8 @@ export class BusinessContextProvider {
   /**
    * Get business context only (for user-facing purposes)
    */
-  async getBusinessContextByTwilioSid(twilioAccountSid: string): Promise<BusinessContext> {
-    const { businessContext } = await this.getBusinessDataByTwilioSid(twilioAccountSid);
+  async getBusinessContextByTwilioNumber(twilioNumber: string): Promise<BusinessContext> {
+    const { businessContext } = await this.getBusinessDataByTwilioNumber(twilioNumber);
     return businessContext;
   }
 
@@ -250,7 +250,7 @@ export class BusinessContextProvider {
    * Get business context formatted for LLM by phone number
    */
   async getBusinessContextByPhoneForLLM(phoneNumber: string): Promise<string> {
-    const context = await this.getBusinessContextByTwilioSid(phoneNumber);
+    const context = await this.getBusinessContextByTwilioNumber(phoneNumber);
     return this.formatContextForLLM(context);
   }
 }

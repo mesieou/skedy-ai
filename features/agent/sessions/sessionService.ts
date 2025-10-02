@@ -66,21 +66,20 @@ export class SessionService {
             console.log('🎭 [SessionService] Demo phone call from website detected');
             business = demoBusinessChoice;
           } else {
-            // Real phone call - find by SID + removalist category
-            const twilioAccountSid = this.extractTwilioAccountSid(sipHeaders);
-            assert(twilioAccountSid, 'Twilio Account SID not found in SIP headers');
+            // Real phone call - find by Twilio number
+            const twilioNumber = this.extractTwilioNumber(sipHeaders);
+            assert(twilioNumber, 'Twilio number not found in Diversion header');
 
-            // Find businesses by Twilio Account SID and category
+            // Find businesses by Twilio number and category
             // Use findAll and take the first one to handle potential duplicates gracefully
             const businesses = await businessRepository.findAll({}, {
-              twilio_account_sid: twilioAccountSid,
-              business_category: 'removalist'
+              twilio_number: twilioNumber,
             });
 
             if (businesses.length > 0) {
               business = businesses[0]; // Take the first matching business
               if (businesses.length > 1) {
-                console.warn(`⚠️ [SessionService] Found ${businesses.length} businesses with Twilio SID ${twilioAccountSid}. Using first one: ${business.name}`);
+                console.warn(`⚠️ [SessionService] Found ${businesses.length} businesses with Twilio number ${twilioNumber}. Using first one: ${business.name}`);
               }
             } else {
               business = null;
@@ -164,9 +163,19 @@ export class SessionService {
     }
   }
 
-  private static extractTwilioAccountSid(sipHeaders: Array<{name: string; value: string}>): string | null {
-    const header = sipHeaders.find(h => h.name === 'X-Twilio-AccountSid');
-    return header?.value || null;
+  private static extractTwilioNumber(sipHeaders: Array<{name: string; value: string}>): string | null {
+    const header = sipHeaders.find(h => h.name === 'Diversion');
+    if (header?.value) {
+      // Extract phone number from Diversion header format: <sip:+61468031068@twilio.com>;reason=unconditional
+      const phoneMatch = header.value.match(/sip:(\+\d+)@/);
+      const extractedNumber = phoneMatch ? phoneMatch[1] : null;
+      console.log('🔍 [SessionService] Extracted Twilio number from Diversion:', extractedNumber);
+      console.log('🔍 [SessionService] Diversion header value:', header.value);
+      return extractedNumber;
+    }
+    console.log('🔍 [SessionService] No Diversion header found');
+    console.log('🔍 [SessionService] Sip Headers:', sipHeaders);
+    return null;
   }
 
   private static extractPhoneNumber(sipHeaders: Array<{name: string; value: string}>): string | null {

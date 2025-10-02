@@ -69,5 +69,4 @@ export interface Session {
 
   // Demo-specific fields
   ephemeralToken?: string;                   // WebRTC ephemeral token for demo sessions
-
 }

@@ -39,7 +39,7 @@ export function createTigaRemovalistBusinessData(): CreateBusinessData {
     offers_mobile_services: true,   // "Yes, we travel to customers for pickup/dropoff"
     offers_location_services: false, // "No, customers don't come to our warehouse"
     minimum_charge: 200,
-    twilio_account_sid: process.env.TWILIO_ACCOUNT_SID
+    twilio_number: process.env.TWILIO_NUMBER
   };
 }
 
@@ -75,7 +75,7 @@ export function createUniqueRemovalistBusinessData(): CreateBusinessData {
     offers_mobile_services: true,   // "Yes, we travel to customers for pickup/dropoff"
     offers_location_services: false, // "No, customers don't come to our warehouse"
     minimum_charge: 200,
-    twilio_account_sid: process.env.TWILIO_ACCOUNT_SID
+    twilio_number: process.env.TWILIO_NUMBER
   };
 }
 // Function to create unique manicurist business data for tests
@@ -111,7 +111,7 @@ export function createUniqueMobileManicuristBusinessData(): CreateBusinessData {
     offers_mobile_services: true,   // "Yes, we travel to customer homes"
     offers_location_services: true,  // "Yes, customers can also come to our salon"
     minimum_charge: 60.0,
-    twilio_account_sid: process.env.TWILIO_ACCOUNT_SID
+    twilio_number: process.env.TWILIO_NUMBER
   };
 }
 
@@ -148,7 +148,7 @@ export function createUniqueMassageBusinessData(): CreateBusinessData {
     offers_mobile_services: false,  // "No, customers come to our spa"
     offers_location_services: true,  // "Yes, customers visit our location"
     minimum_charge: 80.0,
-    twilio_account_sid: process.env.TWILIO_ACCOUNT_SID
+    twilio_number: process.env.TWILIO_NUMBER
   };
 }
 
@@ -185,7 +185,7 @@ export function createUniquePlumberBusinessData(): CreateBusinessData {
     offers_mobile_services: true,
     offers_location_services: false,
     minimum_charge: 120.0,
-    twilio_account_sid: process.env.TWILIO_ACCOUNT_SID
+    twilio_number: process.env.TWILIO_NUMBER
   };
 }
 
@@ -221,6 +221,6 @@ export function createSkedyBusinessData(): CreateBusinessData {
     offers_mobile_services: true,
     offers_location_services: false,
     minimum_charge: 0,
-    twilio_account_sid: process.env.TWILIO_ACCOUNT_SID
+    twilio_number: process.env.TWILIO_NUMBER
   };
 }

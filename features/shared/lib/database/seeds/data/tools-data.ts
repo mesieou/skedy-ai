@@ -249,6 +249,47 @@ export const requestToolTool: CreateToolData = {
   }
 };
 
+export const sendSMSBookingConfirmationTool: CreateToolData = {
+  name: 'send_sms_booking_confirmation',
+  description: 'Send SMS with all booking details for customer confirmation before creating the booking',
+  version: '1.0.0',
+  dynamic_parameters: false,
+  business_specific: true,
+  function_schema: {
+    type: 'function',
+    name: 'send_sms_booking_confirmation',
+    description: 'Send SMS with all booking details for customer confirmation before creating the booking',
+    parameters: {
+      type: 'object',
+      strict: true,
+      properties: {
+        preferred_date: {
+          type: 'string',
+          description: 'Preferred booking date in YYYY-MM-DD format'
+        },
+        preferred_time: {
+          type: 'string',
+          description: 'Preferred booking time in HH:MM format (24-hour)'
+        },
+        confirmation_message: {
+          type: 'string',
+          description: 'Optional additional message to include with the confirmation'
+        }
+      },
+      required: ['preferred_date', 'preferred_time'],
+      additionalProperties: false
+    }
+  },
+  output_template: {
+    success_message: 'Booking confirmation SMS sent to {customer_name} at {customer_phone}. Please wait for their confirmation before proceeding.',
+    error_message: 'Failed to send booking confirmation SMS. You can proceed with the booking or try again.',
+    data_structure: {
+      sms_sent: 'boolean',
+      customer_phone: 'string',
+      message_type: 'string'
+    }
+  }
+};
 // ============================================================================
 // TOOL COLLECTIONS
 // ============================================================================
@@ -262,6 +303,7 @@ export const removalistTools: CreateToolData[] = [
   checkDayAvailabilityTool,
   createUserTool,
   createBookingTool,
+  sendSMSBookingConfirmationTool,
   requestToolTool
 ];
 
@@ -276,6 +318,7 @@ export const allAvailableTools: CreateToolData[] = [
   checkDayAvailabilityTool,
   createUserTool,
   createBookingTool,
+  sendSMSBookingConfirmationTool,
   requestToolTool
 
   // Future tools will be added here:

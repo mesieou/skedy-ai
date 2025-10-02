@@ -14,7 +14,11 @@
     "test:shared": "jest features/shared",
     "test:ai-agent": "jest features/ai-agent",
     "test:memory": "jest features/agent/__tests__/memory/",
-    "seed:business": "tsx scripts/seed-business.ts"
+    "seed:business": "tsx scripts/seed-business.ts",
+    "setup-tool": "tsx scripts/setup-single-tool.ts",
+    "setup-tools": "tsx scripts/setup-tools.ts",
+    "deploy-tool": "tsx scripts/deploy-tool-to-businesses.ts",
+    "remove-tool": "tsx scripts/remove-tool-from-businesses.ts"
   },
   "dependencies": {
     "@cartesia/cartesia-js": "^2.2.5",

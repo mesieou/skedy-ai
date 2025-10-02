@@ -1,8 +1,8 @@
 "use client";
 
+import { cn } from "@/features/shared";
+import { createClient } from "@/features/shared/lib/supabase/client";
 import {
-  cn,
-  createClient,
   Button,
   Card,
   CardContent,

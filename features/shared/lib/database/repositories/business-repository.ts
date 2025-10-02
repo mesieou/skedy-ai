@@ -16,10 +16,10 @@ export class BusinessRepository extends BaseRepository<Business> {
     );
   }
 
-  async findByTwilioAccountSid(
-    twilioAccountSid: string
+  async findByTwilioNumber(
+    twilioNumber: string
   ): Promise<Business | null> {
-    return await this.findOne({ twilio_account_sid: twilioAccountSid });
+    return await this.findOne({ twilio_number: twilioNumber });
   }
   /**
    * Build business info string from Business entity for prompt injection

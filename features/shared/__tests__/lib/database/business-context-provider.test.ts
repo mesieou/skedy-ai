@@ -2,18 +2,18 @@ import { BusinessContextProvider } from '../../../lib/database/business-context-
 
 describe('BusinessContextProvider Performance Test', () => {
   let businessContextProvider: BusinessContextProvider;
-  const testTwilioAccountSid = process.env.TEST_TWILIO_ACCOUNT_SID || 'ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
+  const testTwilioNumber = process.env.TEST_TWILIO_NUMBER || '+61468031068';
 
   beforeAll(async () => {
     businessContextProvider = new BusinessContextProvider();
   });
 
-    it('should retrieve business context by Twilio Account SID and measure performance', async () => {
+    it('should retrieve business context by Twilio number and measure performance', async () => {
     // Warm up call (to account for any connection establishment)
     console.log('🔥 Warming up database connection...');
     const warmupStart = performance.now();
     try {
-      await businessContextProvider.getBusinessContextByTwilioSid(testTwilioAccountSid);
+      await businessContextProvider.getBusinessContextByTwilioNumber(testTwilioNumber);
     } catch {
       // Ignore errors in warmup
     }
@@ -23,7 +23,7 @@ describe('BusinessContextProvider Performance Test', () => {
     // Actual performance test - Raw context
     console.log('\n📊 Testing raw business context retrieval...');
     const start1 = performance.now();
-    const context = await businessContextProvider.getBusinessContextByTwilioSid(testTwilioAccountSid);
+    const context = await businessContextProvider.getBusinessContextByTwilioNumber(testTwilioNumber);
     const end1 = performance.now();
     const rawTime = end1 - start1;
 
@@ -43,7 +43,7 @@ describe('BusinessContextProvider Performance Test', () => {
     console.log('\n🔄 Testing multiple concurrent retrievals...');
     const concurrentStart = performance.now();
     const promises = Array.from({ length: 5 }, () =>
-      businessContextProvider.getBusinessContextByTwilioSid(testTwilioAccountSid)
+      businessContextProvider.getBusinessContextByTwilioNumber(testTwilioNumber)
     );
     const results = await Promise.all(promises);
     const concurrentEnd = performance.now();
@@ -62,7 +62,7 @@ describe('BusinessContextProvider Performance Test', () => {
     // Performance summary
     console.log('\n📈 PERFORMANCE SUMMARY FOR CALL AGENT');
     console.log('=====================================');
-    console.log(`🆔 Twilio Account SID tested: ${testTwilioAccountSid}`);
+    console.log(`🆔 Twilio number tested: ${testTwilioNumber}`);
     console.log(`⚡ Raw context retrieval: ${rawTime.toFixed(2)}ms`);
     console.log(`🔄 Concurrent avg: ${avgConcurrentTime.toFixed(2)}ms`);
     console.log('=====================================');
@@ -72,15 +72,15 @@ describe('BusinessContextProvider Performance Test', () => {
     expect(avgConcurrentTime).toBeLessThan(5000); // Concurrent calls should be under 5 seconds each
   });
 
-  it('should handle non-existent Twilio Account SID gracefully', async () => {
-    const nonExistentSid = 'AC999999999999999999999999999999';
+  it('should handle non-existent Twilio number gracefully', async () => {
+    const nonExistentNumber = '+61999999999';
 
-    console.log(`\n🔍 Testing non-existent Twilio SID: ${nonExistentSid}`);
+    console.log(`\n🔍 Testing non-existent Twilio number: ${nonExistentNumber}`);
     const start = performance.now();
 
     await expect(
-      businessContextProvider.getBusinessContextByTwilioSid(nonExistentSid)
-    ).rejects.toThrow(`Business not found for Twilio Account SID: ${nonExistentSid}`);
+      businessContextProvider.getBusinessContextByTwilioNumber(nonExistentNumber)
+    ).rejects.toThrow(`Business not found for Twilio number: ${nonExistentNumber}`);
 
     const end = performance.now();
     const errorTime = end - start;

@@ -3,7 +3,7 @@ import twilio from 'twilio';
 /**
  * Send SMS via Twilio - simple and straightforward
  */
-export async function sendText(to: string, message: string): Promise<{ success: boolean; error?: string }> {
+export async function sendText(to: string, message: string, from: string): Promise<{ success: boolean; error?: string }> {
   try {
     const client = twilio(
       process.env.TWILIO_ACCOUNT_SID!,
@@ -12,7 +12,7 @@ export async function sendText(to: string, message: string): Promise<{ success: 
 
     const result = await client.messages.create({
       body: message,
-      from: process.env.TWILIO_PHONE_NUMBER!,
+      from: from,
       to: formatAustralianPhone(to)
     });
 

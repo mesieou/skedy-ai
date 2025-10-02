@@ -11,6 +11,7 @@ import { checkDayAvailability } from './tools/checkDayAvailability';
 import { createUser } from './tools/createUser';
 import { createBooking } from './tools/createBooking';
 import { requestTool } from './tools/requestTool';
+import { sendSMSBookingConfirmationTool } from './tools/sendSMSBookingConfirmationTool';
 
 /**
  * Execute tool function and update session state
@@ -91,6 +92,12 @@ export async function executeToolFunction(
         break;
       case 'request_tool':
         result = await requestTool(args as { tool_name: string; service_name?: string; reason?: string }, session);
+        break;
+      case 'send_sms_booking_confirmation':
+        result = await sendSMSBookingConfirmationTool(
+          args as { preferred_date: string; preferred_time: string; confirmation_message?: string },
+          session
+        );
         break;
       default:
         result = buildToolResponse(null, `Unknown tool: ${toolName}`, false);
