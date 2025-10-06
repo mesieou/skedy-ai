@@ -1,6 +1,7 @@
 import { BaseRepository } from "../base-repository";
 import type { Business } from "../types/business";
 import { DateUtils } from "@/features/shared/utils/date-utils";
+import assert from "assert";
 
 export class BusinessRepository extends BaseRepository<Business> {
   constructor() {
@@ -65,5 +66,31 @@ GST: ${
     }
 Service Type: ${serviceType}
     `.trim();
+  }
+
+  /**
+   * Get OpenAI API key for a business based on their openai_api_key_name
+   */
+  static getApiKeyForBusiness(business: Business): string {
+    assert(business?.openai_api_key_name, 'Business must have openai_api_key_name field');
+
+    const envVarName = `OPENAI_API_KEY_${business.openai_api_key_name}`;
+    const apiKey = process.env[envVarName];
+
+    assert(apiKey, `Environment variable ${envVarName} not found for business ${business.name}`);
+    return apiKey;
+  }
+
+  /**
+   * Get OpenAI webhook secret for a business based on their openai_api_key_name
+   */
+  static getWebhookSecretForBusiness(business: Business): string {
+    assert(business?.openai_api_key_name, 'Business must have openai_api_key_name field');
+
+    const envVarName = `OPENAI_WEBHOOK_SECRET_${business.openai_api_key_name}`;
+    const webhookSecret = process.env[envVarName];
+
+    assert(webhookSecret, `Environment variable ${envVarName} not found for business ${business.name}`);
+    return webhookSecret;
   }
 }

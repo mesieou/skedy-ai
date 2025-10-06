@@ -14,11 +14,11 @@ export * from './addresses-data';
 //     tiers: 1 person 95, 2 person 145, 3 person 185
 //   - pricing combination: travel_per_minute_per_person
 //     tiers: 1 person 95, 2 person 145, 3 person 185
-export const removalistExample1ServiceData: CreateServiceData = {
+export const removalistTigaService1Data: CreateServiceData = {
   business_id: "placeholder-business-id", // Will be replaced with actual business_id
-  name: "Local Removals - Between Customers",
-  description: "Professional house move, furniture removal services.",
-  how_it_works: "We send a team to pick up your items from the pickup location, transport them safely, and deliver to your dropoff location. You don't lift a finger - we handle all the heavy lifting, packing protection, and careful placement at the destination.",
+  name: "One bedroon and furniture(one or few items) relocation",
+  description: "Professional one bedroon house/apartment and furniture relocation services.",
+  how_it_works: "We send a team with a 4 tonne truck to pick up your items from the pickup location, transport them safely, and deliver to your dropoff location. You don't lift a finger - we handle all the heavy lifting, packing protection, and careful placement at the destination.",
   location_type: LocationType.PICKUP_AND_DROPOFF,
   travel_charging_model: TravelChargingModel.BETWEEN_CUSTOMER_LOCATIONS,
   pricing_config: {
@@ -30,43 +30,43 @@ export const removalistExample1ServiceData: CreateServiceData = {
           {
             min_quantity: 1,
             max_quantity: 1,
-            price: 95.00,
+            price: 100.00,
             duration_estimate_mins: {
-              "one_item": 60,
-              "few_items": 90,
+              "one_item": 40,
+              "few_items": 60,
               "house_move_1_bedroom": 120,
-              "house_move_2_bedroom": 180,
-              "house_move_3_bedroom": 240,
-              "office_move_small": 100,
-              "office_move_medium": 140
+              // "house_move_2_bedroom": 180,
+              // "house_move_3_bedroom": 240,
+              // "office_move_small": 180,
+              // "office_move_medium": 360
             }
           },
           {
             min_quantity: 2,
             max_quantity: 2,
-            price: 145.00,
+            price: 150.00,
             duration_estimate_mins: {
-              "one_item": 30,
+              "one_item": 40,
               "few_items": 60,
-              "house_move_1_bedroom": 90,
-              "house_move_2_bedroom": 120,
-              "house_move_3_bedroom": 180,
-              "office_move_small": 75,
-              "office_move_medium": 100
+              "house_move_1_bedroom": 120,
+              // "house_move_2_bedroom": 180,
+              // "house_move_3_bedroom": 240,
+              // "office_move_small": 180,
+              // "office_move_medium": 360
             }
           },
           {
             min_quantity: 3,
             max_quantity: 3,
-            price: 185.00,
+            price: 190.00,
             duration_estimate_mins: {
-              "one_item": 20,
-              "few_items": 45,
-              "house_move_1_bedroom": 60,
-              "house_move_2_bedroom": 90,
-              "house_move_3_bedroom": 120,
-              "office_move_small": 50,
-              "office_move_medium": 75
+              "one_item": 40,
+              "few_items": 60,
+              "house_move_1_bedroom": 120,
+              // "house_move_2_bedroom": 180,
+              // "house_move_3_bedroom": 120,
+              // "office_move_small": 180,
+              // "office_move_medium": 360
             }
           }
         ]
@@ -78,19 +78,303 @@ export const removalistExample1ServiceData: CreateServiceData = {
           {
             min_quantity: 1,
             max_quantity: 1,
-            price: 95.00,
+            price: 100.00,
             duration_estimate_mins: null
           },
           {
             min_quantity: 2,
             max_quantity: 2,
-            price: 145.00,
+            price: 150.00,
             duration_estimate_mins: null
           },
           {
             min_quantity: 3,
             max_quantity: 3,
+            price: 190.00,
+            duration_estimate_mins: null
+          }
+        ]
+      }
+    ]
+  }
+};
+
+export const removalistTigaService2Data: CreateServiceData = {
+  business_id: "placeholder-business-id", // Will be replaced with actual business_id
+  name: "Medium house/apartment and small offices relocation",
+  description: "Professional medium house/apartment and small offices relocation services",
+  how_it_works: "We send a team with a 6 tonne truck to pick up your items from the pickup location, transport them safely, and deliver to your dropoff location. You don't lift a finger - we handle all the heavy lifting, packing protection, and careful placement at the destination.",
+  location_type: LocationType.PICKUP_AND_DROPOFF,
+  travel_charging_model: TravelChargingModel.BETWEEN_CUSTOMER_LOCATIONS,
+  pricing_config: {
+    components: [
+      {
+        name: "Labor Cost",
+        pricing_combination: PricingCombination.LABOR_PER_HOUR_TEAM_RATE,
+        tiers: [
+          {
+            min_quantity: 1,
+            max_quantity: 1,
+            price: 110.00,
+            duration_estimate_mins: {
+              // "one_item": 40,
+              // "few_items": 60,
+              // "house_move_1_bedroom": 120,
+              "house_move_2_bedroom": 180,
+              // "house_move_3_bedroom": 240,
+              // "office_move_small": 180,
+              "office_move_small": 360
+            }
+          },
+          {
+            min_quantity: 2,
+            max_quantity: 2,
+            price: 160.00,
+            duration_estimate_mins: {
+              // "one_item": 40,
+              // "few_items": 60,
+              // "house_move_1_bedroom": 120,
+              "house_move_2_bedroom": 180,
+              // "house_move_3_bedroom": 240,
+              // "office_move_small": 180,
+              "office_move_medium": 360
+            }
+          },
+          {
+            min_quantity: 3,
+            max_quantity: 3,
+            price: 200.00,
+            duration_estimate_mins: {
+              // "one_item": 40,
+              // "few_items": 60,
+              // "house_move_1_bedroom": 120,
+              "house_move_2_bedroom": 180,
+              // "house_move_3_bedroom": 120,
+              // "office_move_small": 180,
+              "office_move_small": 360
+            }
+          }
+        ]
+      },
+      {
+        name: "Travel Cost",
+        pricing_combination: PricingCombination.TRAVEL_PER_HOUR_TEAM_RATE,
+        tiers: [
+          {
+            min_quantity: 1,
+            max_quantity: 1,
+            price: 110.00,
+            duration_estimate_mins: null
+          },
+          {
+            min_quantity: 2,
+            max_quantity: 2,
+            price: 160.00,
+            duration_estimate_mins: null
+          },
+          {
+            min_quantity: 3,
+            max_quantity: 3,
+            price: 200.00,
+            duration_estimate_mins: null
+          }
+        ]
+      }
+    ]
+  }
+};
+
+export const removalistTigaService3Data: CreateServiceData = {
+  business_id: "placeholder-business-id", // Will be replaced with actual business_id
+  name: "Large house/apartment and medium offices relocation",
+  description: "Professional large house/apartment and medium offices relocation services",
+  how_it_works: "We send a team with a 8 tonne truck to pick up your items from the pickup location, transport them safely, and deliver to your dropoff location. You don't lift a finger - we handle all the heavy lifting, packing protection, and careful placement at the destination.",
+  location_type: LocationType.PICKUP_AND_DROPOFF,
+  travel_charging_model: TravelChargingModel.BETWEEN_CUSTOMER_LOCATIONS,
+  pricing_config: {
+    components: [
+      {
+        name: "Labor Cost",
+        pricing_combination: PricingCombination.LABOR_PER_HOUR_TEAM_RATE,
+        tiers: [
+          {
+            min_quantity: 2,
+            max_quantity: 2,
+            price: 175.00,
+            duration_estimate_mins: {
+              // "one_item": 40,
+              // "few_items": 60,
+              // "house_move_1_bedroom": 120,
+              // "house_move_2_bedroom": 180,
+              "house_move_3_bedroom": 360,
+              // "office_move_small": 180,
+              "office_move_medium": 360
+            }
+          },
+          {
+            min_quantity: 3,
+            max_quantity: 3,
+            price: 215.00,
+            duration_estimate_mins: {
+              // "one_item": 40,
+              // "few_items": 60,
+              // "house_move_1_bedroom": 120,
+              // "house_move_2_bedroom": 180,
+              "house_move_3_bedroom": 360,
+              // "office_move_small": 180,
+              "office_move_medium": 360
+            }
+          }
+        ]
+      },
+      {
+        name: "Travel Cost",
+        pricing_combination: PricingCombination.TRAVEL_PER_HOUR_TEAM_RATE,
+        tiers: [
+          {
+            min_quantity: 2,
+            max_quantity: 2,
+            price: 175.00,
+            duration_estimate_mins: null
+          },
+          {
+            min_quantity: 3,
+            max_quantity: 3,
+            price: 215.00,
+            duration_estimate_mins: null
+          }
+        ]
+      }
+    ]
+  }
+};
+
+
+export const removalistTigaService4Data: CreateServiceData = {
+  business_id: "placeholder-business-id", // Will be replaced with actual business_id
+  name: "Large house/apartment and large offices relocation",
+  description: "Professional large house/apartment and large office relocation services",
+  how_it_works: "We send a team with a 10 tonne truck to pick up your items from the pickup location, transport them safely, and deliver to your dropoff location. You don't lift a finger - we handle all the heavy lifting, packing protection, and careful placement at the destination.",
+  location_type: LocationType.PICKUP_AND_DROPOFF,
+  travel_charging_model: TravelChargingModel.BETWEEN_CUSTOMER_LOCATIONS,
+  pricing_config: {
+    components: [
+      {
+        name: "Labor Cost",
+        pricing_combination: PricingCombination.LABOR_PER_HOUR_TEAM_RATE,
+        tiers: [
+          {
+            min_quantity: 2,
+            max_quantity: 2,
             price: 185.00,
+            duration_estimate_mins: {
+              // "one_item": 40,
+              // "few_items": 60,
+              // "house_move_1_bedroom": 120,
+              // "house_move_2_bedroom": 180,
+              // "house_move_3_bedroom": 360,
+              "house_move_4_bedroom": 360,
+              // "office_move_small": 180,
+              "office_move_large": 360
+            }
+          },
+          {
+            min_quantity: 3,
+            max_quantity: 3,
+            price: 225.00,
+            duration_estimate_mins: {
+              // "one_item": 40,
+              // "few_items": 60,
+              // "house_move_1_bedroom": 120,
+              // "house_move_2_bedroom": 180,
+              "house_move_4_bedroom": 360,
+              // "office_move_small": 180,
+              "office_move_large": 360
+            }
+          }
+        ]
+      },
+      {
+        name: "Travel Cost",
+        pricing_combination: PricingCombination.TRAVEL_PER_HOUR_TEAM_RATE,
+        tiers: [
+          {
+            min_quantity: 2,
+            max_quantity: 2,
+            price: 185.00,
+            duration_estimate_mins: null
+          },
+          {
+            min_quantity: 3,
+            max_quantity: 3,
+            price: 225.00,
+            duration_estimate_mins: null
+          }
+        ]
+      }
+    ]
+  }
+};
+
+export const removalistTigaService5Data: CreateServiceData = {
+  business_id: "placeholder-business-id", // Will be replaced with actual business_id
+  name: "Large house/apartment and massive offices relocation",
+  description: "Professional large house/apartment and massive offices relocation services",
+  how_it_works: "We send a team with a 12 tonne truck to pick up your items from the pickup location, transport them safely, and deliver to your dropoff location. You don't lift a finger - we handle all the heavy lifting, packing protection, and careful placement at the destination.",
+  location_type: LocationType.PICKUP_AND_DROPOFF,
+  travel_charging_model: TravelChargingModel.BETWEEN_CUSTOMER_LOCATIONS,
+  pricing_config: {
+    components: [
+      {
+        name: "Labor Cost",
+        pricing_combination: PricingCombination.LABOR_PER_HOUR_TEAM_RATE,
+        tiers: [
+          {
+            min_quantity: 2,
+            max_quantity: 2,
+            price: 195.00,
+            duration_estimate_mins: {
+              // "one_item": 40,
+              // "few_items": 60,
+              // "house_move_1_bedroom": 120,
+              // "house_move_2_bedroom": 180,
+              // "house_move_3_bedroom": 360,
+              // "house_move_4_bedroom": 360,
+              "house_move_5_bedroom": 360,
+              // "office_move_small": 180,
+              "office_move_massive": 360
+            }
+          },
+          {
+            min_quantity: 3,
+            max_quantity: 3,
+            price: 235.00,
+            duration_estimate_mins: {
+              // "one_item": 40,
+              // "few_items": 60,
+              // "house_move_1_bedroom": 120,
+              // "house_move_2_bedroom": 180,
+              "house_move_5_bedroom": 360,
+              // "office_move_small": 180,
+              "office_move_massive": 360
+            }
+          }
+        ]
+      },
+      {
+        name: "Travel Cost",
+        pricing_combination: PricingCombination.TRAVEL_PER_HOUR_TEAM_RATE,
+        tiers: [
+          {
+            min_quantity: 2,
+            max_quantity: 2,
+            price: 195.00,
+            duration_estimate_mins: null
+          },
+          {
+            min_quantity: 3,
+            max_quantity: 3,
+            price: 235.00,
             duration_estimate_mins: null
           }
         ]

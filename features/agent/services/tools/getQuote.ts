@@ -54,10 +54,26 @@ export async function getQuote(
     const calculator = new BookingCalculator();
     const { quoteResult: detailedResult, quoteRequest } = await calculator.calculateBooking(args, service, session.businessEntity);
 
-    // Update session with detailed result for internal use
-    session.quotes.push(detailedResult);
-    session.selectedQuote = detailedResult;
-    session.selectedQuoteRequest = quoteRequest;
+    // Update session with detailed result and request data
+    session.quotes.push({
+      result: detailedResult,
+      request: quoteRequest
+    });
+    // Don't auto-select the quote - let customer choose which one they want
+    // session.selectedQuote = detailedResult;
+    // session.selectedQuoteRequest = quoteRequest;
+
+    // Create payment state if business requires deposit
+    if (detailedResult.deposit_amount > 0) {
+      session.depositPaymentState = {
+        status: 'pending',
+        quoteId: detailedResult.quote_id,
+        stripeSessionId: undefined,
+        paymentLink: undefined, // Will be set when payment link is created
+        amount: detailedResult.deposit_amount,
+        createdAt: Date.now()
+      };
+    }
 
     const duration = Date.now() - startTime;
 

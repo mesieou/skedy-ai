@@ -48,8 +48,8 @@ export async function handleCallEvent(session: Session, event: WebhookEvent) {
 
     // Release API key if session has one assigned
     if (typeof session.assignedApiKeyIndex === 'number') {
-      const { webSocketPool } = await import('../sessions/websocketPool');
-      webSocketPool.release(session.assignedApiKeyIndex);
+      const { BusinessWebSocketPool } = await import('../sessions/websocketPool');
+      BusinessWebSocketPool.release(session.businessEntity, session.assignedApiKeyIndex);
       console.log(`🔄 [CallRouter] Released API key ${session.assignedApiKeyIndex + 1} due to call handling failure`);
     }
 

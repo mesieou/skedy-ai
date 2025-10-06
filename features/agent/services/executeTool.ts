@@ -7,11 +7,14 @@ import assert from 'assert';
 // Import tool functions
 import { getServiceDetails } from './tools/getServiceDetails';
 import { getQuote } from './tools/getQuote';
+import { selectQuote } from './tools/selectQuote';
 import { checkDayAvailability } from './tools/checkDayAvailability';
 import { createUser } from './tools/createUser';
+import { createAndSendPaymentLink } from './tools/createAndSendPaymentLink';
+import { checkPaymentStatusTool } from './tools/checkPaymentStatus';
+import { sendSMSBookingConfirmationTool } from './tools/sendSMSBookingConfirmationTool';
 import { createBooking } from './tools/createBooking';
 import { requestTool } from './tools/requestTool';
-import { sendSMSBookingConfirmationTool } from './tools/sendSMSBookingConfirmationTool';
 
 /**
  * Execute tool function and update session state
@@ -72,9 +75,12 @@ export async function executeToolFunction(
       case 'get_quote':
         result = await getQuote(args as unknown as QuoteRequestData & { service_id: string }, session);
         break;
+      case 'select_quote':
+        result = await selectQuote(args as { quote_id: string }, session);
+        break;
       case 'check_day_availability':
         result = await checkDayAvailability(
-          args as { date: string; quote_total_estimate_time_minutes: number },
+          args as { date: string; quote_total_estimate_time_minutes: number; selected_quote_id: string },
           session
         );
         break;
@@ -84,9 +90,18 @@ export async function executeToolFunction(
           session
         );
         break;
+      case 'create_and_send_payment_link':
+        result = await createAndSendPaymentLink(
+          args as { preferred_date: string; preferred_time: string; user_id: string, selected_quote_id: string },
+          session
+        );
+        break;
+      case 'check_payment_status':
+        result = await checkPaymentStatusTool(session);
+        break;
       case 'create_booking':
         result = await createBooking(
-          args as { preferred_date: string; preferred_time: string; quote_id: string; confirmation_message?: string },
+          args as { preferred_date: string; preferred_time: string; quote_id: string; confirmation_message?: string; payment_confirmation: string },
           session
         );
         break;

@@ -72,7 +72,7 @@ export async function createUser(
     // Success - use response builder
     return buildToolResponse(
       userData_response,
-      `Profile created for ${args.first_name}. You're all set!`,
+      `Profile created for ${args.first_name}.`,
       true
     );
 

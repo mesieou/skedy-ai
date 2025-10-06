@@ -35,3 +35,83 @@ export const weekendCalendarSettingsData: CreateCalendarSettingsData = {
       sun: { start: '07:00', end: '13:00' }
     }
   };
+
+  export const TigaCalendar1SettingsData: CreateCalendarSettingsData = {
+    user_id: "placeholder-user-id", // Will be replaced with actual user_id
+    settings: {
+      "bufferTime": 30,
+    },
+    working_hours: {
+      mon: { start: '06:00', end: '23:00' }, // Melbourne 7 AM - 5 PM (local time)
+      tue: { start: '06:00', end: '23:00' },
+      wed: { start: '06:00', end: '23:00' },
+      thu: { start: '06:00', end: '23:00' },
+      fri: { start: '06:00', end: '23:00' },
+      sat: { start: '06:00', end: '23:00' }, // Melbourne 7 AM - 1 PM (local time)
+      sun: { start: '06:00', end: '23:00' }
+    }
+  };
+
+  export const TigaCalendar2SettingsData: CreateCalendarSettingsData = {
+    user_id: "placeholder-user-id", // Will be replaced with actual user_id
+    settings: {
+      "bufferTime": 30,
+    },
+    working_hours: {
+      mon: { start: '06:00', end: '23:00' }, // Melbourne 7 AM - 5 PM (local time)
+      tue: { start: '06:00', end: '23:00' },
+      wed: { start: '06:00', end: '23:00' },
+      thu: { start: '06:00', end: '23:00' },
+      fri: { start: '06:00', end: '23:00' },
+      sat: { start: '06:00', end: '23:00' }, // Melbourne 7 AM - 1 PM (local time)
+      sun: { start: '06:00', end: '23:00' }
+    }
+  };
+
+  export const TigaCalendar3SettingsData: CreateCalendarSettingsData = {
+    user_id: "placeholder-user-id", // Will be replaced with actual user_id
+    settings: {
+      "bufferTime": 30,
+    },
+    working_hours: {
+      mon: { start: '06:00', end: '23:00' }, // Melbourne 7 AM - 5 PM (local time)
+      tue: { start: '06:00', end: '23:00' },
+      wed: { start: '06:00', end: '23:00' },
+      thu: { start: '06:00', end: '23:00' },
+      fri: { start: '06:00', end: '23:00' },
+      sat: { start: '06:00', end: '23:00' }, // Melbourne 7 AM - 1 PM (local time)
+      sun: { start: '06:00', end: '23:00' }
+    }
+  };
+
+  export const TigaCalendar4SettingsData: CreateCalendarSettingsData = {
+    user_id: "placeholder-user-id", // Will be replaced with actual user_id
+    settings: {
+      "bufferTime": 30,
+    },
+    working_hours: {
+      mon: { start: '06:00', end: '23:00' }, // Melbourne 7 AM - 5 PM (local time)
+      tue: { start: '06:00', end: '23:00' },
+      wed: { start: '06:00', end: '23:00' },
+      thu: { start: '06:00', end: '23:00' },
+      fri: { start: '06:00', end: '23:00' },
+      sat: { start: '06:00', end: '23:00' }, // Melbourne 7 AM - 1 PM (local time)
+      sun: { start: '06:00', end: '23:00' }
+    }
+  };
+
+  export const TigaCalendar5SettingsData: CreateCalendarSettingsData = {
+    user_id: "placeholder-user-id", // Will be replaced with actual user_id
+    settings: {
+      "bufferTime": 30,
+    },
+    working_hours: {
+      mon: { start: '06:00', end: '23:00' }, // Melbourne 7 AM - 5 PM (local time)
+      tue: { start: '06:00', end: '23:00' },
+      wed: { start: '06:00', end: '23:00' },
+      thu: { start: '06:00', end: '23:00' },
+      fri: { start: '06:00', end: '23:00' },
+      sat: { start: '06:00', end: '23:00' }, // Melbourne 7 AM - 1 PM (local time)
+      sun: { start: '06:00', end: '23:00' }
+    }
+  };

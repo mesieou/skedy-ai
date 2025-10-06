@@ -99,9 +99,13 @@ export const checkDayAvailabilityTool: CreateToolData = {
         quote_total_estimate_time_minutes: {
           type: 'string',
           description: 'Quote total estimate time minutes from get_quote'
+        },
+        selected_quote_id: {
+          type: 'string',
+          description: 'Selected quote ID from select_quote'
         }
       },
-      required: ['date', 'quote_total_estimate_time_minutes'],
+      required: ['date', 'quote_total_estimate_time_minutes', 'selected_quote_id'],
       additionalProperties: false
     }
   },
@@ -185,9 +189,13 @@ export const createBookingTool: CreateToolData = {
         confirmation_message: {
           type: 'string',
           description: 'Optional message/instructions'
+        },
+        payment_confirmation: {
+          type: 'string',
+          description: 'Payment confirmation from check_payment_status'
         }
       },
-      required: ['preferred_date', 'preferred_time', 'quote_id'],
+      required: ['preferred_date', 'preferred_time', 'quote_id', 'payment_confirmation'],
       additionalProperties: false
     }
   },
@@ -224,7 +232,7 @@ export const requestToolTool: CreateToolData = {
         tool_name: {
           type: 'string',
           description: 'Tool needed',
-          enum: ['get_service_details', 'get_quote', 'check_day_availability', 'create_user', 'create_booking']
+          enum: ['get_service_details', 'get_quote', 'select_quote', 'check_day_availability', 'create_user', 'create_and_send_payment_link', 'check_payment_status', 'send_sms_booking_confirmation', 'create_booking']
         },
         service_name: {
           type: 'string',
@@ -240,7 +248,7 @@ export const requestToolTool: CreateToolData = {
     }
   },
   output_template: {
-    success_message: '{tool_name} ready. Continue with your request.',
+    success_message: '{tool_name} ready. You can call it now.',
     error_message: 'Tool unavailable.',
     data_structure: {
       tool_name: 'string',
@@ -290,6 +298,117 @@ export const sendSMSBookingConfirmationTool: CreateToolData = {
     }
   }
 };
+
+export const selectQuoteTool: CreateToolData = {
+  name: 'select_quote',
+  description: 'Select a quote to proceed with booking',
+  version: '1.0.0',
+  dynamic_parameters: false,
+  business_specific: true,
+  function_schema: {
+    type: 'function',
+    name: 'select_quote',
+    description: 'Select a quote to proceed with booking',
+    parameters: {
+      type: 'object',
+      strict: true,
+      properties: {
+        quote_id: {
+          type: 'string',
+          description: 'Quote ID to select'
+        }
+      },
+      required: ['quote_id'],
+      additionalProperties: false
+    }
+  },
+  output_template: {
+    success_message: 'Quote selected successfully. Ready to proceed with booking.',
+    error_message: 'Could not select that quote.',
+    data_structure: {
+      quote_id: 'string',
+      selected: 'boolean'
+    }
+  }
+};
+
+export const createAndSendPaymentLinkTool: CreateToolData = {
+  name: 'create_and_send_payment_link',
+  description: 'Create payment link for deposit and send to customer',
+  version: '1.0.0',
+  dynamic_parameters: false,
+  business_specific: true,
+  function_schema: {
+    type: 'function',
+    name: 'create_and_send_payment_link',
+    description: 'Create payment link for deposit and send to customer',
+    parameters: {
+      type: 'object',
+      strict: true,
+      properties: {
+        user_id: {
+          type: 'string',
+          description: 'Customer user ID from create_user'
+        },
+        preferred_date: {
+          type: 'string',
+          description: 'Preferred booking date in YYYY-MM-DD format'
+        },
+        preferred_time: {
+          type: 'string',
+          description: 'Preferred booking time in HH:MM format (24-hour)'
+        },
+        selected_quote_id: {
+          type: 'string',
+          description: 'Selected quote ID from select_quote'
+        }
+      },
+      required: ['user_id', 'preferred_date', 'preferred_time', 'selected_quote_id'],
+      additionalProperties: false
+    }
+  },
+  output_template: {
+    success_message: 'Payment link created and sent to customer.',
+    error_message: 'Failed to create payment link.',
+    data_structure: {
+      paymentLink: 'string'
+    }
+  }
+};
+
+export const checkPaymentStatusTool: CreateToolData = {
+  name: 'check_payment_status',
+  description: 'Check if payment has been completed',
+  version: '1.0.0',
+  dynamic_parameters: false,
+  business_specific: true,
+  function_schema: {
+    type: 'function',
+    name: 'check_payment_status',
+    description: 'Check if payment has been completed',
+    parameters: {
+      type: 'object',
+      strict: true,
+      properties: {
+        payment_confirmation: {
+          type: 'string',
+          description: 'User confirming they received the link and made the payment'
+        }
+      },
+      required: ['payment_confirmation'],
+      additionalProperties: false
+    }
+  },
+  output_template: {
+    success_message: 'Payment status checked.',
+    error_message: 'Could not check payment status.',
+    data_structure: {
+      payment_status: 'string',
+      quote_id: 'string',
+      amount: 'number'
+    }
+  }
+};
 // ============================================================================
 // TOOL COLLECTIONS
 // ============================================================================
@@ -300,10 +419,12 @@ export const sendSMSBookingConfirmationTool: CreateToolData = {
 export const removalistTools: CreateToolData[] = [
   getServiceDetailsTool,
   getQuoteTool,
+  selectQuoteTool,
   checkDayAvailabilityTool,
   createUserTool,
+  createAndSendPaymentLinkTool,
+  checkPaymentStatusTool,
   createBookingTool,
-  sendSMSBookingConfirmationTool,
   requestToolTool
 ];
 
@@ -315,10 +436,13 @@ export const allAvailableTools: CreateToolData[] = [
   // Removalist tools
   getServiceDetailsTool,
   getQuoteTool,
+  selectQuoteTool,
   checkDayAvailabilityTool,
   createUserTool,
+  createAndSendPaymentLinkTool,
+  checkPaymentStatusTool,
+  // sendSMSBookingConfirmationTool,
   createBookingTool,
-  sendSMSBookingConfirmationTool,
   requestToolTool
 
   // Future tools will be added here:

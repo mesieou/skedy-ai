@@ -1,17 +1,28 @@
 import assert from "assert";
+import type { Business } from "@/features/shared/lib/database/types/business";
+import { BusinessRepository } from "@/features/shared/lib/database/repositories/business-repository";
 
-export class WebSocketPool {
+/**
+ * Business-aware WebSocketPool class
+ * Maintains pooling logic for potential multiple keys per business
+ */
+class WebSocketPool {
+  private business: Business;
   private apiKeys: string[];
   private counters: number[];
 
-  constructor(apiKeys: string[]) {
-    assert(apiKeys && apiKeys.length > 0, 'WebSocketPool: apiKeys array cannot be empty');
-    assert(apiKeys.every(key => key && typeof key === 'string'), 'WebSocketPool: all apiKeys must be non-empty strings');
-    this.apiKeys = apiKeys;
-    this.counters = apiKeys.map(() => 0);
+  constructor(business: Business) {
+    assert(business, 'WebSocketPool: business is required');
+    assert(business.openai_api_key_name, 'WebSocketPool: business must have openai_api_key_name');
+
+    this.business = business;
+    // For now, each business has one API key, but structure supports multiple
+    const apiKey = BusinessRepository.getApiKeyForBusiness(business);
+    this.apiKeys = [apiKey];
+    this.counters = [0];
   }
 
-  // Assign the API key with least number of calls to a session
+  // Assign the API key with least number of calls for this business
   assign() {
     assert(this.apiKeys.length > 0, 'WebSocketPool.assign: no API keys available');
     const minIndex = this.counters.indexOf(Math.min(...this.counters));
@@ -33,5 +44,47 @@ export class WebSocketPool {
   }
 }
 
-// Use only the primary API key to avoid mismatches between call accept and WebSocket
-export const webSocketPool = new WebSocketPool([process.env.OPENAI_API_KEY!]);
+// Global pool manager - one pool per business
+const businessPools = new Map<string, WebSocketPool>();
+
+/**
+ * Get or create a persistent pool for a business
+ */
+function getPoolForBusiness(business: Business): WebSocketPool {
+  const poolKey = business.id; // Use business ID as pool key
+
+  if (!businessPools.has(poolKey)) {
+    businessPools.set(poolKey, new WebSocketPool(business));
+  }
+
+  return businessPools.get(poolKey)!;
+}
+
+/**
+ * Simple API key operations - no need to manage pool instances
+ */
+export const BusinessWebSocketPool = {
+  /**
+   * Assign API key for a business
+   */
+  assign(business: Business) {
+    const pool = getPoolForBusiness(business);
+    return pool.assign();
+  },
+
+  /**
+   * Release API key for a business
+   */
+  release(business: Business, index: number) {
+    const pool = getPoolForBusiness(business);
+    pool.release(index);
+  },
+
+  /**
+   * Get API key by index for a business
+   */
+  getApiKeyByIndex(business: Business, index: number): string {
+    const pool = getPoolForBusiness(business);
+    return pool.getApiKeyByIndex(index);
+  }
+};

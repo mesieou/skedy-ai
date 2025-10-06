@@ -11,6 +11,7 @@ import type {
 } from '../../../../scheduling/lib/types/booking-calculations';
 import type { Business } from '../types/business';
 import { BookingCalculator } from '../../../../scheduling/lib/bookings/quoteCalculation/pricing-calculator';
+import type { DepositPaymentState } from '../../../../agent/sessions/session';
 import { AddressRepository } from './address-repository';
 import { ServiceRepository } from './service-repository';
 import { BookingServiceRepository } from './booking-service-repository';
@@ -41,7 +42,8 @@ export class BookingsRepository extends BaseRepository<Booking> {
     quoteRequestData: QuoteRequestInfo,
     user_id: string,
     start_at: string, // UTC ISO string
-    quoteResultData?: DetailedQuoteResult // Optional: use pre-calculated pricing to avoid recalculation
+    quoteResultData?: DetailedQuoteResult, // Optional: use pre-calculated pricing to avoid recalculation
+    depositPaymentState?: DepositPaymentState // Optional: deposit payment state from session
   ): Promise<Booking> {
     try {
       // Step 1: Create addresses in database first
@@ -61,8 +63,10 @@ export class BookingsRepository extends BaseRepository<Booking> {
         total_estimate_amount: calculationResult.total_estimate_amount,
         total_estimate_time_in_minutes: calculationResult.total_estimate_time_in_minutes,
         deposit_amount: calculationResult.deposit_amount,
-        remaining_balance: calculationResult.total_estimate_amount, // Initially same as total
-        deposit_paid: false, // Initially false until payment
+        remaining_balance: depositPaymentState?.status === 'completed'
+          ? calculationResult.total_estimate_amount - calculationResult.deposit_amount
+          : calculationResult.total_estimate_amount, // If paid, subtract deposit; otherwise full amount
+        deposit_paid: depositPaymentState?.status === 'completed' || false, // True if payment completed
         price_breakdown: calculationResult.price_breakdown
       };
 

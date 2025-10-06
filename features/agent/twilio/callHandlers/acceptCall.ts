@@ -30,9 +30,9 @@ interface CallAcceptResponse {
  * Accept call with OpenAI Realtime API
  */
 export async function acceptCall(session: Session): Promise<CallAcceptResponse> {
-   // Get API key by index from pool
-  const { webSocketPool } = await import("../../sessions/websocketPool");
-  const apiKey = webSocketPool.getApiKeyByIndex(session.assignedApiKeyIndex);
+   // Get API key for business
+  const { BusinessWebSocketPool } = await import("../../sessions/websocketPool");
+  const apiKey = BusinessWebSocketPool.getApiKeyByIndex(session.businessEntity, session.assignedApiKeyIndex);
   try {
     console.log(`📞 [AcceptCall] Accepting call for session: ${session.id}`);
 

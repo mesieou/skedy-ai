@@ -439,10 +439,16 @@ export class VoiceRedisClient {
       serviceNames: safeStringify(session.serviceNames, '[]'),
       quotes: safeStringify(session.quotes, '[]'),
       selectedQuote: safeStringify(session.selectedQuote || null),
-      selectedQuoteRequest: safeStringify(session.selectedQuoteRequest || null),
       allAvailableToolNames: safeStringify(session.allAvailableToolNames, '[]'),
       currentTools: safeStringify(session.currentTools, '[]'),
-      aiInstructions: session.aiInstructions || ''
+      aiInstructions: session.aiInstructions || '',
+
+      // Interaction tracking
+      pendingCustomerInput: session.pendingCustomerInput || '',
+      pendingToolExecution: safeStringify(session.pendingToolExecution || null),
+
+      // Payment state
+      depositPaymentState: safeStringify(session.depositPaymentState || null)
     };
   }
 
@@ -499,10 +505,16 @@ export class VoiceRedisClient {
       serviceNames: safeParse(hashData.serviceNames, [], 'serviceNames'),
       quotes: safeParse(hashData.quotes, [], 'quotes'),
       selectedQuote: safeParse(hashData.selectedQuote, undefined, 'selectedQuote'),
-      selectedQuoteRequest: safeParse(hashData.selectedQuoteRequest, undefined, 'selectedQuoteRequest'),
       allAvailableToolNames: safeParse(hashData.allAvailableToolNames, [], 'allAvailableToolNames'),
       currentTools: safeParse(hashData.currentTools, [], 'currentTools'),
       aiInstructions: hashData.aiInstructions || undefined,
+
+      // Interaction tracking
+      pendingCustomerInput: hashData.pendingCustomerInput || undefined,
+      pendingToolExecution: safeParse(hashData.pendingToolExecution, undefined, 'pendingToolExecution'),
+
+      // Payment state
+      depositPaymentState: safeParse(hashData.depositPaymentState, undefined, 'depositPaymentState'),
 
       // Required fields
       isFirstAiResponse: true,

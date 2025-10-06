@@ -14,7 +14,7 @@ import path from 'path';
 dotenv.config({ path: path.join(__dirname, '../.env.local') });
 dotenv.config({ path: path.join(__dirname, '../.env.test'), override: true });
 
-import { setupTools } from './setup-tools';
+import { createUpdateTools } from './setup-tools';
 import { setupPrompts } from './setup-prompts';
 
 async function setupAllLibraries() {
@@ -23,7 +23,7 @@ async function setupAllLibraries() {
   try {
     // Setup tools library
     console.log('📦 Step 1: Setting up tools library...');
-    await setupTools();
+    await createUpdateTools();
 
     console.log('\n📝 Step 2: Setting up prompts library...');
     await setupPrompts();

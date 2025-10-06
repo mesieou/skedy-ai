@@ -13,6 +13,7 @@ import assert from "assert";
 export class SessionService {
   static async createOrGet(callId: string, event: WebhookEvent) {
     let assignedApiKeyIndex: number | undefined;
+    let business: Business | null = null;
 
     try {
       let session = await sessionManager.get(callId);
@@ -38,7 +39,7 @@ export class SessionService {
         const businessRepository = new BusinessRepository();
         const userRepository = new UserRepository();
 
-        let business, customer, phoneNumber;
+        let customer, phoneNumber;
 
         if (event.type === 'demo.session.create') {
           // Demo website chat: business_id provided in event data
@@ -94,9 +95,9 @@ export class SessionService {
           throw new Error(`Unsupported event type: ${event.type}`);
         }
 
-        // Assign API key index from pool when creating session
-        const { webSocketPool } = await import("./websocketPool");
-        const poolAssignment = webSocketPool.assign();
+        // Assign API key index from business-specific pool when creating session
+        const { BusinessWebSocketPool } = await import("./websocketPool");
+        const poolAssignment = BusinessWebSocketPool.assign(business);
         assignedApiKeyIndex = poolAssignment.index;
 
         session = {
@@ -153,9 +154,9 @@ export class SessionService {
         }
       });
       // Only release API key if it was actually assigned
-      if (typeof assignedApiKeyIndex === 'number') {
-        const { webSocketPool } = await import("./websocketPool");
-        webSocketPool.release(assignedApiKeyIndex);
+      if (typeof assignedApiKeyIndex === 'number' && business) {
+        const { BusinessWebSocketPool } = await import("./websocketPool");
+        BusinessWebSocketPool.release(business, assignedApiKeyIndex);
         console.log(`🔄 [SessionService] Released API key ${assignedApiKeyIndex + 1} due to session creation failure`);
       }
 

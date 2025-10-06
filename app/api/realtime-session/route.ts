@@ -74,12 +74,16 @@ export async function GET(request: Request) {
       session: createWebRTCSessionConfig(tools, instructions)
     };
 
+    // Get business-specific API key
+    const { BusinessRepository } = await import("@/features/shared/lib/database/repositories/business-repository");
+    const apiKey = BusinessRepository.getApiKeyForBusiness(session.businessEntity);
+
     const response = await fetch(
       "https://api.openai.com/v1/realtime/client_secrets",
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(sessionConfig),

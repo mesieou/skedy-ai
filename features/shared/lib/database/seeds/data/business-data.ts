@@ -11,20 +11,20 @@ export function createTigaRemovalistBusinessData(): CreateBusinessData {
   const uniqueId = generateUniqueIdentifier();
   return {
     name: `Tiga Removals ${uniqueId}`,
-    email: `edward+${uniqueId}@tigapropertyservices.com`,
+    email: `edward@tigapropertyservices.com.au`,
     phone_number: `+61424028285`,
-    address: "123 Collins Street, Melbourne VIC 3000, Australia",
+    address: "4/5 dickens street, heidelberg Heights VIC 3081",
     time_zone: "Australia/Melbourne",
     language: "en",
     business_category: BusinessCategory.REMOVALIST,
     charges_gst: true,
-    prices_include_gst: true,
+    prices_include_gst: false,
     gst_rate: 10.00,
     charges_deposit: true,
     payment_processing_fee_percentage: 2.9,
-    booking_platform_fee_percentage: 2.0,
+    booking_platform_fee_percentage: 0.0,
     currency_code: "AUD",
-    number_of_providers: 2,
+    number_of_providers: 5,
     subscription_type: SubscriptionType.FREE,
     payment_methods: [PaymentMethod.CREDIT_CARD, PaymentMethod.BANK_TRANSFER, PaymentMethod.CASH],
     preferred_payment_method: PaymentMethod.CASH,
@@ -32,14 +32,15 @@ export function createTigaRemovalistBusinessData(): CreateBusinessData {
     deposit_percentage: null,
     deposit_fixed_amount: 100.0,
     website_url: "https://tigapropertyservices.com.au/",
-    whatsapp_number: `+61412345${Math.floor(Math.random() * 900) + 100}`,
+    whatsapp_number: `+61424028285`,
     whatsapp_phone_number_id: "684078768113901",
-    stripe_connect_account_id: "acct_1Rna89P41K8lchaj",
+    stripe_connect_account_id: "acct_1SEJXA1xtwm3bvA1",
     stripe_account_status: "active",
     offers_mobile_services: true,   // "Yes, we travel to customers for pickup/dropoff"
     offers_location_services: false, // "No, customers don't come to our warehouse"
-    minimum_charge: 200,
-    twilio_number: process.env.TWILIO_NUMBER
+    minimum_charge: 150,
+    twilio_number: `+61468031068`,
+    openai_api_key_name: "TIGA"
   };
 }
 
@@ -70,12 +71,13 @@ export function createUniqueRemovalistBusinessData(): CreateBusinessData {
     website_url: "https://davidremovals.com.au/",
     whatsapp_number: `+61412345${Math.floor(Math.random() * 900) + 100}`,
     whatsapp_phone_number_id: "684078768113901",
-    stripe_connect_account_id: "acct_1Rna89P41K8lchaj",
+    stripe_connect_account_id: "acct_1SEJXA1xtwm3bvA1",
     stripe_account_status: "active",
     offers_mobile_services: true,   // "Yes, we travel to customers for pickup/dropoff"
     offers_location_services: false, // "No, customers don't come to our warehouse"
     minimum_charge: 200,
-    twilio_number: process.env.TWILIO_NUMBER
+    twilio_number: process.env.TWILIO_NUMBER_DEMO,
+    openai_api_key_name: "DEMO"
   };
 }
 // Function to create unique manicurist business data for tests
@@ -111,7 +113,8 @@ export function createUniqueMobileManicuristBusinessData(): CreateBusinessData {
     offers_mobile_services: true,   // "Yes, we travel to customer homes"
     offers_location_services: true,  // "Yes, customers can also come to our salon"
     minimum_charge: 60.0,
-    twilio_number: process.env.TWILIO_NUMBER
+    twilio_number: process.env.TWILIO_NUMBER_DEMO,
+    openai_api_key_name: "DEMO"
   };
 }
 
@@ -148,7 +151,8 @@ export function createUniqueMassageBusinessData(): CreateBusinessData {
     offers_mobile_services: false,  // "No, customers come to our spa"
     offers_location_services: true,  // "Yes, customers visit our location"
     minimum_charge: 80.0,
-    twilio_number: process.env.TWILIO_NUMBER
+    twilio_number: process.env.TWILIO_NUMBER_DEMO,
+    openai_api_key_name: "DEMO"
   };
 }
 
@@ -185,7 +189,8 @@ export function createUniquePlumberBusinessData(): CreateBusinessData {
     offers_mobile_services: true,
     offers_location_services: false,
     minimum_charge: 120.0,
-    twilio_number: process.env.TWILIO_NUMBER
+    twilio_number: process.env.TWILIO_NUMBER_DEMO,
+    openai_api_key_name: "DEMO"
   };
 }
 
@@ -221,6 +226,7 @@ export function createSkedyBusinessData(): CreateBusinessData {
     offers_mobile_services: true,
     offers_location_services: false,
     minimum_charge: 0,
-    twilio_number: process.env.TWILIO_NUMBER
+    twilio_number: process.env.TWILIO_NUMBER_DEMO,
+    openai_api_key_name: "DEMO"
   };
 }

@@ -41,8 +41,11 @@ import {
 } from '../features/shared/lib/database/seeds/data/business-data';
 
 import {
-  removalistExample1ServiceData,
-  removalistExample2ServiceData,
+  removalistTigaService1Data,
+  removalistTigaService2Data,
+  removalistTigaService3Data,
+  removalistTigaService4Data,
+  removalistTigaService5Data,
   manicuristExample5Service1Data,
   manicuristExample5Service2Data,
   manicuristExample6ServiceData,
@@ -54,9 +57,6 @@ import {
   createRemovalistOwnerUserData,
   createManicuristOwnerUserData,
   createPlumberOwnerUserData,
-  createRemovalistProviderUserData,
-  createManicuristProviderUserData,
-  createPlumberProviderUserData,
   createUniqueProviderUserData,
   createUniqueCustomerUserData
 } from '../features/shared/lib/database/seeds/data/user-data';
@@ -67,17 +67,38 @@ import {
   createPlumberOwnerAuthUserData
 } from '../features/shared/lib/database/seeds/data/auth-user-data';
 
-import { weekdayCalendarSettingsData, weekendCalendarSettingsData } from '../features/shared/lib/database/seeds/data/calendar-settings-data';
+import {
+  weekdayCalendarSettingsData,
+  weekendCalendarSettingsData,
+  TigaCalendar1SettingsData,
+  TigaCalendar2SettingsData,
+  TigaCalendar3SettingsData,
+  TigaCalendar4SettingsData,
+  TigaCalendar5SettingsData
+} from '../features/shared/lib/database/seeds/data/calendar-settings-data';
 
 // Configuration
-const PROMPT_VERSION = 'v1.0.15'; // Use latest prompt version
+const PROMPT_VERSION = 'v1.0.21'; // Use latest prompt version
 
 // Business type configurations
 const businessConfigs = {
   removalist: {
     name: "Removalist (David Removals)",
     businessData: createUniqueRemovalistBusinessData,
-    services: [removalistExample1ServiceData, removalistExample2ServiceData],
+    services: [
+      removalistTigaService1Data,
+      removalistTigaService2Data,
+      removalistTigaService3Data,
+      removalistTigaService4Data,
+      removalistTigaService5Data
+    ],
+    calendarSettings: [
+      TigaCalendar1SettingsData,
+      TigaCalendar2SettingsData,
+      TigaCalendar3SettingsData,
+      TigaCalendar4SettingsData,
+      TigaCalendar5SettingsData
+    ],
     userData: createRemovalistOwnerUserData,
     authData: createRemovalistOwnerAuthUserData
   },
@@ -89,6 +110,7 @@ const businessConfigs = {
       manicuristExample5Service2Data,
       manicuristExample6ServiceData
     ],
+    calendarSettings: [weekdayCalendarSettingsData, weekendCalendarSettingsData],
     userData: createManicuristOwnerUserData,
     authData: createManicuristOwnerAuthUserData
   },
@@ -96,6 +118,7 @@ const businessConfigs = {
     name: "Plumber (Fix-It Plumbing)",
     businessData: createUniquePlumberBusinessData,
     services: [plumberEmergencyServiceData, plumberMaintenanceServiceData],
+    calendarSettings: [weekdayCalendarSettingsData, weekendCalendarSettingsData],
     userData: createPlumberOwnerUserData,
     authData: createPlumberOwnerAuthUserData
   }
@@ -142,30 +165,29 @@ async function setupBusiness(businessType: BusinessType) {
     console.log(`✅ Business Owner created: ${adminProvider.email}`);
     providers.push(adminProvider);
 
-    // Create additional provider if business has multiple providers
-    let provider = null;
-    if (business.number_of_providers >= 2) {
-      // Use business-specific provider data
-      let providerUserData;
+    // Create additional providers based on business configuration
+    const targetProviderCount = businessType === 'removalist' ? 5 : business.number_of_providers;
+
+    for (let i = 1; i < targetProviderCount; i++) {
       let providerAuthData;
 
+      // Use unique provider data for all business types to avoid phone number conflicts
+      const providerUserData = createUniqueProviderUserData(business.id);
+
+      const uniqueId = Date.now() + Math.random().toString(36).substr(2, 9);
+
       if (businessType === 'removalist') {
-        providerUserData = createRemovalistProviderUserData(business.id);
-        providerAuthData = { email: "james@davidremovals.com", password: "demo123", email_confirm: true };
+        providerAuthData = { email: `provider${i}+${uniqueId}@davidremovals.com`, password: "demo123", email_confirm: true };
       } else if (businessType === 'manicurist') {
-        providerUserData = createManicuristProviderUserData(business.id);
-        providerAuthData = { email: "emma@nailsonthego.com.au", password: "demo123", email_confirm: true };
+        providerAuthData = { email: `provider${i}+${uniqueId}@nailsonthego.com.au`, password: "demo123", email_confirm: true };
       } else if (businessType === 'plumber') {
-        providerUserData = createPlumberProviderUserData(business.id);
-        providerAuthData = { email: "tom@fixitplumbing.com.au", password: "demo123", email_confirm: true };
+        providerAuthData = { email: `provider${i}+${uniqueId}@fixitplumbing.com.au`, password: "demo123", email_confirm: true };
       } else {
-        // Fallback to generic
-        providerUserData = createUniqueProviderUserData(business.id);
-        providerAuthData = { email: `provider+${Date.now()}@${business.email.split('@')[1]}`, password: "demo123", email_confirm: true };
+        providerAuthData = { email: `provider${i}+${uniqueId}@${business.email.split('@')[1]}`, password: "demo123", email_confirm: true };
       }
 
-      provider = await userSeeder.createUserWith(providerUserData, providerAuthData);
-      console.log(`✅ Provider created: ${provider.email}`);
+      const provider = await userSeeder.createUserWith(providerUserData, providerAuthData);
+      console.log(`✅ Provider ${i + 1} created: ${provider.email}`);
       providers.push(provider);
     }
 
@@ -189,8 +211,10 @@ async function setupBusiness(businessType: BusinessType) {
     // Step 4: Create Calendar Settings
     console.log('📅 Creating calendar settings...');
     const calendarSettings = [];
+    const configCalendarSettings = config.calendarSettings || [weekdayCalendarSettingsData, weekendCalendarSettingsData];
+
     for (let i = 0; i < providers.length; i++) {
-      const calendarData = i === 0 ? weekdayCalendarSettingsData : weekendCalendarSettingsData;
+      const calendarData = configCalendarSettings[i] || configCalendarSettings[0]; // Fallback to first if not enough
       const settings = await calendarSettingsSeeder.createCalendarSettingsWith({
         ...calendarData,
         user_id: providers[i].id
@@ -219,10 +243,13 @@ async function setupBusiness(businessType: BusinessType) {
 
     // Step 6: Link Tools (find existing tools, don't create new ones)
     console.log('🔧 Linking business tools...');
-    const { allAvailableTools } = await import('../features/shared/lib/database/seeds/data/tools-data');
+    const { removalistTools, allAvailableTools } = await import('../features/shared/lib/database/seeds/data/tools-data');
+
+    // Use business-specific tools based on business type
+    const businessTools = businessType === 'removalist' ? removalistTools : allAvailableTools;
     let businessToolsCount = 0;
 
-    for (const toolData of allAvailableTools) {
+    for (const toolData of businessTools) {
       const tool = await toolsSeeder.findOne({
         name: toolData.name,
         version: toolData.version
@@ -279,7 +306,7 @@ async function setupBusiness(businessType: BusinessType) {
     console.log(`   Business: ${business.name} (${business.phone_number})`);
     console.log(`   Business ID: ${business.id}`);
     console.log(`   Owner: ${adminProvider.email}`);
-    if (provider) console.log(`   Provider: ${provider.email}`);
+    console.log(`   Total Providers: ${providers.length}`);
     console.log(`   Customer: ${customer.email}`);
     console.log(`   Services: ${createdServices.length}`);
     console.log(`   Calendar Settings: ${calendarSettings.length}`);
@@ -289,7 +316,7 @@ async function setupBusiness(businessType: BusinessType) {
     return {
       business,
       services: createdServices,
-      users: { adminProvider, provider, customer },
+      users: { adminProvider, providers: providers.slice(1), customer },
       toolsCount: businessToolsCount,
       promptsCount: businessPromptsCount
     };
