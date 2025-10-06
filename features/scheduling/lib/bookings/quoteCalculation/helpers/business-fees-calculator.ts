@@ -87,8 +87,8 @@ export class BusinessFeesCalculator {
    */
   addGSTIfRequired(amount: number, business: Business): number {
     if (business.charges_gst && !business.prices_include_gst && business.gst_rate) {
-      const gst_amount = amount * (business.gst_rate / 100);
-      console.log(`💰 Adding GST: $${Math.round(gst_amount)} (prices are GST-exclusive)`);
+      const gst_amount = Math.round(amount * (business.gst_rate / 100));
+      console.log(`💰 Adding GST: $${gst_amount} (prices are GST-exclusive)`);
       return amount + gst_amount;
     }
     return amount;

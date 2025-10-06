@@ -34,6 +34,7 @@ export interface QuoteRequestInfo {
   services: ServiceWithQuantity[];
   business: Business;
   addresses: BookingAddress[];
+  number_of_people?: number; // Original number of people from quote request
 }
 
 // Route segment for travel calculation
@@ -95,7 +96,8 @@ export interface QuoteResultInfo {
   // Simple breakdown for customer questions (prevents AI from double-adding GST)
   labor_cost: number;
   travel_cost: number;
-  gst_included: number;
+  gst_amount: number;
+  gst_included: boolean; // true if GST is included in total_estimate_amount, false if GST is additional
 }
 
 // Internal detailed quote result (for calculations and session storage)

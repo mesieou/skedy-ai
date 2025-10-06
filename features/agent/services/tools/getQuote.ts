@@ -100,7 +100,8 @@ export async function getQuote(
       // Simple breakdown for customer questions (prevents AI from double-adding GST)
       labor_cost: detailedResult.price_breakdown?.service_breakdowns?.[0]?.total_cost || 0,
       travel_cost: detailedResult.price_breakdown?.travel_breakdown?.total_travel_cost || 0,
-      gst_included: detailedResult.price_breakdown?.business_fees?.gst_amount || 0
+      gst_amount: detailedResult.price_breakdown?.business_fees?.gst_amount || 0,
+      gst_included: session.businessEntity.prices_include_gst // true if GST is included in total, false if additional
     };
 
     return buildToolResponse(

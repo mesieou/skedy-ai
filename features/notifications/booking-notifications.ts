@@ -186,7 +186,7 @@ export class BookingNotifications {
         fullName: formatFullName(customer),
         customerPhone: customer.phone_number!,
         customerEmail: customer.email || '',
-        numberOfRemovalists: (serviceQuantity * business.number_of_providers).toString(),
+        numberOfRemovalists: (quoteRequest.number_of_people || serviceQuantity).toString(),
         pickupText: formatAddressesByRole(quoteRequest.addresses || [], AddressRole.PICKUP),
         dropoffText: formatAddressesByRole(quoteRequest.addresses || [], AddressRole.DROPOFF),
         formattedDate: date,
@@ -351,7 +351,7 @@ Ref: ${bookingRef}`;
         businessPhone: business.phone_number!,
         businessName: business.name,
         // Additional data for QUOTE_DETAILS
-        numberOfRemovalists: (serviceQuantity * business.number_of_providers).toString(),
+        numberOfRemovalists: (quoteRequest.number_of_people || serviceQuantity).toString(),
         depositPaid: session.depositPaymentState?.status === 'completed' ? 'Yes' : 'No',
         remainingBalance: formatCurrency(quote.result.total_estimate_amount - quote.result.deposit_amount),
         paymentMethod: business.preferred_payment_method

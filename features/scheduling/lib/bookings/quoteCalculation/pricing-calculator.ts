@@ -74,9 +74,9 @@ export class BookingCalculator {
       // Add travel cost
       total_estimate_amount += Math.round(travel_breakdown.total_travel_cost);
 
-      // Step 4: Add GST if required (before fees calculation)
+      // Step 4: Calculate subtotal before fees (GST handled separately for customer display)
       const subtotal_before_fees = total_estimate_amount;
-      total_estimate_amount = this.businessFeesCalculator.addGSTIfRequired(total_estimate_amount, business);
+      // Note: GST is calculated for reporting but not added to customer-facing total when prices_include_gst = false
 
       // Step 5: Calculate business fees
       const business_fees = this.businessFeesCalculator.calculateBusinessFees(subtotal_before_fees, business);
@@ -91,7 +91,7 @@ export class BookingCalculator {
         total_estimate_amount,
         business
       );
-      total_estimate_amount = final_amount;
+      total_estimate_amount = Math.round(final_amount);
 
       // Step 7: Calculate deposit
       const deposit_amount = this.businessFeesCalculator.calculateDeposit(total_estimate_amount, business);
@@ -123,6 +123,7 @@ export class BookingCalculator {
         services: [serviceWithQuantity],
         business,
         addresses,
+        number_of_people: args.number_of_people,
       };
 
       // Log detailed quote breakdown for debugging
