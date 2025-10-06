@@ -99,10 +99,10 @@ export async function createBooking(
       start_at,
       end_at,
       scheduled_time: args.preferred_time,
-      total_estimate_amount: session.selectedQuote.result.total_estimate_amount,
-      total_estimate_time_in_minutes: session.selectedQuote.result.total_estimate_time_in_minutes,
-      remaining_balance_amount: session.selectedQuote.result.total_estimate_amount, // Initially same as total (no payments yet)
-      deposit_amount: session.selectedQuote.result.deposit_amount
+      total_estimate_amount: result.booking.total_estimate_amount,
+      total_estimate_time_in_minutes: result.booking.total_estimate_time_in_minutes,
+      remaining_balance_amount: result.booking.remaining_balance, // Use actual remaining balance from database
+      deposit_amount: result.booking.deposit_amount
     };
 
     const duration = Date.now() - startTime;

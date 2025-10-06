@@ -168,7 +168,6 @@ export class BookingNotifications {
       // Get quote data from session (validated by tools)
       const quoteRequest = session.selectedQuote!.request;
       const serviceName = quoteRequest.services[0]?.service?.name;
-      const serviceQuantity = quoteRequest.services[0]?.quantity || 1;
 
       const templateData = {
         customerName: formatCustomerName(customer),
@@ -186,7 +185,7 @@ export class BookingNotifications {
         fullName: formatFullName(customer),
         customerPhone: customer.phone_number!,
         customerEmail: customer.email || '',
-        numberOfRemovalists: (quoteRequest.number_of_people || serviceQuantity).toString(),
+        numberOfRemovalists: quoteRequest.number_of_people!.toString(),
         pickupText: formatAddressesByRole(quoteRequest.addresses || [], AddressRole.PICKUP),
         dropoffText: formatAddressesByRole(quoteRequest.addresses || [], AddressRole.DROPOFF),
         formattedDate: date,
@@ -282,7 +281,7 @@ Ref: ${bookingRef}`;
         fullName: formatFullName(customer),
         customerPhone: customer.phone_number!,
         customerEmail: customer.email || '',
-        numberOfRemovalists: business.number_of_providers.toString(),
+        numberOfRemovalists: quoteRequest.number_of_people!.toString(),
         pickupText,
         dropoffText,
         formattedDate: DateUtils.formatDateForDisplay(preferredDate),
@@ -329,7 +328,6 @@ Ref: ${bookingRef}`;
       const pickupText = formatAddressesByRole(quoteRequest.addresses || [], AddressRole.PICKUP);
       const dropoffText = formatAddressesByRole(quoteRequest.addresses || [], AddressRole.DROPOFF);
       const serviceName = quoteRequest.services[0]?.service?.name;
-      const serviceQuantity = quoteRequest.services?.[0]?.quantity || 1;
 
       // Use provided date/time (validated by tools)
       const finalPreferredDate = preferredDate;
@@ -351,7 +349,7 @@ Ref: ${bookingRef}`;
         businessPhone: business.phone_number!,
         businessName: business.name,
         // Additional data for QUOTE_DETAILS
-        numberOfRemovalists: (quoteRequest.number_of_people || serviceQuantity).toString(),
+        numberOfRemovalists: quoteRequest.number_of_people!.toString(),
         depositPaid: session.depositPaymentState?.status === 'completed' ? 'Yes' : 'No',
         remainingBalance: formatCurrency(quote.result.total_estimate_amount - quote.result.deposit_amount),
         paymentMethod: business.preferred_payment_method
