@@ -22,8 +22,8 @@ const WEBSOCKET_CONFIG = {
  */
 export async function createAndConnectWebSocket(session: Session): Promise<WebSocket> {
   const startTime = Date.now();
-  const { webSocketPool } = await import("../../sessions/websocketPool");
-  const apiKey = webSocketPool.getApiKeyByIndex(session.assignedApiKeyIndex);
+  const { BusinessWebSocketPool } = await import("../../sessions/websocketPool");
+  const apiKey = BusinessWebSocketPool.getApiKeyByIndex(session.businessEntity, session.assignedApiKeyIndex);
 
   try {
     console.log(`🌐 [ConnectionHandlers] Creating WebSocket connection for session: ${session.id}`);
@@ -139,8 +139,8 @@ export async function handleWebSocketClose(
     // Release API key back to pool
     const apiKeyIndex = session.assignedApiKeyIndex;
     if (typeof apiKeyIndex === 'number') {
-      const { webSocketPool } = await import("../../sessions/websocketPool");
-      webSocketPool.release(apiKeyIndex);
+      const { BusinessWebSocketPool } = await import("../../sessions/websocketPool");
+      BusinessWebSocketPool.release(session.businessEntity, apiKeyIndex);
       console.log(`🔄 [ConnectionHandlers] Released API key ${apiKeyIndex + 1} back to pool`);
     }
 

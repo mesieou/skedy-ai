@@ -20,13 +20,16 @@ import {
 } from '@/features/shared/lib/database/seeds/data/business-data';
 
 import {
-  removalistExample1ServiceData,
-  removalistExample2ServiceData,
+  removalistTigaService1Data,
+  removalistTigaService2Data,
+  removalistTigaService3Data,
+  removalistTigaService4Data,
+  removalistTigaService5Data,
   manicuristExample5Service1Data,
   manicuristExample5Service2Data,
   manicuristExample6ServiceData,
   plumberEmergencyServiceData,
-  plumberMaintenanceServiceData
+  plumberMaintenanceServiceData,
 } from '@/features/shared/lib/database/seeds/data/services-data';
 
 import {
@@ -49,14 +52,14 @@ import {
 import { weekdayCalendarSettingsData, weekendCalendarSettingsData } from '@/features/shared/lib/database/seeds/data/calendar-settings-data';
 
 // Configuration
-const PROMPT_VERSION = 'v1.0.11';
+const PROMPT_VERSION = 'v1.0.21';
 
 // Business type configurations (same as setup-business.ts)
 const businessConfigs = {
   removalist: {
     name: "Removalist (David Removals)",
     businessData: createUniqueRemovalistBusinessData,
-    services: [removalistExample1ServiceData, removalistExample2ServiceData],
+    services: [removalistTigaService1Data, removalistTigaService2Data, removalistTigaService3Data, removalistTigaService4Data, removalistTigaService5Data],
     userData: createRemovalistOwnerUserData,
     authData: createRemovalistOwnerAuthUserData
   },

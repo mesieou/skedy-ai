@@ -13,6 +13,7 @@ import { AvailabilityManager } from '../availability/availability-manager';
 import type { QuoteRequestInfo, DetailedQuoteResult } from '../types/booking-calculations';
 import type { Business } from '../../../shared/lib/database/types/business';
 import type { Booking } from '../../../shared/lib/database/types/bookings';
+import type { DepositPaymentState } from '../../../agent/sessions/session';
 import { DateUtils } from '../../../shared/utils/date-utils';
 
 export interface CreateBookingRequest {
@@ -21,6 +22,7 @@ export interface CreateBookingRequest {
   userId: string;
   preferredDate: string;
   preferredTime: string;
+  depositPaymentState?: DepositPaymentState; // Optional deposit payment state
 }
 
 export interface BookingServiceResult {
@@ -42,7 +44,7 @@ export class BookingOrchestrator {
    * Create booking with pre-calculated pricing and availability validation
    */
   async createBooking(request: CreateBookingRequest): Promise<BookingServiceResult> {
-    const { quoteRequestData, quoteResultData, userId, preferredDate, preferredTime } = request;
+    const { quoteRequestData, quoteResultData, userId, preferredDate, preferredTime, depositPaymentState } = request;
     const business = quoteRequestData.business;
 
     try {
@@ -74,7 +76,8 @@ export class BookingOrchestrator {
         quoteRequestData,
         userId,
         start_at,
-        quoteResultData
+        quoteResultData,
+        depositPaymentState
       );
 
       return {

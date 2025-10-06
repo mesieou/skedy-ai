@@ -6,6 +6,16 @@ import { Tool } from "../../shared/lib/database/types/tools";
 import { TokenSpent } from "../types";
 import WebSocket from "ws";
 
+export interface DepositPaymentState {
+  status: 'pending' | 'completed' | 'failed';
+  quoteId: string;
+  paymentLink?: string;
+  stripeSessionId?: string;
+  amount: number;
+  createdAt: number;
+  bookingId?: string;  // Link to the actual booking in database
+}
+
 /**
  * OpenAI Realtime API session information
  */
@@ -63,9 +73,17 @@ export interface Session {
   };
 
   // Conversation data
-  quotes: DetailedQuoteResult[];             // All quotes generated during conversation
-  selectedQuote?: DetailedQuoteResult;       // Currently selected quote result
-  selectedQuoteRequest?: QuoteRequestInfo; // Currently selected quote request
+  quotes: Array<{
+    result: DetailedQuoteResult;
+    request: QuoteRequestInfo;
+  }>;                                        // All quotes with their request data
+  selectedQuote?: {
+    result: DetailedQuoteResult;
+    request: QuoteRequestInfo;
+  };                                         // Currently selected quote with its request data
+
+  // Payment state management
+  depositPaymentState?: DepositPaymentState;
 
   // Demo-specific fields
   ephemeralToken?: string;                   // WebRTC ephemeral token for demo sessions

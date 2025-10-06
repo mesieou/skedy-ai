@@ -1,15 +1,18 @@
 import OpenAI from 'openai';
+import type { Business } from '@/features/shared/lib/database/types/business';
+import { BusinessRepository } from '@/features/shared/lib/database/repositories/business-repository';
 
 export async function verifyWebhookSignature(
   body: string,
   signature: string,
   timestamp: string,
-  webhookId: string
+  webhookId: string,
+  business: Business
 ): Promise<boolean> {
   try {
-    const webhookSecret = process.env.OPENAI_WEBHOOK_SECRET;
+    const webhookSecret = BusinessRepository.getWebhookSecretForBusiness(business);
     if (!webhookSecret) {
-      console.error('❌ Missing OPENAI_WEBHOOK_SECRET');
+      console.error(`❌ Missing webhook secret for business ${business.name} (${business.openai_api_key_name})`);
       return false;
     }
 
@@ -20,10 +23,11 @@ export async function verifyWebhookSignature(
     console.log('🔍 Timestamp:', timestamp);
     console.log('🔍 Raw body length:', body.length);
 
+    const apiKey = BusinessRepository.getApiKeyForBusiness(business);
     const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY!
+      apiKey: apiKey
     });
-    console.log('🔍 OpenAI API Key:', process.env.OPENAI_API_KEY);
+    console.log('🔍 OpenAI API Key:', apiKey);
     console.log('🔍 Webhook secret:', webhookSecret);
     console.log('🔍 Signature:', signature);
     console.log('🔍 Timestamp:', timestamp);

@@ -1,59 +1,217 @@
 import { sendText } from './sentText';
 import type { Booking } from '../shared/lib/database/types/bookings';
 import type { User } from '../shared/lib/database/types/user';
-import type { Business } from '../shared/lib/database/types/business';
 import type { Session } from '../agent/sessions/session';
 import type { BookingAddress } from '../scheduling/lib/types/booking-calculations';
 import { AddressRole } from '../scheduling/lib/types/booking-calculations';
 import { DateUtils } from '../shared/utils/date-utils';
-import assert from 'assert';
 
 /**
- * Booking notification service - completely independent
- * Handles all SMS notifications related to bookings
+ * Booking notification service - handles all SMS notifications
  */
+
+// SMS Templates
+const SMS_TEMPLATES = {
+  QUOTE_DETAILS: `👤 CUSTOMER DETAILS:
+Name: {fullName}
+Phone: {customerPhone}
+Email: {customerEmail}
+
+Service: {serviceName}
+Number of Removalists: {numberOfRemovalists}
+
+📍 Locations:
+Pickup Locations:
+{pickupText}
+Drop-off Locations:
+{dropoffText}
+
+📅 Preferred Date & Time:
+{formattedDate} at {formattedTime}
+
+Total Estimate Time: {timeEstimate}
+Total Quote Estimate: {totalAmount}
+⚠️ This is an estimate - final costs may vary based on actual work required.
+
+
+📋 Payment Details:
+Deposit Required: {depositAmount}
+Deposit Paid: {depositPaid}
+Remaining Balance: {remainingBalance}
+
+Preferred Payment Method at service: {paymentMethod}
+
+If you have any questions, please text us at {businessPhone}.
+
+Skedy
+- {businessName}
+`,
+  PAYMENT_REQUIRED: `💳 PAYMENT REQUIRED
+Hi {customerName} 😊!
+
+Please complete your deposit payment to secure your booking with {businessName}.
+💰 Deposit Required: {depositAmount}
+🔗 Payment Link: {paymentLink}
+
+⚠️ Your booking is not confirmed until payment is completed.
+
+📋 Quote Details:
+{QUOTE_DETAILS}`,
+
+  BOOKING_CONFIRMATION: `🎉 Hi {customerName} 😊! Your booking is confirmed with {businessName}
+
+📋 Booking Details:
+{QUOTE_DETAILS}
+`,
+
+  PRE_BOOKING_CONFIRMATION: `Hi {customerName} 😊!
+
+Can you please confirm all details are correct?
+
+📋 Booking Details:
+{QUOTE_DETAILS}
+`
+};
+
+// Helper functions
+const formatCustomerName = (user: User): string => {
+  return user.first_name || user.email?.split('@')[0] || 'Customer';
+};
+
+const formatFullName = (user: User): string => {
+  return user.last_name ? `${user.first_name} ${user.last_name}` : user.first_name || 'Customer';
+};
+
+const formatCurrency = (amount: number): string => `$${amount.toFixed(2)}`;
+
+const formatBookingRef = (bookingId: string): string => bookingId.slice(-8).toUpperCase();
+
+const formatTimeEstimate = (minutes: number): string => {
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return hours > 0 ? `${hours}h${remainingMinutes > 0 ? ` ${remainingMinutes}m` : ''}`.trim() : `${remainingMinutes}m`;
+};
+
+const formatAddress = (addr: BookingAddress): string => {
+  const parts = [
+    addr.address.address_line_1,
+    addr.address.address_line_2,
+    addr.address.city,
+    addr.address.state,
+    addr.address.postcode
+  ].filter(Boolean);
+  return parts.join(', ');
+};
+
+const formatAddressesByRole = (addresses: BookingAddress[], role: AddressRole): string => {
+  const filtered = addresses.filter(addr => addr.role === role);
+  if (filtered.length === 0) return 'Not specified';
+
+  return filtered
+    .map((addr, index) => `${index + 1}. ${formatAddress(addr)}`)
+    .join('\n');
+};
+
+const processTemplate = (template: string, data: Record<string, string>): string => {
+  let result = template;
+
+  // First, process nested templates like {QUOTE_DETAILS}
+  if (result.includes('{QUOTE_DETAILS}')) {
+    const quoteDetailsData = {
+      fullName: data.fullName || '',
+      customerPhone: data.customerPhone || '',
+      customerEmail: data.customerEmail || '',
+      serviceName: data.serviceName || '',
+      numberOfRemovalists: data.numberOfRemovalists || '',
+      pickupText: data.pickupText || '',
+      dropoffText: data.dropoffText || '',
+      formattedDate: data.formattedDate || '',
+      formattedTime: data.formattedTime || '',
+      timeEstimate: data.timeEstimate || '',
+      totalAmount: data.totalAmount || '',
+      depositAmount: data.depositAmount || '',
+      depositPaid: data.depositPaid || '',
+      remainingBalance: data.remainingBalance || '',
+      paymentMethod: data.paymentMethod || '',
+      businessPhone: data.businessPhone || '',
+      businessName: data.businessName || ''
+    };
+
+    const processedQuoteDetails = processTemplate(SMS_TEMPLATES.QUOTE_DETAILS, quoteDetailsData);
+    result = result.replace('{QUOTE_DETAILS}', processedQuoteDetails);
+  }
+
+  // Then process all other template variables
+  for (const [key, value] of Object.entries(data)) {
+    result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+  }
+
+  return result;
+};
+
 export class BookingNotifications {
 
   /**
-   * Send booking confirmation SMS to customer
+   * Send booking confirmation SMS
    */
   static async sendBookingConfirmation(
-    booking: Booking,
-    customer: User,
-    business: Business,
-    serviceName?: string
-  ): Promise<void> {
+    session: Session,
+    booking: Booking
+  ): Promise<{ success: boolean; error?: string }> {
     try {
-      assert(customer.phone_number, 'Customer phone number is required for booking confirmation');
+      const customer = session.customerEntity!;
+      const business = session.businessEntity!;
 
-      // Convert UTC booking time to business timezone for customer
       const { date, time } = DateUtils.convertUTCToTimezone(booking.start_at, business.time_zone);
       const { time: endTime } = DateUtils.convertUTCToTimezone(booking.end_at, business.time_zone);
 
-      // Format customer name (first name only for SMS brevity)
-      const customerName = customer.first_name || customer.email?.split('@')[0] || 'Customer';
+      // Get quote data from session (validated by tools)
+      const quoteRequest = session.selectedQuote!.request;
+      const serviceName = quoteRequest.services[0]?.service?.name;
+      const serviceQuantity = quoteRequest.services[0]?.quantity || 1;
 
-      const message = `🎉 Hi ${customerName}! Your booking is confirmed with ${business.name}
+      const templateData = {
+        customerName: formatCustomerName(customer),
+        businessName: business.name,
+        serviceName: serviceName!,
+        date,
+        time,
+        endTime,
+        totalAmount: formatCurrency(booking.total_estimate_amount),
+        depositAmount: formatCurrency(booking.deposit_amount),
+        businessPhone: business.phone_number,
+        businessEmail: business.email,
+        bookingRef: formatBookingRef(booking.id),
+        // Additional data for QUOTE_DETAILS
+        fullName: formatFullName(customer),
+        customerPhone: customer.phone_number!,
+        customerEmail: customer.email || '',
+        numberOfRemovalists: (serviceQuantity * business.number_of_providers).toString(),
+        pickupText: formatAddressesByRole(quoteRequest.addresses || [], AddressRole.PICKUP),
+        dropoffText: formatAddressesByRole(quoteRequest.addresses || [], AddressRole.DROPOFF),
+        formattedDate: date,
+        formattedTime: time,
+        timeEstimate: formatTimeEstimate(booking.total_estimate_time_in_minutes),
+        depositPaid: booking.deposit_paid ? 'Yes' : 'No',
+        remainingBalance: formatCurrency(booking.remaining_balance),
+        paymentMethod: business.preferred_payment_method
+      };
 
-📋 Service: ${serviceName || 'Service booking'}
-📅 Date: ${date}
-⏰ Time: ${time} - ${endTime}
-💰 Total Estimate: $${booking.total_estimate_amount.toFixed(2)}
-💳 Deposit: $${booking.deposit_amount.toFixed(2)}
+      const message = processTemplate(SMS_TEMPLATES.BOOKING_CONFIRMATION, templateData);
+      const result = await sendText(customer.phone_number!, message, business.twilio_number!);
 
-📞 Questions? Call ${business.phone_number}
-📧 Email: ${business.email}
+      if (result.success) {
+        console.log(`✅ Booking confirmation sent to ${formatCustomerName(customer)}`);
+      }
 
-Booking Ref: ${booking.id.slice(-8).toUpperCase()}
-
-⚠️ Note: This is an estimate and final costs may vary based on actual work required.`;
-
-      await sendText(customer.phone_number, message, business.twilio_number!);
-      console.log(`✅ Booking confirmation sent to ${customer.first_name || customer.email}`);
+      return result;
 
     } catch (error) {
-      console.error(`❌ Failed to send booking confirmation:`, error);
-      // Don't throw - notifications shouldn't break the booking flow
+      console.error('❌ Failed to send booking confirmation:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
     }
   }
 
@@ -61,164 +219,155 @@ Booking Ref: ${booking.id.slice(-8).toUpperCase()}
    * Send booking reminder SMS (24 hours before)
    */
   static async sendBookingReminder(
-    booking: Booking,
-    customer: User,
-    business: Business
-  ): Promise<void> {
+    session: Session,
+    booking: Booking
+  ): Promise<{ success: boolean; error?: string }> {
     try {
-      assert(customer.phone_number, 'Customer phone number is required for booking reminder');
+      const customer = session.customerEntity!;
+      const business = session.businessEntity!;
 
       const { date, time } = DateUtils.convertUTCToTimezone(booking.start_at, business.time_zone);
+      const bookingRef = formatBookingRef(booking.id);
 
       const message = `⏰ Reminder: Your ${business.name} booking is tomorrow!
 📅 ${date} at ${time}
 📍 We'll contact you 30min before arrival
-Ref: ${booking.id.slice(-8)}`;
+Ref: ${bookingRef}`;
 
-      await sendText(customer.phone_number, message, business.twilio_number!);
-      console.log(`✅ Booking reminder sent to ${customer.email}`);
-
-    } catch (error) {
-      console.error(`❌ Failed to send booking reminder:`, error);
-    }
-  }
-
-  /**
-   * Send booking cancellation SMS
-   */
-  static async sendBookingCancellation(
-    booking: Booking,
-    customer: User,
-    business: Business,
-    reason?: string
-  ): Promise<void> {
-    try {
-      assert(customer.phone_number, 'Customer phone number is required for booking cancellation');
-
-      const { date, time } = DateUtils.convertUTCToTimezone(booking.start_at, business.time_zone);
-
-      const message = `❌ Booking cancelled: ${business.name}
-📅 ${date} at ${time}
-${reason ? `Reason: ${reason}` : ''}
-💰 Refund will be processed within 3-5 business days
-📞 Questions? Call ${business.phone_number}`;
-
-      await sendText(customer.phone_number, message, business.twilio_number!);
-      console.log(`✅ Booking cancellation sent to ${customer.email}`);
-
-    } catch (error) {
-      console.error(`❌ Failed to send booking cancellation:`, error);
-    }
-  }
-
-  /**
-   * Send pre-booking confirmation SMS with all collected details
-   * This is sent BEFORE creating the actual booking for customer verification
-   */
-  static async sendPreBookingConfirmation(
-    session: Session,
-    customer: User,
-    business: Business,
-    preferredDate: string,
-    preferredTime: string
-  ): Promise<{ success: boolean; error?: string }> {
-    try {
-      assert(customer.phone_number, 'Customer phone number is required for pre-booking confirmation');
-      assert(session.selectedQuote, 'Selected quote is required for pre-booking confirmation');
-      assert(session.selectedQuoteRequest, 'Selected quote request is required for pre-booking confirmation');
-
-      const quote = session.selectedQuote;
-      const quoteRequest = session.selectedQuoteRequest;
-
-      // Format customer name
-      const customerName = customer.first_name || customer.email?.split('@')[0] || 'Customer';
-      const fullName = customer.last_name
-        ? `${customer.first_name} ${customer.last_name}`
-        : customer.first_name;
-
-      // Format date and time for display
-      const formattedDate = DateUtils.formatDateForDisplay(preferredDate);
-      const formattedTime = DateUtils.formatTimeForDisplay(preferredTime);
-
-      // Extract addresses from quote request addresses array
-      const pickupAddresses = quoteRequest?.addresses?.filter((addr: BookingAddress) =>
-        addr.role === AddressRole.PICKUP
-      ) || [];
-      const dropoffAddresses = quoteRequest?.addresses?.filter((addr: BookingAddress) =>
-        addr.role === AddressRole.DROPOFF
-      ) || [];
-
-      // Format addresses for display
-      const formatAddress = (addr: BookingAddress): string => {
-        const parts = [
-          addr.address.address_line_1,
-          addr.address.address_line_2,
-          addr.address.city,
-          addr.address.state,
-          addr.address.postcode
-        ].filter(Boolean);
-        return parts.join(', ');
-      };
-
-      const pickupText = pickupAddresses.length > 0
-        ? pickupAddresses.map((addr: BookingAddress, i: number) => `${i + 1}. ${formatAddress(addr)}`).join('\n')
-        : 'Not specified';
-
-      const dropoffText = dropoffAddresses.length > 0
-        ? dropoffAddresses.map((addr: BookingAddress, i: number) => `${i + 1}. ${formatAddress(addr)}`).join('\n')
-        : 'Not specified';
-
-      // Format time estimate
-      const timeHours = Math.floor(quote.total_estimate_time_in_minutes / 60);
-      const timeMinutes = quote.total_estimate_time_in_minutes % 60;
-      const timeEstimate = timeHours > 0
-        ? `${timeHours}h ${timeMinutes > 0 ? timeMinutes + 'm' : ''}`.trim()
-        : `${timeMinutes}m`;
-
-      // Get service name from the first service in the quote request
-      const serviceName = quoteRequest?.services?.[0]?.service?.name || 'Removalist Service';
-
-      // Build comprehensive confirmation message
-      const message = `📋 BOOKING CONFIRMATION REQUIRED
-
-Hi ${customerName}! Please confirm all details are correct:
-
-👤 CUSTOMER DETAILS:
-Name: ${fullName}
-Phone: ${customer.phone_number}
-${customer.email ? `Email: ${customer.email}` : ''}
-
-🚚 SERVICE DETAILS:
-Service: ${serviceName}
-Total Estimate: $${quote.total_estimate_amount.toFixed(2)}
-Deposit Required: $${quote.deposit_amount.toFixed(2)}
-Estimate Time: ${timeEstimate}
-
-📍 PICKUP LOCATIONS:
-${pickupText}
-
-📍 DROP-OFF LOCATIONS:
-${dropoffText}
-
-📅 PREFERRED DATE & TIME:
-${formattedDate} at ${formattedTime}
-
-⚠️ This is an estimate - final costs may vary based on actual work required.
-
-📞 Reply "YES" to confirm or call ${business.phone_number} to make changes.
-
-- ${business.name}`;
-
-      const result = await sendText(customer.phone_number, message, business.twilio_number!);
+      const result = await sendText(customer.phone_number!, message, business.twilio_number!);
 
       if (result.success) {
-        console.log(`✅ Pre-booking confirmation sent to ${customer.first_name || customer.email}`);
+        console.log(`✅ Booking reminder sent to ${formatCustomerName(customer)}`);
       }
 
       return result;
 
     } catch (error) {
-      console.error(`❌ Failed to send pre-booking confirmation:`, error);
+      console.error('❌ Failed to send booking reminder:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Send payment link SMS
+   */
+  static async sendPaymentLink(
+    session: Session,
+    preferredDate: string,
+    preferredTime: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const customer = session.customerEntity!;
+      const business = session.businessEntity!;
+      const quoteResult = session.selectedQuote!.result;
+      const quoteRequest = session.selectedQuote!.request;
+      const paymentLink = session.depositPaymentState!.paymentLink;
+
+      const serviceName = quoteRequest.services[0]?.service?.name;
+
+      const pickupText = formatAddressesByRole(quoteRequest.addresses || [], AddressRole.PICKUP);
+      const dropoffText = formatAddressesByRole(quoteRequest.addresses || [], AddressRole.DROPOFF);
+
+      const templateData = {
+        customerName: formatCustomerName(customer),
+        businessName: business.name,
+        serviceName: serviceName!,
+        depositAmount: formatCurrency(quoteResult.deposit_amount),
+        paymentLink: paymentLink!,
+        businessPhone: business.phone_number!,
+        // Additional data for QUOTE_DETAILS
+        fullName: formatFullName(customer),
+        customerPhone: customer.phone_number!,
+        customerEmail: customer.email || '',
+        numberOfRemovalists: business.number_of_providers.toString(),
+        pickupText,
+        dropoffText,
+        formattedDate: DateUtils.formatDateForDisplay(preferredDate),
+        formattedTime: DateUtils.formatTimeForDisplay(preferredTime),
+        timeEstimate: formatTimeEstimate(quoteResult.total_estimate_time_in_minutes),
+        totalAmount: formatCurrency(quoteResult.total_estimate_amount),
+        depositPaid: session.depositPaymentState?.status === 'completed' ? 'Yes' : 'No',
+        remainingBalance: formatCurrency(quoteResult.total_estimate_amount),
+        paymentMethod: business.preferred_payment_method
+      };
+
+      const message = processTemplate(SMS_TEMPLATES.PAYMENT_REQUIRED, templateData);
+      const result = await sendText(customer.phone_number!, message, business.twilio_number!);
+
+      if (result.success) {
+        console.log(`✅ Payment link sent to ${formatCustomerName(customer)}`);
+      }
+
+      return result;
+
+    } catch (error) {
+      console.error('❌ Failed to send payment link:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Send pre-booking confirmation SMS
+   */
+  static async sendPreBookingConfirmation(
+    session: Session,
+    preferredDate: string,
+    preferredTime: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const customer = session.customerEntity!;
+      const business = session.businessEntity!;
+      const quote = session.selectedQuote!;
+      const quoteRequest = quote.request;
+
+      const pickupText = formatAddressesByRole(quoteRequest.addresses || [], AddressRole.PICKUP);
+      const dropoffText = formatAddressesByRole(quoteRequest.addresses || [], AddressRole.DROPOFF);
+      const serviceName = quoteRequest.services[0]?.service?.name;
+      const serviceQuantity = quoteRequest.services?.[0]?.quantity || 1;
+
+      // Use provided date/time (validated by tools)
+      const finalPreferredDate = preferredDate;
+      const finalPreferredTime = preferredTime;
+
+      const templateData = {
+        customerName: formatCustomerName(customer),
+        fullName: formatFullName(customer),
+        customerPhone: customer.phone_number!,
+        customerEmail: customer.email || '',
+        serviceName: serviceName!,
+        totalAmount: formatCurrency(quote.result.total_estimate_amount),
+        depositAmount: formatCurrency(quote.result.deposit_amount),
+        timeEstimate: formatTimeEstimate(quote.result.total_estimate_time_in_minutes),
+        pickupText,
+        dropoffText,
+        formattedDate: DateUtils.formatDateForDisplay(finalPreferredDate),
+        formattedTime: DateUtils.formatTimeForDisplay(finalPreferredTime),
+        businessPhone: business.phone_number!,
+        businessName: business.name,
+        // Additional data for QUOTE_DETAILS
+        numberOfRemovalists: (serviceQuantity * business.number_of_providers).toString(),
+        depositPaid: session.depositPaymentState?.status === 'completed' ? 'Yes' : 'No',
+        remainingBalance: formatCurrency(quote.result.total_estimate_amount - quote.result.deposit_amount),
+        paymentMethod: business.preferred_payment_method
+      };
+
+      const message = processTemplate(SMS_TEMPLATES.PRE_BOOKING_CONFIRMATION, templateData);
+      const result = await sendText(customer.phone_number!, message, business.twilio_number!);
+
+      if (result.success) {
+        console.log(`✅ Pre-booking confirmation sent to ${formatCustomerName(customer)}`);
+      }
+
+      return result;
+
+    } catch (error) {
+      console.error('❌ Failed to send pre-booking confirmation:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'

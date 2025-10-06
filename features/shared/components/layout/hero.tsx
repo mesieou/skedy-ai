@@ -76,9 +76,18 @@ export function Hero() {
       setDemoSessionData(sessionData);
       console.log('✅ [Hero] Demo activated - DemoHero will handle connection!');
     } else {
-      // Phone demo - store business choice and redirect to single number
+      // Phone demo - get the correct phone number for the selected business type
       try {
-        // Store business choice before calling
+        // Get the phone number for this specific business type
+        const phoneResponse = await fetch(`/api/demo/business-phone?businessType=${businessType}`);
+        if (!phoneResponse.ok) {
+          throw new Error('Failed to get business phone number');
+        }
+
+        const { twilio_number } = await phoneResponse.json();
+        console.log('📞 [Hero] Got business twilio number:', { businessType, twilio_number });
+
+        // Store business choice before calling (for backup identification)
         await fetch('/api/demo/store-business-choice', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -89,7 +98,7 @@ export function Hero() {
         });
 
         console.log('📞 [Hero] Stored business choice, redirecting to phone:', { businessType });
-        window.location.href = `tel:+61468002102`;
+        window.location.href = `tel:${twilio_number}`;
       } catch (error) {
         console.error('Failed to store business choice:', error);
 
@@ -105,8 +114,8 @@ export function Hero() {
           }
         });
 
-        // Fallback: just call anyway
-        window.location.href = `tel:+61468002102`;
+        //  no Fallback: just call anyway
+        // window.location.href = `tel:+61468002102`;
       }
       setIsDemoModalOpen(false);
     }

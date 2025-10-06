@@ -12,7 +12,6 @@ export async function createBooking(
   args: {
     preferred_date: string;
     preferred_time: string;
-    quote_id: string;
     confirmation_message?: string;
   },
   session: Session
@@ -26,8 +25,8 @@ export async function createBooking(
       businessId: session.businessId,
       preferredDate: args.preferred_date,
       preferredTime: args.preferred_time,
-      quoteId: args.quote_id,
-      hasSelectedQuote: !!session.selectedQuote
+      hasSelectedQuote: !!session.selectedQuote,
+      selectedQuoteId: session.selectedQuote?.result?.quote_id
     });
     // Validate date format using DateUtils
     if (!DateUtils.isValidDateFormat(args.preferred_date)) {
@@ -50,16 +49,12 @@ export async function createBooking(
     }
 
     // Get selected quote and request from session
-    if (!session.selectedQuote || !session.selectedQuoteRequest) {
+    if (!session.selectedQuote) {
       // User input error - no quote selected
-      return buildToolResponse(null, `No quote selected. Please get a quote first.`, false);
+      return buildToolResponse(null, `No quote selected. Please select a quote first using the selectQuote tool.`, false);
     }
 
-    // Validate quote_id matches the selected quote
-    if (session.selectedQuote.quote_id !== args.quote_id) {
-      // User input error - quote mismatch
-      return buildToolResponse(null, `Quote ID mismatch. Please get a fresh quote.`, false);
-    }
+    // Quote request data is now part of selectedQuote
 
     // Validate user exists in session
     if (!session.customerEntity) {
@@ -67,14 +62,23 @@ export async function createBooking(
       return buildToolResponse(null, `User profile required. Please create a user profile first.`, false);
     }
 
-    // Use BookingOrchestrator for core booking creation
+    // Check if payment is required and completed
+    if (session.selectedQuote.result.deposit_amount > 0) {
+     // Check if payment is completed
+      if (session.depositPaymentState!.status !== 'completed') {
+        return buildToolResponse(null, `Payment not completed. Please complete the deposit payment of $${session.depositPaymentState!.amount} before booking.`, false);
+      }
+    }
+
+    // Use BookingOrchestrator for core booking creation (with original quote data)
     const bookingOrchestrator = new BookingOrchestrator();
     const result = await bookingOrchestrator.createBooking({
-      quoteRequestData: session.selectedQuoteRequest,
-      quoteResultData: session.selectedQuote,
+      quoteRequestData: session.selectedQuote.request,
+      quoteResultData: session.selectedQuote.result,
       userId: session.customerEntity.id,
       preferredDate: args.preferred_date,
-      preferredTime: args.preferred_time
+      preferredTime: args.preferred_time,
+      depositPaymentState: session.depositPaymentState  // Pass payment state for proper booking creation
     });
 
     if (!result.success || !result.booking) {
@@ -95,10 +99,10 @@ export async function createBooking(
       start_at,
       end_at,
       scheduled_time: args.preferred_time,
-      total_estimate_amount: session.selectedQuote.total_estimate_amount,
-      total_estimate_time_in_minutes: session.selectedQuote.total_estimate_time_in_minutes,
-      remaining_balance_amount: session.selectedQuote.total_estimate_amount, // Initially same as total (no payments yet)
-      deposit_amount: session.selectedQuote.deposit_amount
+      total_estimate_amount: session.selectedQuote.result.total_estimate_amount,
+      total_estimate_time_in_minutes: session.selectedQuote.result.total_estimate_time_in_minutes,
+      remaining_balance_amount: session.selectedQuote.result.total_estimate_amount, // Initially same as total (no payments yet)
+      deposit_amount: session.selectedQuote.result.deposit_amount
     };
 
     const duration = Date.now() - startTime;
@@ -109,18 +113,13 @@ export async function createBooking(
       businessId: session.businessId,
       bookingId: result.booking.id,
       duration: duration,
-      totalAmount: session.selectedQuote.total_estimate_amount
+      totalAmount: session.selectedQuote.result.total_estimate_amount
     });
 
     // Send booking confirmation SMS (fire and forget - don't block the response)
-    // Get service name from the selected quote request
-    const serviceName = session.selectedQuoteRequest?.services?.[0]?.service?.name;
-
     BookingNotifications.sendBookingConfirmation(
-      result.booking,
-      session.customerEntity,
-      session.businessEntity,
-      serviceName
+      session,
+      result.booking
     ).catch(error => {
       console.error('Booking notification failed (non-blocking):', error);
       sentry.trackError(error as Error, {
@@ -152,7 +151,7 @@ export async function createBooking(
         duration: duration,
         preferredDate: args.preferred_date,
         preferredTime: args.preferred_time,
-        quoteId: args.quote_id,
+        quoteId: session.selectedQuote?.result?.quote_id,
         hasSelectedQuote: !!session.selectedQuote,
         hasCustomerEntity: !!session.customerEntity,
         errorName: (error as Error).name

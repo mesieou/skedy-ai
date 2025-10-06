@@ -1,41 +1,84 @@
 #!/usr/bin/env tsx
 
 /**
- * Setup Tools Script
+ * Create/Update Tool Script
  *
- * Populates the tools library with all available tools
- * Run this once to create the tools that businesses can use
+ * Creates or updates a specific tool in the tools library
+ * Usage: ./scripts/setup-tools.ts <tool-name>
  */
 
 import dotenv from 'dotenv';
 import path from 'path';
 
 // Load environment variables (same as Jest)
-dotenv.config({ path: path.join(__dirname, '../.env.local') });
-dotenv.config({ path: path.join(__dirname, '../.env.test'), override: true });
+dotenv.config({ path: path.join(__dirname, '../.env.production') });
 
 import { toolsSeeder } from '../features/shared/lib/database/seeds/tools-seeder';
 import { allAvailableTools } from '../features/shared/lib/database/seeds/data/tools-data';
 
-async function setupTools() {
-  console.log('🚀 Starting tools library setup...\n');
+async function createUpdateTools(toolName?: string) {
+  console.log('🚀 Starting tool create/update...\n');
 
   try {
-    // Create all tools in the tools table
-    await toolsSeeder.createMultiple(allAvailableTools);
+    let toolsToProcess = allAvailableTools;
 
-    console.log('\n🎉 Tools library setup completed!');
+    // If specific tool name provided, filter to that tool
+    if (toolName) {
+      toolsToProcess = allAvailableTools.filter(tool => tool.name === toolName);
+
+      if (toolsToProcess.length === 0) {
+        console.log(`❌ Tool "${toolName}" not found in available tools`);
+        console.log('\n💡 Available tools:');
+        allAvailableTools.forEach(tool => {
+          console.log(`   - ${tool.name} (v${tool.version})`);
+        });
+        return;
+      }
+
+      console.log(`🔍 Processing tool: ${toolName}`);
+    } else {
+      console.log(`📝 Processing all ${allAvailableTools.length} available tools:`);
+    }
+
+    let createdCount = 0;
+    let updatedCount = 0;
+
+    for (const toolData of toolsToProcess) {
+      // Check if tool already exists to avoid duplicates
+      const existing = await toolsSeeder.findOne({
+        name: toolData.name,
+        version: toolData.version
+      });
+
+      if (!existing) {
+        await toolsSeeder.create(toolData);
+        console.log(`✅ Created: ${toolData.name} v${toolData.version}`);
+        createdCount++;
+      } else {
+        // Update existing tool
+        await toolsSeeder.updateOne(
+          { name: toolData.name, version: toolData.version },
+          toolData
+        );
+        console.log(`🔄 Updated: ${toolData.name} v${toolData.version}`);
+        updatedCount++;
+      }
+    }
+
+    console.log(`\n🎉 Tool processing completed! Created ${createdCount}, Updated ${updatedCount}.`);
 
   } catch (error) {
-    console.error('❌ Tools setup failed:', error);
+    console.error('❌ Tool setup failed:', error);
     process.exit(1);
   }
 }
 
 // Run if called directly
 if (require.main === module) {
-  setupTools().then(() => {
-    console.log('\n✅ Tools library is ready!');
+  const toolName = process.argv[2];
+
+  createUpdateTools(toolName).then(() => {
+    console.log('\n✅ Tool library is ready!');
     process.exit(0);
   }).catch((error) => {
     console.error('💥 Setup failed:', error);
@@ -43,4 +86,4 @@ if (require.main === module) {
   });
 }
 
-export { setupTools };
+export { createUpdateTools };

@@ -52,17 +52,17 @@ export async function POST(request: NextRequest) {
       eventType: event.type
     });
 
-    // 1️⃣ Verify webhook signature
-    const verified = await verifyWebhookSignature(body, signature, timestamp, webhookId);
-    assert(verified, 'Invalid webhook signature');
-
     console.log(`📞 Incoming call event: ${callId} (${event.type})`);
 
-
-    // 2️⃣ Get or create session via SessionManager
+    // 1️⃣ Get or create session via SessionManager (this determines the business correctly)
     const session = await SessionService.createOrGet(callId, event);
     assert(session, 'Failed to create or get session');
     console.log(`🚀 [Webhook] Session created/retrieved successfully: ${session.id}`);
+    console.log(`🏢 [Webhook] Business: ${session.businessEntity.name} (${session.businessEntity.openai_api_key_name})`);
+
+    // 2️⃣ Verify webhook signature with business-specific secret from session
+    const verified = await verifyWebhookSignature(body, signature, timestamp, webhookId, session.businessEntity);
+    assert(verified, 'Invalid webhook signature');
 
     // Add success breadcrumb
     sentry.addBreadcrumb('Session created/retrieved successfully', 'webhook', {

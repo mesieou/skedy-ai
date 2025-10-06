@@ -73,8 +73,6 @@ export async function sendSMSBookingConfirmationTool(
     // Send pre-booking confirmation SMS
     const smsResult = await BookingNotifications.sendPreBookingConfirmation(
       session,
-      session.customerEntity,
-      session.businessEntity,
       args.preferred_date.trim(),
       args.preferred_time.trim()
     );

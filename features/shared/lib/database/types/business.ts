@@ -59,6 +59,7 @@ export interface Business extends BaseEntity {
   offers_location_services: boolean;   // "Do customers come to you?"
   minimum_charge: number;
   twilio_number?: string | null;
+  openai_api_key_name: string;         // Maps to OPENAI_API_KEY_{NAME} env var
 }
 
 export type CreateBusinessData = Omit<Business, 'id' | 'created_at' | 'updated_at'>;
