@@ -10,8 +10,8 @@ import dotenv from 'dotenv';
 import path from 'path';
 
 // Load environment variables (same as Jest)
-dotenv.config({ path: path.join(__dirname, '../.env.local') });
-dotenv.config({ path: path.join(__dirname, '../.env.test'), override: true });
+dotenv.config({ path: path.join(__dirname, '../.env.production') });
+// dotenv.config({ path: path.join(__dirname, '../.env.test'), override: true });
 
 import { BusinessSeeder } from '../features/shared/lib/database/seeds/business-seeder';
 import { UserSeeder } from '../features/shared/lib/database/seeds/user-seeder';
@@ -161,7 +161,7 @@ async function main() {
     // Step 7: Link Prompts (use current prompt version)
     console.log('📝 Linking prompts to business...');
     const { allAvailablePrompts } = await import('../features/shared/lib/database/seeds/data/prompts-data');
-    const PROMPT_VERSION = 'v1.0.18'; // Use latest prompt version
+    const PROMPT_VERSION = 'v1.0.21'; // Use latest prompt version
 
     let businessPromptsCount = 0;
     for (const promptData of allAvailablePrompts) {

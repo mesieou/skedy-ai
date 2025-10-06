@@ -108,7 +108,7 @@ export function createUniqueMobileManicuristBusinessData(): CreateBusinessData {
     website_url: "https://nailsonthego.com.au",
     whatsapp_number: `+61498765${Math.floor(Math.random() * 900) + 100}`,
     whatsapp_phone_number_id: "684078768113904",
-    stripe_connect_account_id: "acct_1Rna89P41K8lcham",
+    stripe_connect_account_id: "acct_1SEJXA1xtwm3bvA1",
     stripe_account_status: "active",
     offers_mobile_services: true,   // "Yes, we travel to customer homes"
     offers_location_services: true,  // "Yes, customers can also come to our salon"
@@ -146,7 +146,7 @@ export function createUniqueMassageBusinessData(): CreateBusinessData {
     website_url: "https://serenityspa.com.au",
     whatsapp_number: `+61387654${Math.floor(Math.random() * 900) + 100}`,
     whatsapp_phone_number_id: "684078768113905",
-    stripe_connect_account_id: "acct_1Rna89P41K8lchan",
+    stripe_connect_account_id: "acct_1SEJXA1xtwm3bvA1",
     stripe_account_status: "active",
     offers_mobile_services: false,  // "No, customers come to our spa"
     offers_location_services: true,  // "Yes, customers visit our location"
@@ -184,7 +184,7 @@ export function createUniquePlumberBusinessData(): CreateBusinessData {
     website_url: "https://fixitplumbing.com.au",
     whatsapp_number: `+61387654${Math.floor(Math.random() * 900) + 100}`,
     whatsapp_phone_number_id: "684078768113906",
-    stripe_connect_account_id: "acct_1Rna89P41K8lchao",
+    stripe_connect_account_id: "acct_1SEJXA1xtwm3bvA1",
     stripe_account_status: "active",
     offers_mobile_services: true,
     offers_location_services: false,
