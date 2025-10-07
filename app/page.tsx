@@ -1,6 +1,6 @@
 import { MainLayout } from "@/features/shared/components/layout/main-layout";
 import { Hero } from "@/features/shared/components/layout/hero";
-import { ServicesSection } from "@/features/shared/components/sections/services-section";
+import { ProductsSection } from "@/features/shared/components/sections/products-section";
 import { AboutSection } from "@/features/shared/components/sections/about-section";
 import { PricingSection } from "@/features/shared/components/sections/pricing-section";
 import { ContactSection } from "@/features/shared/components/sections/contact-section";
@@ -11,7 +11,7 @@ export default function Home() {
     <MainLayout>
       <Hero />
       <AboutSection />
-      <ServicesSection />
+      <ProductsSection />
       <PricingSection />
       <ContactSection />
 

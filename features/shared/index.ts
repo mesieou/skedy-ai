@@ -8,7 +8,7 @@ export { Hero } from './components/layout/hero';
 export { HeroContent } from './components/sections/hero-content';
 export { FloatingTradieElements } from './components/sections/floating-tradie-elements';
 export { WaitlistModal } from './components/sections/waitlist-modal';
-export { ServicesSection } from './components/sections/services-section';
+export { ProductsSection } from './components/sections/products-section';
 export { AboutSection } from './components/sections/about-section';
 export { PricingSection } from './components/sections/pricing-section';
 export { ContactSection } from './components/sections/contact-section';

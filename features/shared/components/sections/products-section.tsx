@@ -1,7 +1,8 @@
 "use client";
 
-import { PhoneCall, Users, Brain, Target, Sparkles, ArrowRight, LucideIcon } from "lucide-react";
+import { PhoneCall, Users, Brain, Target, Sparkles, ArrowRight, LucideIcon, Play } from "lucide-react";
 import { useState } from "react";
+import { Button } from "../ui/button";
 
 interface DemoElement {
   type: string;
@@ -17,7 +18,7 @@ interface DemoElement {
   accuracy?: string;
 }
 
-interface Service {
+interface Product {
   icon: LucideIcon;
   title: string;
   subtitle: string;
@@ -29,10 +30,10 @@ interface Service {
   stats: Record<string, string>;
 }
 
-export function ServicesSection() {
-  const [hoveredService, setHoveredService] = useState<number | null>(null);
+export function ProductsSection() {
+  const [hoveredProduct, setHoveredProduct] = useState<number | null>(null);
 
-  const services: Service[] = [
+  const products: Product[] = [
     {
       icon: PhoneCall,
       title: "Never Miss a Call",
@@ -96,7 +97,7 @@ export function ServicesSection() {
   ];
 
   return (
-    <section id="services" className="relative py-20 md:py-32 overflow-hidden">
+    <section id="products" className="relative py-20 md:py-32 overflow-hidden">
 
       {/* Floating particles */}
       <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-primary/30 rounded-full animate-ping" />
@@ -110,13 +111,13 @@ export function ServicesSection() {
             <div className="floating-data-display border-primary/40">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                <span className="text-primary font-mono text-sm font-bold tracking-wider">SERVICES</span>
+                <span className="text-primary font-mono text-sm font-bold tracking-wider">PRODUCTS</span>
               </div>
             </div>
           </div>
 
           <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 glow-text">
-            Your <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">AI Receptionist</span> Capabilities
+            Your <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">AI Receptionist</span> Products
           </h2>
 
           <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
@@ -125,39 +126,39 @@ export function ServicesSection() {
           </p>
         </div>
 
-        {/* Services Grid - New Amazing Design */}
+        {/* Products Grid - New Amazing Design */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-          {services.map((service, index) => {
-            const IconComponent = service.icon;
-            const isHovered = hoveredService === index;
+          {products.map((product, index) => {
+            const IconComponent = product.icon;
+            const isHovered = hoveredProduct === index;
 
             return (
               <div
-                key={service.title}
+                key={product.title}
                 className="group relative"
-                onMouseEnter={() => setHoveredService(index)}
-                onMouseLeave={() => setHoveredService(null)}
+                onMouseEnter={() => setHoveredProduct(index)}
+                onMouseLeave={() => setHoveredProduct(null)}
                 style={{ animationDelay: `${index * 0.2}s` }}
               >
-                {/* Main Service Card */}
+                {/* Main Product Card */}
                 <div className={`
                   relative p-8 lg:p-10 rounded-3xl border-2 border-white/10
                   bg-gradient-to-br from-background/80 via-background/60 to-background/40
                   backdrop-blur-xl transition-all duration-700 overflow-hidden
                   hover:scale-[1.02] hover:border-white/20
-                  ${isHovered ? `shadow-2xl ${service.glowColor}` : 'shadow-xl shadow-black/20'}
+                  ${isHovered ? `shadow-2xl ${product.glowColor}` : 'shadow-xl shadow-black/20'}
                 `}>
 
                   {/* Animated Background Gradient */}
                   <div className={`
-                    absolute inset-0 bg-gradient-to-br ${service.gradient} opacity-5
+                    absolute inset-0 bg-gradient-to-br ${product.gradient} opacity-5
                     transition-opacity duration-700 rounded-3xl
                     ${isHovered ? 'opacity-10' : 'opacity-5'}
                   `} />
 
                   {/* Floating Demo Elements */}
                   <div className="absolute inset-0 overflow-hidden rounded-3xl">
-                    {service.demoElements.map((demo, demoIndex) => (
+                    {product.demoElements.map((demo, demoIndex) => (
                       <div
                         key={demoIndex}
                         className={`
@@ -180,12 +181,12 @@ export function ServicesSection() {
                     ))}
                   </div>
 
-                  {/* Service Header */}
+                  {/* Product Header */}
                   <div className="relative z-10 mb-6">
                     {/* Icon with Pulse Effect */}
                     <div className="relative mb-4 inline-block">
                       <div className={`
-                        p-4 rounded-2xl bg-gradient-to-r ${service.gradient}
+                        p-4 rounded-2xl bg-gradient-to-r ${product.gradient}
                         shadow-2xl border-2 border-white/30 transition-all duration-500
                         ${isHovered ? 'scale-110 shadow-3xl' : 'scale-100'}
                       `}>
@@ -194,7 +195,7 @@ export function ServicesSection() {
 
                       {/* Pulse Ring */}
                       <div className={`
-                        absolute inset-0 rounded-2xl bg-gradient-to-r ${service.gradient}
+                        absolute inset-0 rounded-2xl bg-gradient-to-r ${product.gradient}
                         animate-ping opacity-20 transition-opacity duration-500
                         ${isHovered ? 'opacity-40' : 'opacity-20'}
                       `} />
@@ -203,31 +204,31 @@ export function ServicesSection() {
                     {/* Title & Impact */}
                     <div className="space-y-2">
                       <h3 className="text-2xl lg:text-3xl font-bold text-foreground glow-text">
-                        {service.title}
+                        {product.title}
                       </h3>
                       <p className="text-primary font-semibold text-sm uppercase tracking-wider">
-                        {service.subtitle}
+                        {product.subtitle}
                       </p>
                       <div className={`
                         inline-flex items-center gap-2 px-3 py-1 rounded-full
-                        bg-gradient-to-r ${service.gradient} text-white text-sm font-bold
+                        bg-gradient-to-r ${product.gradient} text-white text-sm font-bold
                         shadow-lg transition-all duration-500
                         ${isHovered ? 'scale-105 shadow-xl' : 'scale-100'}
                       `}>
                         <Sparkles className="h-4 w-4" />
-                        {service.impact}
+                        {product.impact}
                       </div>
                     </div>
                   </div>
 
                   {/* Description */}
                   <p className="relative z-10 text-muted-foreground leading-relaxed mb-6 text-base">
-                    {service.description}
+                    {product.description}
                   </p>
 
                   {/* Live Stats */}
                   <div className="relative z-10 grid grid-cols-3 gap-4 p-4 rounded-2xl bg-black/20 border border-white/10">
-                    {Object.entries(service.stats).map(([key, value]) => (
+                    {Object.entries(product.stats).map(([key, value]) => (
                       <div key={key} className="text-center">
                         <div className="text-lg font-bold text-white">{value}</div>
                         <div className="text-xs text-muted-foreground capitalize">{key}</div>
@@ -246,6 +247,36 @@ export function ServicesSection() {
               </div>
             );
           })}
+        </div>
+
+        {/* Call to Action Buttons */}
+        <div className="text-center mt-16 md:mt-20">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center px-4 w-full max-w-md sm:max-w-none mx-auto">
+            <Button
+              size="lg"
+              className="w-full sm:w-auto btn text-sm sm:text-base min-h-[48px] sm:min-h-[44px]"
+              onClick={() => {
+                const demoTrigger = document.querySelector('[data-demo-trigger]') as HTMLButtonElement;
+                demoTrigger?.click();
+              }}
+            >
+              <Play className="h-4 w-4 sm:h-5 sm:w-5 mr-2 flex-shrink-0" />
+              Try Demo
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full sm:w-auto btn-futuristic-outline px-4 sm:px-8 py-3 text-sm sm:text-base min-h-[48px] sm:min-h-[44px] font-medium"
+              onClick={() => {
+                const waitlistTrigger = document.querySelector('[data-waitlist-trigger]') as HTMLButtonElement;
+                waitlistTrigger?.click();
+              }}
+            >
+              <Users className="h-4 w-4 sm:h-5 sm:w-5 mr-2 flex-shrink-0" />
+              <span className="block sm:hidden">Join Waitlist</span>
+              <span className="hidden sm:block">Get notified when we launch</span>
+            </Button>
+          </div>
         </div>
       </div>
     </section>

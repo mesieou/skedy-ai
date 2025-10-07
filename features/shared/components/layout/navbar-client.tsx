@@ -1,21 +1,47 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Menu, X, ChevronDown } from "lucide-react";
 import { ThemeSwitcher } from "./theme-switcher";
 
+interface DropdownItem {
+  label: string;
+  href: string;
+  description: string;
+}
+
+interface MenuItem {
+  label: string;
+  href: string;
+  dropdown?: DropdownItem[];
+}
+
 interface NavbarClientProps {
-  menuItems: Array<{ label: string; href: string }>;
+  menuItems: Array<MenuItem>;
   authSection: React.ReactNode;
 }
 
 export function NavbarClient({ menuItems, authSection }: NavbarClientProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const navRef = useRef<HTMLElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(event.target as Node)) {
+        setActiveDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50">
+      <nav ref={navRef} className="fixed top-0 left-0 right-0 z-50">
         <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16 lg:h-20">
 
@@ -31,17 +57,55 @@ export function NavbarClient({ menuItems, authSection }: NavbarClientProps) {
           </Link>
 
           {/* Center Navigation - Desktop */}
-          <ul className="hidden md:flex gap-6 lg:gap-8 list-none">
+          <ul className="hidden md:flex gap-6 lg:gap-8 list-none items-center">
             {menuItems.map((item) => (
-              <li key={item.label}>
-                <Link
-                  href={item.href}
-                  className="text-foreground/90 hover:text-foreground transition-colors duration-200 relative group text-sm lg:text-base font-medium px-3 py-2 glow-text"
-                  aria-label={item.label}
-                >
-                  {item.label}
-                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-primary to-secondary transition-all duration-200 ease-out group-hover:w-full"></span>
-                </Link>
+              <li key={item.label} className="relative">
+                {item.dropdown ? (
+                  <div className="relative group">
+                    <button
+                      className="text-foreground/90 hover:text-foreground transition-colors duration-200 relative group text-sm lg:text-base font-medium px-3 py-2 glow-text flex items-center gap-1 h-10"
+                      onClick={() => setActiveDropdown(activeDropdown === item.label ? null : item.label)}
+                    >
+                      {item.label}
+                      <ChevronDown className="w-4 h-4 transition-transform duration-200" style={{
+                        transform: activeDropdown === item.label ? 'rotate(180deg)' : 'rotate(0deg)'
+                      }} />
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-primary to-secondary transition-all duration-200 ease-out group-hover:w-full"></span>
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {activeDropdown === item.label && (
+                      <div className="absolute top-full left-0 mt-1 w-80 bg-card/98 backdrop-blur-xl border border-border/50 rounded-xl shadow-2xl p-4 z-[60]">
+                        <div className="space-y-1">
+                          {item.dropdown.map((dropdownItem) => (
+                            <Link
+                              key={dropdownItem.label}
+                              href={dropdownItem.href}
+                              className="block p-4 rounded-lg hover:bg-primary/10 transition-colors duration-200 group"
+                              onClick={() => setActiveDropdown(null)}
+                            >
+                              <div className="font-medium text-foreground group-hover:text-primary transition-colors">
+                                {dropdownItem.label}
+                              </div>
+                              <div className="text-sm text-muted-foreground mt-1">
+                                {dropdownItem.description}
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <Link
+                    href={item.href}
+                    className="text-foreground/90 hover:text-foreground transition-colors duration-200 relative group text-sm lg:text-base font-medium px-3 py-2 glow-text flex items-center h-10"
+                    aria-label={item.label}
+                  >
+                    {item.label}
+                    <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-primary to-secondary transition-all duration-200 ease-out group-hover:w-full"></span>
+                  </Link>
+                )}
               </li>
             ))}
           </ul>
@@ -101,14 +165,36 @@ export function NavbarClient({ menuItems, authSection }: NavbarClientProps) {
           <div className="px-6 py-6 space-y-4">
             {/* Navigation Items */}
             {menuItems.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="block text-foreground font-medium py-3 px-4 rounded-lg hover:bg-primary/10 transition-all duration-200 glow-text"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {item.label}
-              </Link>
+              <div key={item.label}>
+                {item.dropdown ? (
+                  <div className="space-y-2">
+                    <div className="text-foreground font-medium py-3 px-4 rounded-lg bg-primary/5 border border-primary/20">
+                      {item.label}
+                    </div>
+                    <div className="ml-4 space-y-1">
+                      {item.dropdown.map((dropdownItem) => (
+                        <Link
+                          key={dropdownItem.label}
+                          href={dropdownItem.href}
+                          className="block text-muted-foreground font-medium py-2 px-4 rounded-lg hover:bg-primary/10 hover:text-foreground transition-all duration-200"
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          <div className="font-medium">{dropdownItem.label}</div>
+                          <div className="text-xs text-muted-foreground mt-1">{dropdownItem.description}</div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <Link
+                    href={item.href}
+                    className="block text-foreground font-medium py-3 px-4 rounded-lg hover:bg-primary/10 transition-all duration-200 glow-text"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {item.label}
+                  </Link>
+                )}
+              </div>
             ))}
 
             {/* Mobile Social Icons */}
