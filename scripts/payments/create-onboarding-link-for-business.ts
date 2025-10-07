@@ -8,7 +8,7 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
-dotenv.config({ path: path.join(__dirname, '../../.env.local') });
+dotenv.config({ path: path.join(__dirname, '../../.env.production') });
 
 import { StripePaymentService } from '../../features/payments/stripe-utils';
 

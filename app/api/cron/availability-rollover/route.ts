@@ -9,7 +9,7 @@ import { AvailabilityManager } from '@/features/scheduling/lib/availability/avai
  * - 4:00 PM UTC (12:00 AM AWST) - Perth
  * The system checks for businesses that need availability rollover at midnight in their timezone
  */
-export async function GET(request: NextRequest) {
+async function handleRollover(request: NextRequest) {
   console.log('[API] /api/cron/availability-rollover - Starting cron job execution');
 
   try {
@@ -53,9 +53,13 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export async function GET(request: NextRequest) {
+  return handleRollover(request);
+}
+
 /**
  * Handle POST requests as well for manual triggering
  */
 export async function POST(request: NextRequest) {
-  return GET(request);
+  return handleRollover(request);
 }

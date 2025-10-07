@@ -222,9 +222,28 @@ export async function generateAvailabilitySlotsForDate(
  */
 export async function findBusinessesNeedingRollover(currentUtcTime?: string): Promise<Business[]> {
   const businessRepository = new BusinessRepository();
+  const utcTime = currentUtcTime || DateUtils.nowUTC();
+
+  // Get all businesses first to debug
+  const allBusinesses = await businessRepository.findAll();
+  console.log(`[findBusinessesNeedingRollover] Checking ${allBusinesses.length} total businesses at UTC time: ${utcTime}`);
+
+  // Debug each business timezone
+  allBusinesses.forEach(business => {
+    const localTime = DateUtils.convertUTCToTimezone(utcTime, business.time_zone);
+    const isMidnight = DateUtils.isMidnightInTimezone(utcTime, business.time_zone);
+    console.log(`[findBusinessesNeedingRollover] Business ${business.name} (${business.time_zone}): Local time ${localTime.date} ${localTime.time}, isMidnight: ${isMidnight}, hour: ${localTime.time.split(':')[0]}`);
+  });
+
   const businessesNeedingRollover = await businessRepository.findBusinessesAtMidnight(currentUtcTime);
 
-  console.log(`[findBusinessesNeedingRollover] Found ${businessesNeedingRollover.length} businesses needing rollover at ${currentUtcTime || DateUtils.nowUTC()}`);
+  console.log(`[findBusinessesNeedingRollover] Found ${businessesNeedingRollover.length} businesses needing rollover at ${utcTime}`);
+  if (businessesNeedingRollover.length > 0) {
+    businessesNeedingRollover.forEach(business => {
+      console.log(`[findBusinessesNeedingRollover] - ${business.name} (${business.time_zone})`);
+    });
+  }
+
   return businessesNeedingRollover;
 }
 
@@ -298,18 +317,25 @@ export async function rolloverSingleBusinessAvailability(business: Business): Pr
     let datesRemoved = 0;
 
     // 6. Remove all dates before today
+    const datesToRemove: string[] = [];
     existingDates.forEach(date => {
       if (date < todayDateStr) {
         delete updatedSlots[date];
+        datesToRemove.push(date);
         datesRemoved++;
       }
     });
+
+    if (datesToRemove.length > 0) {
+      console.log(`[rolloverSingleBusinessAvailability] Removing ${datesToRemove.length} old dates: ${datesToRemove.join(', ')}`);
+    }
 
     // 7. Add missing future dates to reach at least 30 days
     const startDate = futureDates.length > 0
       ? DateUtils.addDaysUTC(`${futureDates[futureDates.length - 1]}T00:00:00.000Z`, 1)
       : `${todayDateStr}T00:00:00.000Z`;
 
+    const datesToAdd: string[] = [];
     let currentDate = startDate;
     while (DateUtils.extractDateString(currentDate) <= targetDateStr) {
       const dateKey = DateUtils.extractDateString(currentDate);
@@ -333,10 +359,15 @@ export async function rolloverSingleBusinessAvailability(business: Business): Pr
         }
 
         updatedSlots[dateKey] = enhancedSlots;
+        datesToAdd.push(dateKey);
         datesAdded++;
       }
 
       currentDate = DateUtils.addDaysUTC(currentDate, 1);
+    }
+
+    if (datesToAdd.length > 0) {
+      console.log(`[rolloverSingleBusinessAvailability] Adding ${datesToAdd.length} new dates: ${datesToAdd.join(', ')}`);
     }
 
     // 8. Update the availability slots in the database

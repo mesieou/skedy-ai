@@ -338,7 +338,9 @@ export class DateUtils {
         return false;
       }
 
-      return dt.hour === 0 && dt.minute === 0;
+      // Check if it's the first hour of the day (00:00 to 00:59)
+      // This gives us a 1-hour window instead of just 1 minute
+      return dt.hour === 0;
     } catch (error) {
       console.error(`Invalid timezone: ${timezone}`, error);
       return false;
