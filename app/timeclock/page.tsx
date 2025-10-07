@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/features/shared/components/ui/button';
 import { Input } from '@/features/shared/components/ui/input';
-import { ClientLayout } from '@/features/shared/components/layout/client-layout';
+import { TimeclockLayout } from '@/features/shared/components/layout/timeclock-layout';
 import { FooterSection } from '@/features/shared/components/sections/footer-section';
 import {
   Play,
@@ -49,89 +49,75 @@ interface JobSegment {
 
 
 export default function TimeclockPage() {
-  // Load initial state from localStorage or use defaults
-  const [hourlyRate, setHourlyRate] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('timeclock-hourlyRate');
-      return saved ? parseFloat(saved) : 75;
-    }
-    return 75;
-  });
+  // Prevent hydration mismatch by using consistent initial state
+  const [mounted, setMounted] = useState(false);
 
-  const [travelTimer, setTravelTimer] = useState<TimerState>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('timeclock-travelTimer');
-      return saved ? JSON.parse(saved) : {
-        isRunning: false,
-        startTime: null,
-        totalTime: 0,
-        isPaused: false,
-        pausedTime: 0
-      };
-    }
-    return {
-      isRunning: false,
-      startTime: null,
-      totalTime: 0,
-      isPaused: false,
-      pausedTime: 0
-    };
-  });
+  // Default timer state
+  const defaultTimerState: TimerState = {
+    isRunning: false,
+    startTime: null,
+    totalTime: 0,
+    isPaused: false,
+    pausedTime: 0
+  };
 
-  const [labourTimer, setLabourTimer] = useState<TimerState>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('timeclock-labourTimer');
-      return saved ? JSON.parse(saved) : {
-        isRunning: false,
-        startTime: null,
-        totalTime: 0,
-        isPaused: false,
-        pausedTime: 0
-      };
-    }
-    return {
-      isRunning: false,
-      startTime: null,
-      totalTime: 0,
-      isPaused: false,
-      pausedTime: 0
-    };
-  });
-
+  // Initialize with default values (same on server and client)
+  const [hourlyRate, setHourlyRate] = useState<number>(75);
+  const [travelTimer, setTravelTimer] = useState<TimerState>(defaultTimerState);
+  const [labourTimer, setLabourTimer] = useState<TimerState>(defaultTimerState);
   const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null);
   const [isTrackingLocation, setIsTrackingLocation] = useState(false);
-  const [jobSegments, setJobSegments] = useState<JobSegment[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('timeclock-jobSegments');
-      return saved ? JSON.parse(saved) : [];
-    }
-    return [];
-  });
+  const [jobSegments, setJobSegments] = useState<JobSegment[]>([]);
+  const [jobStarted, setJobStarted] = useState(false);
+  const [jobCompleted, setJobCompleted] = useState(false);
+  const [addressCache, setAddressCache] = useState<Map<string, string>>(new Map());
 
-  const [jobStarted, setJobStarted] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('timeclock-jobStarted');
-      return saved ? JSON.parse(saved) : false;
-    }
-    return false;
-  });
+  // Load from localStorage after component mounts (client-side only)
+  useEffect(() => {
+    setMounted(true);
 
-  const [jobCompleted, setJobCompleted] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('timeclock-jobCompleted');
-      return saved ? JSON.parse(saved) : false;
+    // Load hourly rate
+    const savedRate = localStorage.getItem('timeclock-hourlyRate');
+    if (savedRate) {
+      setHourlyRate(parseFloat(savedRate));
     }
-    return false;
-  });
 
-  // Cache for geocoded addresses to avoid repeated API calls
-  const [addressCache, setAddressCache] = useState<Map<string, string>>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('timeclock-addressCache');
-      return saved ? new Map(JSON.parse(saved)) : new Map();
+    // Load travel timer
+    const savedTravelTimer = localStorage.getItem('timeclock-travelTimer');
+    if (savedTravelTimer) {
+      setTravelTimer(JSON.parse(savedTravelTimer));
     }
-    return new Map();
-  });
+
+    // Load labour timer
+    const savedLabourTimer = localStorage.getItem('timeclock-labourTimer');
+    if (savedLabourTimer) {
+      setLabourTimer(JSON.parse(savedLabourTimer));
+    }
+
+    // Load job segments
+    const savedJobSegments = localStorage.getItem('timeclock-jobSegments');
+    if (savedJobSegments) {
+      setJobSegments(JSON.parse(savedJobSegments));
+    }
+
+    // Load job started state
+    const savedJobStarted = localStorage.getItem('timeclock-jobStarted');
+    if (savedJobStarted) {
+      setJobStarted(JSON.parse(savedJobStarted));
+    }
+
+    // Load job completed state
+    const savedJobCompleted = localStorage.getItem('timeclock-jobCompleted');
+    if (savedJobCompleted) {
+      setJobCompleted(JSON.parse(savedJobCompleted));
+    }
+
+    // Load address cache
+    const savedAddressCache = localStorage.getItem('timeclock-addressCache');
+    if (savedAddressCache) {
+      setAddressCache(new Map(JSON.parse(savedAddressCache)));
+    }
+  }, []);
 
   // GPS tracking
   const requestLocationPermission = useCallback(async () => {
@@ -518,13 +504,47 @@ export default function TimeclockPage() {
 
     // Reset job segments
     setJobSegments([]);
+
+    // Scroll to top of page for new job
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const totalCost = calculateCost();
   const isAnyTimerRunning = travelTimer.isRunning || labourTimer.isRunning;
 
+  // Show loading state until component is mounted (prevents hydration mismatch)
+  if (!mounted) {
+    return (
+      <TimeclockLayout>
+        <div className="relative py-20 md:py-32 overflow-hidden">
+          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16 md:mb-20">
+              <div className="inline-block mb-4">
+                <div className="floating-data-display border-primary/40">
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-primary animate-pulse" />
+                    <span className="text-primary font-mono text-sm font-bold tracking-wider">LOADING</span>
+                  </div>
+                </div>
+              </div>
+
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold tracking-tight text-foreground mb-4 sm:mb-6 md:mb-8 leading-tight max-w-6xl mx-auto px-4 glow-text">
+                <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">TimeClock</span> Pro
+              </h1>
+
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <FooterSection />
+      </TimeclockLayout>
+    );
+  }
+
   return (
-    <ClientLayout>
+    <TimeclockLayout>
       <div className="min-h-screen p-4 space-y-6">
         <div className="max-w-4xl mx-auto">
          {/* Header with integrated controls */}
@@ -795,68 +815,68 @@ export default function TimeclockPage() {
           ) : (
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-accent/20 via-primary/10 to-destructive/20 rounded-3xl blur-2xl"></div>
-              <div className="relative bg-gradient-to-br from-card/90 to-card/60 backdrop-blur-xl border border-accent/30 rounded-3xl p-12">
-                <div className="flex items-center justify-center gap-3 mb-6">
-                  <div className="p-4 bg-accent/20 rounded-full animate-pulse">
-                    <CheckCircle className="w-8 h-8 text-accent" />
+              <div className="relative bg-gradient-to-br from-card/90 to-card/60 backdrop-blur-xl border border-accent/30 rounded-3xl p-4 sm:p-6 md:p-8 lg:p-12">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6">
+                  <div className="p-3 sm:p-4 bg-accent/20 rounded-full animate-pulse">
+                    <CheckCircle className="w-6 h-6 sm:w-8 sm:h-8 text-accent" />
                   </div>
-                  <span className="text-3xl font-bold bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
+                  <span className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent text-center">
                     Job Completed!
                   </span>
                 </div>
 
-                <div className="space-y-6 mb-8">
-                  <div className="text-5xl font-black stat-destructive">
+                <div className="space-y-4 sm:space-y-6 mb-6 sm:mb-8 text-center">
+                  <div className="text-3xl sm:text-4xl md:text-5xl font-black stat-destructive">
                     ${totalCost.toFixed(2)}
                   </div>
-                  <div className="text-lg text-muted-foreground">
+                  <div className="text-base sm:text-lg text-muted-foreground flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
                     <span className="stat-secondary font-bold">Travel: {formatTime(travelTimer.totalTime)}</span>
-                    <span className="mx-4">•</span>
+                    <span className="hidden sm:inline">•</span>
                     <span className="stat-primary font-bold">Labour: {formatTime(labourTimer.totalTime)}</span>
                   </div>
 
                   {/* Visual Job Timeline Map */}
                   {jobSegments.length > 0 && (
-                    <div className="mt-6 p-6 bg-gradient-to-r from-accent/20 to-primary/20 rounded-xl border border-accent/30">
-                      <div className="flex items-center justify-center gap-2 mb-6">
-                        <MapPin className="w-5 h-5 text-accent" />
-                        <span className="text-lg font-bold text-accent">Job Journey Map</span>
+                    <div className="mt-4 sm:mt-6 p-3 sm:p-4 md:p-6 bg-gradient-to-r from-accent/20 to-primary/20 rounded-xl border border-accent/30">
+                      <div className="flex items-center justify-center gap-2 mb-4 sm:mb-6">
+                        <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
+                        <span className="text-base sm:text-lg font-bold text-accent">Job Journey Map</span>
                       </div>
 
                       {/* Visual Timeline */}
                       <div className="relative">
                         {/* Timeline Line */}
-                        <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-accent via-primary to-secondary"></div>
+                        <div className="absolute left-6 sm:left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-accent via-primary to-secondary"></div>
 
-                        <div className="space-y-6">
+                        <div className="space-y-4 sm:space-y-6">
                           {jobSegments
                             .sort((a, b) => a.startTime - b.startTime)
                             .map((segment, index) => (
-                            <div key={segment.id} className="relative flex items-start gap-4">
+                            <div key={segment.id} className="relative flex items-start gap-3 sm:gap-4">
                               {/* Timeline Dot */}
-                              <div className={`relative z-10 w-16 h-16 rounded-full flex items-center justify-center ${
+                              <div className={`relative z-10 w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center ${
                                 segment.type === 'travel'
                                   ? 'bg-gradient-to-br from-secondary to-secondary/70 border-2 border-secondary/50'
                                   : 'bg-gradient-to-br from-primary to-primary/70 border-2 border-primary/50'
                               } shadow-lg`}>
                                 {segment.type === 'travel' ? (
-                                  <Truck className="w-6 h-6 text-white" />
+                                  <Truck className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
                                 ) : (
-                                  <Wrench className="w-6 h-6 text-white" />
+                                  <Wrench className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
                                 )}
                               </div>
 
                               {/* Segment Info */}
-                              <div className="flex-1 min-w-0 bg-card/40 rounded-lg p-4 border border-accent/20">
-                                <div className="flex items-center justify-between mb-3">
-                                  <h4 className="text-lg font-bold text-foreground capitalize">
+                              <div className="flex-1 min-w-0 bg-card/40 rounded-lg p-3 sm:p-4 border border-accent/20">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
+                                  <h4 className="text-base sm:text-lg font-bold text-foreground capitalize">
                                     {segment.type} #{index + 1}
                                   </h4>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm bg-accent/20 text-accent px-3 py-1 rounded-full font-bold">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-xs sm:text-sm bg-accent/20 text-accent px-2 sm:px-3 py-1 rounded-full font-bold">
                                       {formatTime(segment.duration)}
                                     </span>
-                                    <span className="text-sm bg-destructive/20 text-destructive px-3 py-1 rounded-full font-bold">
+                                    <span className="text-xs sm:text-sm bg-destructive/20 text-destructive px-2 sm:px-3 py-1 rounded-full font-bold">
                                       ${((segment.duration / 3600) * hourlyRate).toFixed(2)}
                                     </span>
                                     {segment.isActive && (
@@ -868,13 +888,13 @@ export default function TimeclockPage() {
                                   </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div className="grid grid-cols-1 gap-3 sm:gap-4 text-xs sm:text-sm">
                                   <div>
                                     <div className="flex items-center gap-2 mb-1">
                                       <div className="w-3 h-3 bg-green-400 rounded-full"></div>
                                       <span className="font-bold text-green-400">START</span>
                                     </div>
-                                    <div className="text-accent font-medium">📍 {segment.startAddress}</div>
+                                    <div className="text-accent font-medium break-words">📍 {segment.startAddress}</div>
                                     <div className="text-xs text-muted-foreground">
                                       {new Date(segment.startTime).toLocaleTimeString()}
                                     </div>
@@ -886,7 +906,7 @@ export default function TimeclockPage() {
                                         <div className="w-3 h-3 bg-red-400 rounded-full"></div>
                                         <span className="font-bold text-red-400">END</span>
                                       </div>
-                                      <div className="text-accent font-medium">📍 {segment.endAddress}</div>
+                                      <div className="text-accent font-medium break-words">📍 {segment.endAddress}</div>
                                       <div className="text-xs text-muted-foreground">
                                         {new Date(segment.endTime).toLocaleTimeString()}
                                       </div>
@@ -899,8 +919,10 @@ export default function TimeclockPage() {
                         </div>
                       </div>
 
-                      <div className="mt-6 text-xs text-center text-muted-foreground">
-                        <strong>Professional Journey Documentation</strong> • Complete route tracking • Time & location verification
+                      <div className="mt-4 sm:mt-6 text-xs text-center text-muted-foreground px-2">
+                        <strong>Professional Journey Documentation</strong><br className="sm:hidden" />
+                        <span className="hidden sm:inline"> • </span>Complete route tracking<br className="sm:hidden" />
+                        <span className="hidden sm:inline"> • </span>Time & location verification
                       </div>
                     </div>
                   )}
@@ -908,10 +930,10 @@ export default function TimeclockPage() {
 
                 <Button
                   onClick={resetJob}
-                  className="btn-futuristic-outline text-lg px-8 py-3 h-12"
+                  className="btn-futuristic-outline text-base sm:text-lg px-6 sm:px-8 py-3 h-11 sm:h-12 w-full sm:w-auto"
                   variant="outline"
                 >
-                  <RotateCcw className="w-5 h-5 mr-2" />
+                  <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                   Start New Job
                 </Button>
               </div>
@@ -1337,6 +1359,6 @@ export default function TimeclockPage() {
 
       {/* Footer */}
       <FooterSection />
-    </ClientLayout>
+    </TimeclockLayout>
   );
 }
