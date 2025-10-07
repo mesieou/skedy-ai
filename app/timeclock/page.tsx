@@ -177,116 +177,44 @@ export default function TimeclockPage() {
       return addressCache.get(cacheKey)!;
     }
 
-    // Try multiple geocoding services for better reliability
-    const geocodingServices = [
-      // Service 1: BigDataCloud (free, no API key required)
-      async () => {
-        console.log('BigDataCloud: Attempting geocoding for', lat, lng);
-        const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`;
+    // Use server-side geocoding (bypasses CSP issues)
+    try {
+      console.log('Attempting server-side geocoding for', lat, lng);
+      const response = await fetch(`/api/geocode?lat=${lat}&lng=${lng}`);
 
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-          }
-        });
-
-        console.log('BigDataCloud: Response status:', response.status);
-
-        if (!response.ok) {
-          throw new Error(`BigDataCloud HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        console.log('BigDataCloud: Response data:', data);
-
-        if (data.locality && data.principalSubdivision) {
-          return `${data.locality}, ${data.principalSubdivision}`;
-        } else if (data.city && data.countryName) {
-          return `${data.city}, ${data.countryName}`;
-        } else if (data.countryName) {
-          return `${data.countryName}`;
-        }
-
-        throw new Error('BigDataCloud: No usable address data in response');
-      },
-
-      // Service 2: Nominatim (OpenStreetMap - free, no API key)
-      async () => {
-        console.log('Nominatim: Attempting geocoding for', lat, lng);
-        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`;
-
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'User-Agent': 'TimeClock-Pro-App'
-          }
-        });
-
-        console.log('Nominatim: Response status:', response.status);
-
-        if (!response.ok) {
-          throw new Error(`Nominatim HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        console.log('Nominatim: Response data:', data);
-
-        if (data.address) {
-          const { suburb, city, town, village, state, country } = data.address;
-          const location = suburb || city || town || village;
-          const region = state || country;
-
-          if (location && region) {
-            return `${location}, ${region}`;
-          } else if (location) {
-            return location;
-          } else if (region) {
-            return region;
-          }
-        }
-
-        throw new Error('Nominatim: No usable address data in response');
+      if (!response.ok) {
+        throw new Error(`Server geocoding failed: ${response.status}`);
       }
-    ];
 
-    // Try each service in order
-    for (let i = 0; i < geocodingServices.length; i++) {
-      try {
-        console.log(`Trying geocoding service ${i + 1}...`);
-        const address = await geocodingServices[i]();
-        console.log(`Geocoding service ${i + 1} succeeded:`, address);
+      const data = await response.json();
+      console.log('Geocoding response:', data);
 
+      if (data.address && !data.address.includes('.')) {
         // Cache the successful result
         const newCache = new Map(addressCache);
-        newCache.set(cacheKey, address);
+        newCache.set(cacheKey, data.address);
         setAddressCache(newCache);
 
         // Save to localStorage
         localStorage.setItem('timeclock-addressCache', JSON.stringify(Array.from(newCache.entries())));
 
-        return address;
-      } catch (error) {
-        console.warn(`Geocoding service ${i + 1} failed:`, error);
-
-        // If this is the last service, fall back to coordinates
-        if (i === geocodingServices.length - 1) {
-          console.error('All geocoding services failed, using coordinates');
-          const fallbackAddress = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-
-          // Cache the fallback too (but don't persist it as long)
-          const newCache = new Map(addressCache);
-          newCache.set(cacheKey, fallbackAddress);
-          setAddressCache(newCache);
-
-          return fallbackAddress;
-        }
+        return data.address;
       }
-    }
 
-    // Fallback (should never reach here, but just in case)
-    return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      throw new Error('No usable address data');
+    } catch (error) {
+      console.error('Geocoding failed:', error);
+
+      // Fallback to coordinates
+      const fallbackAddress = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+
+      // Cache the fallback
+      const newCache = new Map(addressCache);
+      newCache.set(cacheKey, fallbackAddress);
+      setAddressCache(newCache);
+
+      return fallbackAddress;
+    }
   };
 
   // Save to localStorage whenever state changes
