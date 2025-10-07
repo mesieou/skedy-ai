@@ -124,6 +124,15 @@ export default function TimeclockPage() {
     return false;
   });
 
+  // Cache for geocoded addresses to avoid repeated API calls
+  const [addressCache, setAddressCache] = useState<Map<string, string>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('timeclock-addressCache');
+      return saved ? new Map(JSON.parse(saved)) : new Map();
+    }
+    return new Map();
+  });
+
   // GPS tracking
   const requestLocationPermission = useCallback(async () => {
     if (!navigator.geolocation) {
@@ -157,26 +166,127 @@ export default function TimeclockPage() {
     }
   }, []);
 
-  // Function to get address from coordinates
+  // Function to get address from coordinates with multiple fallbacks
   const getAddressFromCoordinates = async (lat: number, lng: number): Promise<string> => {
-    try {
-      // Using a free geocoding service (you could also use Google Maps API)
-      const response = await fetch(
-        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
-      );
-      const data = await response.json();
+    // Create cache key from coordinates (rounded to avoid too many cache entries)
+    const cacheKey = `${lat.toFixed(3)},${lng.toFixed(3)}`;
 
-      if (data.locality && data.principalSubdivision) {
-        return `${data.locality}, ${data.principalSubdivision}`;
-      } else if (data.city && data.countryName) {
-        return `${data.city}, ${data.countryName}`;
-      } else {
-        return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-      }
-    } catch (error) {
-      console.error('Geocoding error:', error);
-      return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    // Check cache first
+    if (addressCache.has(cacheKey)) {
+      console.log('Using cached address for:', cacheKey);
+      return addressCache.get(cacheKey)!;
     }
+
+    // Try multiple geocoding services for better reliability
+    const geocodingServices = [
+      // Service 1: BigDataCloud (free, no API key required)
+      async () => {
+        console.log('BigDataCloud: Attempting geocoding for', lat, lng);
+        const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`;
+
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          }
+        });
+
+        console.log('BigDataCloud: Response status:', response.status);
+
+        if (!response.ok) {
+          throw new Error(`BigDataCloud HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('BigDataCloud: Response data:', data);
+
+        if (data.locality && data.principalSubdivision) {
+          return `${data.locality}, ${data.principalSubdivision}`;
+        } else if (data.city && data.countryName) {
+          return `${data.city}, ${data.countryName}`;
+        } else if (data.countryName) {
+          return `${data.countryName}`;
+        }
+
+        throw new Error('BigDataCloud: No usable address data in response');
+      },
+
+      // Service 2: Nominatim (OpenStreetMap - free, no API key)
+      async () => {
+        console.log('Nominatim: Attempting geocoding for', lat, lng);
+        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`;
+
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'TimeClock-Pro-App'
+          }
+        });
+
+        console.log('Nominatim: Response status:', response.status);
+
+        if (!response.ok) {
+          throw new Error(`Nominatim HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('Nominatim: Response data:', data);
+
+        if (data.address) {
+          const { suburb, city, town, village, state, country } = data.address;
+          const location = suburb || city || town || village;
+          const region = state || country;
+
+          if (location && region) {
+            return `${location}, ${region}`;
+          } else if (location) {
+            return location;
+          } else if (region) {
+            return region;
+          }
+        }
+
+        throw new Error('Nominatim: No usable address data in response');
+      }
+    ];
+
+    // Try each service in order
+    for (let i = 0; i < geocodingServices.length; i++) {
+      try {
+        console.log(`Trying geocoding service ${i + 1}...`);
+        const address = await geocodingServices[i]();
+        console.log(`Geocoding service ${i + 1} succeeded:`, address);
+
+        // Cache the successful result
+        const newCache = new Map(addressCache);
+        newCache.set(cacheKey, address);
+        setAddressCache(newCache);
+
+        // Save to localStorage
+        localStorage.setItem('timeclock-addressCache', JSON.stringify(Array.from(newCache.entries())));
+
+        return address;
+      } catch (error) {
+        console.warn(`Geocoding service ${i + 1} failed:`, error);
+
+        // If this is the last service, fall back to coordinates
+        if (i === geocodingServices.length - 1) {
+          console.error('All geocoding services failed, using coordinates');
+          const fallbackAddress = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+
+          // Cache the fallback too (but don't persist it as long)
+          const newCache = new Map(addressCache);
+          newCache.set(cacheKey, fallbackAddress);
+          setAddressCache(newCache);
+
+          return fallbackAddress;
+        }
+      }
+    }
+
+    // Fallback (should never reach here, but just in case)
+    return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
   };
 
   // Save to localStorage whenever state changes
