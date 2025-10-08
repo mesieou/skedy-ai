@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['@sentry/nextjs', 'ws', 'openai'],
 
   // Configure headers for WebRTC and WebSocket support
+  // Note: CSP is handled by nginx in production to avoid duplicate headers
   async headers() {
     return [
       {
@@ -22,19 +23,6 @@ const nextConfig: NextConfig = {
           {
             key: 'Referrer-Policy',
             value: 'origin-when-cross-origin',
-          },
-          {
-            key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.openai.com https://www.googletagmanager.com https://connect.facebook.net",
-              "connect-src 'self' https://api.openai.com wss://api.openai.com https://*.supabase.co wss://*.supabase.co https://www.google-analytics.com https://analytics.google.com https://www.facebook.com https://*.facebook.com",
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: https:",
-              "font-src 'self' data:",
-              "media-src 'self' blob:",
-              "worker-src 'self' blob:",
-            ].join('; '),
           },
         ],
       },
