@@ -102,11 +102,17 @@ jobs:
         cd \$APP_DIR
         git pull origin main
 
-        # Update nginx configuration if it exists
-        if [ -f nginx.conf ]; then
-          echo "🔧 Updating nginx configuration..."
-          cp nginx.conf /etc/nginx/nginx.conf
-          nginx -t && nginx -s reload || echo "⚠️ Nginx config update failed"
+        # Stop host-level nginx if running (we use Docker nginx)
+        if systemctl is-active --quiet nginx 2>/dev/null; then
+          echo "🛑 Stopping host-level nginx..."
+          systemctl stop nginx
+          systemctl disable nginx
+        fi
+
+        # Restart Docker nginx to pick up updated config
+        if docker ps | grep -q skedy-ai-nginx-1; then
+          echo "🔧 Restarting nginx to reload configuration..."
+          docker restart skedy-ai-nginx-1
         fi
 
         echo "🧹 Aggressive Docker cleanup to free maximum space..."
