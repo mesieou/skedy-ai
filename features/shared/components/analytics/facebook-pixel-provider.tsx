@@ -36,8 +36,11 @@ export function FacebookPixelProvider({ children }: FacebookPixelProviderProps) 
 
   useEffect(() => {
     if (!facebookPixelId) {
+      console.log('❌ Facebook Pixel: NO ID');
       return;
     }
+
+    console.log('✅ Facebook Pixel ID:', facebookPixelId);
 
     // Initialize Facebook Pixel
     const initFacebookPixel = () => {
@@ -94,6 +97,8 @@ export function FacebookPixelProvider({ children }: FacebookPixelProviderProps) 
       <Script
         id="facebook-pixel"
         strategy="afterInteractive"
+        onLoad={() => console.log('✅ Facebook Pixel script loaded')}
+        onError={() => console.error('❌ Facebook Pixel script BLOCKED (CSP or ad blocker)')}
         dangerouslySetInnerHTML={{
           __html: `
             !function(f,b,e,v,n,t,s)

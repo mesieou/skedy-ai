@@ -36,8 +36,11 @@ export function GoogleAnalyticsProvider({ children }: GoogleAnalyticsProviderPro
 
   useEffect(() => {
     if (!googleAnalyticsId) {
+      console.log('❌ Google Analytics: NO ID');
       return;
     }
+
+    console.log('✅ Google Analytics ID:', googleAnalyticsId);
 
     // Initialize dataLayer if it doesn't exist
     window.dataLayer = window.dataLayer || [];
@@ -72,6 +75,8 @@ export function GoogleAnalyticsProvider({ children }: GoogleAnalyticsProviderPro
         src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsId}`}
         strategy="afterInteractive"
         async
+        onLoad={() => console.log('✅ Google Analytics script loaded')}
+        onError={() => console.error('❌ Google Analytics script BLOCKED (CSP or ad blocker)')}
       />
       {children}
     </>
