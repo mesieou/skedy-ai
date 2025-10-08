@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { GoogleAnalyticsProvider } from "../features/shared/components/analytics/google-analytics-provider";
 import "./globals.css";
 
 const defaultUrl = process.env.NODE_ENV === 'production'
@@ -93,6 +94,7 @@ export default function RootLayout({
   const publicEnv = {
     SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY,
+    GOOGLE_ANALYTICS_ID: process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID,
   };
 
   const structuredData = {
@@ -158,14 +160,16 @@ export default function RootLayout({
         />
       </head>
       <body className={`${geistSans.className} antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem={false}
-          disableTransitionOnChange
-        >
-          {children}
-        </ThemeProvider>
+        <GoogleAnalyticsProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem={false}
+            disableTransitionOnChange
+          >
+            {children}
+          </ThemeProvider>
+        </GoogleAnalyticsProvider>
       </body>
     </html>
   );
