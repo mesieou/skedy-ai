@@ -301,9 +301,10 @@ export async function rolloverSingleBusinessAvailability(business: Business): Pr
       return;
     }
 
-    // 4. Get current date and calculate what dates we need
+    // 4. Get current date and calculate what dates we need (FIXED: use business timezone)
     const currentUtcTime = DateUtils.nowUTC();
-    const todayDateStr = DateUtils.extractDateString(currentUtcTime);
+    const businessToday = DateUtils.convertUTCToTimezone(currentUtcTime, business.time_zone);
+    const todayDateStr = businessToday.date;  // Use business timezone date, not UTC date
 
     const existingDates = Object.keys(currentAvailabilitySlots.slots);
     const futureDates = existingDates.filter(date => date >= todayDateStr).sort();
