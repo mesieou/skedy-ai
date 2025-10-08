@@ -9,6 +9,7 @@ export interface ClientEnv {
   SUPABASE_URL: string;
   SUPABASE_PUBLISHABLE_KEY: string;
   GOOGLE_ANALYTICS_ID?: string;
+  FACEBOOK_PIXEL_ID?: string;
 }
 
 declare global {
@@ -27,6 +28,7 @@ export function getClientEnv(): ClientEnv {
       SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
       SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY || '',
       GOOGLE_ANALYTICS_ID: process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID,
+      FACEBOOK_PIXEL_ID: process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID,
     };
   }
 
@@ -60,4 +62,9 @@ export function getSupabasePublishableKey(): string {
 export function getGoogleAnalyticsId(): string | undefined {
   const env = getClientEnv();
   return env.GOOGLE_ANALYTICS_ID;
+}
+
+export function getFacebookPixelId(): string | undefined {
+  const env = getClientEnv();
+  return env.FACEBOOK_PIXEL_ID;
 }
