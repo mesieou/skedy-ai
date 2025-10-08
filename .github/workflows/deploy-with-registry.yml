@@ -102,6 +102,13 @@ jobs:
         cd \$APP_DIR
         git pull origin main
 
+        # Update nginx configuration if it exists
+        if [ -f nginx.conf ]; then
+          echo "🔧 Updating nginx configuration..."
+          cp nginx.conf /etc/nginx/nginx.conf
+          nginx -t && nginx -s reload || echo "⚠️ Nginx config update failed"
+        fi
+
         echo "🧹 Aggressive Docker cleanup to free maximum space..."
 
         # Show disk usage before cleanup
