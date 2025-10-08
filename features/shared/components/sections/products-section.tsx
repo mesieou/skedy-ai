@@ -3,6 +3,7 @@
 import { PhoneCall, Users, Brain, Target, Sparkles, ArrowRight, LucideIcon, Play } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../ui/button";
+import { trackFacebookPixelEvent } from "../analytics/facebook-pixel-provider";
 
 interface DemoElement {
   type: string;
@@ -268,6 +269,7 @@ export function ProductsSection() {
               size="lg"
               className="w-full sm:w-auto btn-futuristic-outline px-4 sm:px-8 py-3 text-sm sm:text-base min-h-[48px] sm:min-h-[44px] font-medium"
               onClick={() => {
+                trackFacebookPixelEvent('Lead');
                 const waitlistTrigger = document.querySelector('[data-waitlist-trigger]') as HTMLButtonElement;
                 waitlistTrigger?.click();
               }}

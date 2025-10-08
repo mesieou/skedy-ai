@@ -9,6 +9,7 @@ import { Play, Users } from "lucide-react";
 import { DemoModal } from "@/features/demo";
 import * as Sentry from "@sentry/nextjs";
 import dynamic from "next/dynamic";
+import { trackFacebookPixelEvent } from "../analytics/facebook-pixel-provider";
 
 // Dynamic import to prevent server-side compilation issues
 const DynamicDemoHero = dynamic(() => import("@/features/demo/components/demo-hero").then(mod => ({ default: mod.DemoHero })), {
@@ -169,6 +170,7 @@ export function Hero() {
                 size="lg"
                 className="w-full sm:w-auto btn text-sm sm:text-base min-h-[48px] sm:min-h-[44px]"
                 onClick={() => {
+                  trackFacebookPixelEvent('ViewContent', { content_name: 'Demo Button' });
                   setIsDemoModalOpen(true);
                 }}
                 data-demo-trigger
@@ -180,7 +182,10 @@ export function Hero() {
                 variant="outline"
                 size="lg"
                 className="w-full sm:w-auto btn-futuristic-outline px-4 sm:px-8 py-3 text-sm sm:text-base min-h-[48px] sm:min-h-[44px] font-medium"
-                onClick={() => setIsWaitlistOpen(true)}
+                onClick={() => {
+                  trackFacebookPixelEvent('Lead');
+                  setIsWaitlistOpen(true);
+                }}
                 data-waitlist-trigger
               >
                 <Users className="h-4 w-4 sm:h-5 sm:w-5 mr-2 flex-shrink-0" />

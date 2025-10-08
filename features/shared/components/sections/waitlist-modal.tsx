@@ -3,6 +3,7 @@
 import { FormCard } from '@/features/shared/components/ui/form-card';
 import { Dialog, DialogContent } from '@/features/shared/components/ui/dialog';
 import { Mail } from 'lucide-react';
+import { trackFacebookPixelEvent } from '../analytics/facebook-pixel-provider';
 
 interface WaitlistModalProps {
   isOpen: boolean;
@@ -28,6 +29,13 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
       const errorData = await response.json();
       throw new Error(errorData.error || 'Failed to join waitlist');
     }
+
+    // Track successful waitlist submission
+    trackFacebookPixelEvent('CompleteRegistration', {
+      content_name: 'Waitlist Signup',
+      value: 1,
+      currency: 'AUD'
+    });
   };
 
   const waitlistFields = [
