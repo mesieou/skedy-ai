@@ -64,7 +64,7 @@ async function runRollover(): Promise<void> {
   }
 }
 
-// Run every hour at minute 0
+// Run every hour at minute 0 to check all timezones
 cron.schedule('0 * * * *', async () => {
   const currentTime = new Date().toISOString();
   console.log(`[AvailabilityCron] 🕐 Running availability rollover check at ${currentTime}`);

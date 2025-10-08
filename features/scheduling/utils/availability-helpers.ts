@@ -221,8 +221,10 @@ export async function generateAvailabilitySlotsForDate(
  * Find all businesses that need availability rollover (midnight in their timezone)
  */
 export async function findBusinessesNeedingRollover(currentUtcTime?: string): Promise<Business[]> {
+  console.log(`[findBusinessesNeedingRollover] FUNCTION CALLED - Starting business search`);
   const businessRepository = new BusinessRepository();
   const utcTime = currentUtcTime || DateUtils.nowUTC();
+  console.log(`[findBusinessesNeedingRollover] Using UTC time: ${utcTime}`);
 
   // Get all businesses first to debug
   const allBusinesses = await businessRepository.findAll();

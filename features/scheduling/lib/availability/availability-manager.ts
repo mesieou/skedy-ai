@@ -315,10 +315,13 @@ export class AvailabilityManager {
    */
   static async orchestrateAvailabilityRollover(currentUtcTime?: string): Promise<void> {
     console.log(`[AvailabilityManager.orchestrateAvailabilityRollover] Starting availability rollover process`);
+    console.log(`[AvailabilityManager.orchestrateAvailabilityRollover] Current UTC time: ${currentUtcTime || 'using system time'}`);
 
     try {
       // 1. Find all businesses that need rollover (midnight in their timezone)
+      console.log(`[AvailabilityManager.orchestrateAvailabilityRollover] About to call findBusinessesNeedingRollover...`);
       const businessesNeedingRollover = await findBusinessesNeedingRollover(currentUtcTime);
+      console.log(`[AvailabilityManager.orchestrateAvailabilityRollover] findBusinessesNeedingRollover returned ${businessesNeedingRollover.length} businesses`);
 
       if (businessesNeedingRollover.length === 0) {
         console.log(`[AvailabilityManager.orchestrateAvailabilityRollover] No businesses need rollover at this time`);

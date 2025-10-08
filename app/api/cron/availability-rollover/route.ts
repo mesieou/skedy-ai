@@ -25,9 +25,18 @@ async function handleRollover(request: NextRequest) {
       );
     }
 
+    // Get optional currentUtcTime from request body (for testing)
+    let currentUtcTime: string | undefined;
+    try {
+      const body = await request.json();
+      currentUtcTime = body.currentUtcTime;
+    } catch {
+      // No body or invalid JSON - use current time
+    }
+
     // Execute the availability rollover
     const startTime = Date.now();
-    await AvailabilityManager.orchestrateAvailabilityRollover();
+    await AvailabilityManager.orchestrateAvailabilityRollover(currentUtcTime);
     const executionTime = Date.now() - startTime;
 
     console.log(`[API] /api/cron/availability-rollover - Successfully completed in ${executionTime}ms`);
