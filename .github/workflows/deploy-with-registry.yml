@@ -176,6 +176,7 @@ jobs:
         SENTRY_DSN=${{ secrets.SENTRY_DSN }}
         SENTRY_API_KEY=${{ secrets.SENTRY_API_KEY }}
         NEXT_PUBLIC_GOOGLE_ANALYTICS_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID }}
+        NEXT_PUBLIC_FACEBOOK_PIXEL_ID=${{ secrets.NEXT_PUBLIC_FACEBOOK_PIXEL_ID }}
         ENVEOF
 
         # Also create .env.local for Next.js runtime environment loading
