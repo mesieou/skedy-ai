@@ -5,8 +5,9 @@ import { Card } from "@/features/shared/components/ui/card";
 import { Badge } from "@/features/shared/components/ui/badge";
 import type { SessionWithInteractions } from "../lib/actions";
 import { ChatChannel, ChatSessionStatus } from "@/features/shared/lib/database/types/chat-sessions";
+import { DateUtils } from "@/features/shared/utils/date-utils";
 
-interface ConversationListProps {
+interface ConversationsListProps {
   sessions: SessionWithInteractions[];
   selectedSessionId: string | null;
   onSelectSession: (sessionId: string) => void;
@@ -18,48 +19,71 @@ const channelIcons = {
   [ChatChannel.WEBSITE]: Globe,
 };
 
-const channelColors = {
-  [ChatChannel.PHONE]: "bg-blue-500",
-  [ChatChannel.WHATSAPP]: "bg-green-500",
-  [ChatChannel.WEBSITE]: "bg-purple-500",
+const getChannelStyle = (channel: ChatChannel) => {
+  switch (channel) {
+    case ChatChannel.PHONE:
+      return "bg-primary text-primary-foreground";
+    case ChatChannel.WHATSAPP:
+      return "bg-accent text-accent-foreground";
+    case ChatChannel.WEBSITE:
+      return "bg-secondary text-secondary-foreground";
+    case ChatChannel.FACEBOOK:
+      return "bg-chart-1 text-primary-foreground";
+    case ChatChannel.EMAIL:
+    default:
+      return "bg-muted text-muted-foreground";
+  }
 };
 
-const statusColors = {
-  [ChatSessionStatus.ACTIVE]: "bg-green-500",
-  [ChatSessionStatus.ENDED]: "bg-gray-500",
+const getStatusStyle = (status: ChatSessionStatus) => {
+  switch (status) {
+    case ChatSessionStatus.ACTIVE:
+      return "bg-primary text-primary-foreground";
+    case ChatSessionStatus.ENDED:
+      return "bg-muted text-muted-foreground";
+    case ChatSessionStatus.PAUSED:
+      return "bg-secondary text-secondary-foreground";
+    case ChatSessionStatus.TRANSFERRED:
+      return "bg-accent text-accent-foreground";
+    default:
+      return "bg-muted text-muted-foreground";
+  }
 };
 
-export function ConversationList({ sessions, selectedSessionId, onSelectSession }: ConversationListProps) {
+export function ConversationsList({ sessions, selectedSessionId, onSelectSession }: ConversationsListProps) {
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-
-    if (diffInHours < 24) {
-      return date.toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } else if (diffInHours < 48) {
-      return "Yesterday";
-    } else {
-      return date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      });
+    try {
+      const now = DateUtils.nowUTC();
+      const diffInHours = DateUtils.diffHoursUTC(dateStr, now);
+      
+      if (diffInHours < 24) {
+        const { time } = DateUtils.convertUTCToTimezone(dateStr, 'Australia/Melbourne');
+        return DateUtils.formatTimeForDisplay(time);
+      } else if (diffInHours < 48) {
+        return "Yesterday";
+      } else {
+        const { date } = DateUtils.convertUTCToTimezone(dateStr, 'Australia/Melbourne');
+        const dt = new Date(date);
+        return dt.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
+      }
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return new Date(dateStr).toLocaleDateString();
     }
   };
 
   const getDuration = (session: SessionWithInteractions) => {
-    if (!session.ended_at) return "Active";
+    const endedAt = session.ended_at;
+    const createdAt = session.created_at;
+    if (!endedAt || !createdAt) return "Active";
     
-    const start = new Date(session.created_at);
-    const end = new Date(session.ended_at);
-    const durationMs = end.getTime() - start.getTime();
-    const minutes = Math.floor(durationMs / 60000);
+    const minutes = DateUtils.diffMinutesUTC(createdAt, endedAt);
     
     if (minutes < 1) return "< 1 min";
-    return `${minutes} min`;
+    return `${Math.floor(minutes)} min`;
   };
 
   return (
@@ -85,8 +109,8 @@ export function ConversationList({ sessions, selectedSessionId, onSelectSession 
             >
               <div className="flex items-start gap-3">
                 {/* Channel Icon */}
-                <div className={`${channelColors[session.channel]} p-2 rounded-full`}>
-                  <Icon className="w-4 h-4 text-white" />
+                <div className={`${getChannelStyle(session.channel)} p-2 rounded-full`}>
+                  <Icon className="w-4 h-4" />
                 </div>
 
                 {/* Conversation Info */}
@@ -97,7 +121,7 @@ export function ConversationList({ sessions, selectedSessionId, onSelectSession 
                         {session.channel} Conversation
                       </h3>
                       <Badge
-                        className={`${statusColors[session.status]} text-white text-xs px-2 py-0`}
+                        className={`${getStatusStyle(session.status)} text-xs px-2 py-0`}
                       >
                         {session.status}
                       </Badge>

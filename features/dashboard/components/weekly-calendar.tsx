@@ -7,20 +7,29 @@ import { Badge } from "@/features/shared/components/ui/badge";
 import type { BookingWithServices } from "../lib/actions";
 import { BookingStatus } from "@/features/shared/lib/database/types/bookings";
 import { useState } from "react";
+import { DateUtils } from "@/features/shared/utils/date-utils";
 
 interface WeeklyCalendarProps {
   bookings: BookingWithServices[];
 }
 
-const statusColors: Record<BookingStatus, string> = {
-  [BookingStatus.NOT_ACCEPTED]: "bg-gray-500",
-  [BookingStatus.PENDING]: "bg-yellow-500",
-  [BookingStatus.ACCEPTED]: "bg-blue-500",
-  [BookingStatus.CONFIRMED]: "bg-green-500",
-  [BookingStatus.IN_PROGRESS]: "bg-purple-500",
-  [BookingStatus.COMPLETED]: "bg-green-700",
-  [BookingStatus.CANCELLED]: "bg-red-500",
-  [BookingStatus.REFUNDED]: "bg-orange-500",
+const getStatusStyle = (status: BookingStatus) => {
+  switch (status) {
+    case BookingStatus.CONFIRMED:
+    case BookingStatus.COMPLETED:
+      return "bg-primary text-primary-foreground";
+    case BookingStatus.PENDING:
+    case BookingStatus.ACCEPTED:
+      return "bg-secondary text-secondary-foreground";
+    case BookingStatus.IN_PROGRESS:
+      return "bg-accent text-accent-foreground";
+    case BookingStatus.CANCELLED:
+    case BookingStatus.REFUNDED:
+      return "bg-destructive text-destructive-foreground";
+    case BookingStatus.NOT_ACCEPTED:
+    default:
+      return "bg-muted text-muted-foreground";
+  }
 };
 
 export function WeeklyCalendar({ bookings }: WeeklyCalendarProps) {
@@ -64,30 +73,43 @@ export function WeeklyCalendar({ bookings }: WeeklyCalendarProps) {
 
   const getBookingsForDay = (date: Date) => {
     return bookings.filter((booking) => {
-      const bookingDate = new Date(booking.start_at);
-      return (
-        bookingDate.getDate() === date.getDate() &&
-        bookingDate.getMonth() === date.getMonth() &&
-        bookingDate.getFullYear() === date.getFullYear()
-      );
+      try {
+        // Convert UTC booking time to Melbourne timezone
+        const { date: bookingDateStr } = DateUtils.convertUTCToTimezone(booking.start_at, 'Australia/Melbourne');
+        const localDateStr = date.toISOString().split('T')[0];
+        return bookingDateStr === localDateStr;
+      } catch (error) {
+        console.error('Error filtering booking:', error);
+        return false;
+      }
     });
   };
 
-  const formatTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  const formatTime = (utcIsoString: string) => {
+    try {
+      const { time } = DateUtils.convertUTCToTimezone(utcIsoString, 'Australia/Melbourne');
+      return DateUtils.formatTimeForDisplay(time);
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return new Date(utcIsoString).toLocaleTimeString();
+    }
   };
 
   const isToday = (date: Date) => {
-    const today = new Date();
-    return (
-      date.getDate() === today.getDate() &&
-      date.getMonth() === today.getMonth() &&
-      date.getFullYear() === today.getFullYear()
-    );
+    try {
+      const todayUtc = DateUtils.nowUTC();
+      const { date: todayMelbourne } = DateUtils.convertUTCToTimezone(todayUtc, 'Australia/Melbourne');
+      const localDateStr = date.toISOString().split('T')[0];
+      return todayMelbourne === localDateStr;
+    } catch (error) {
+      console.error('Error checking if today:', error);
+      const today = new Date();
+      return (
+        date.getDate() === today.getDate() &&
+        date.getMonth() === today.getMonth() &&
+        date.getFullYear() === today.getFullYear()
+      );
+    }
   };
 
   const formatMonthYear = (date: Date) => {
@@ -158,9 +180,7 @@ export function WeeklyCalendar({ bookings }: WeeklyCalendarProps) {
                         <div className="space-y-1">
                           <div className="flex items-center gap-1">
                             <Badge
-                              className={`${
-                                statusColors[booking.status]
-                              } text-white text-[10px] px-1 py-0`}
+                              className={`${getStatusStyle(booking.status)} text-[10px] px-1 py-0`}
                             >
                               {booking.status}
                             </Badge>
@@ -193,10 +213,10 @@ export function WeeklyCalendar({ bookings }: WeeklyCalendarProps) {
       <div className="flex items-center gap-4 text-sm">
         <span className="text-muted-foreground">Status:</span>
         <div className="flex items-center gap-2">
-          <Badge className="bg-green-500 text-white">Confirmed</Badge>
-          <Badge className="bg-green-700 text-white">Completed</Badge>
-          <Badge className="bg-yellow-500 text-white">Pending</Badge>
-          <Badge className="bg-red-500 text-white">Cancelled</Badge>
+          <Badge className={getStatusStyle(BookingStatus.CONFIRMED)}>Confirmed</Badge>
+          <Badge className={getStatusStyle(BookingStatus.COMPLETED)}>Completed</Badge>
+          <Badge className={getStatusStyle(BookingStatus.PENDING)}>Pending</Badge>
+          <Badge className={getStatusStyle(BookingStatus.CANCELLED)}>Cancelled</Badge>
         </div>
       </div>
     </div>

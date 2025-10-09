@@ -5,8 +5,9 @@ import { Card } from "@/features/shared/components/ui/card";
 import { Badge } from "@/features/shared/components/ui/badge";
 import type { SessionWithMessages } from "../lib/actions";
 import { ChatChannel, ChatSessionStatus } from "@/features/shared/lib/database/types/chat-sessions";
+import { DateUtils } from "@/features/shared/utils/date-utils";
 
-interface SessionCardProps {
+interface InteractionSessionCardProps {
   session: SessionWithMessages;
 }
 
@@ -18,11 +19,19 @@ const channelIcons: Record<ChatChannel, React.ReactNode> = {
   [ChatChannel.EMAIL]: <MessageSquare className="w-4 h-4" />,
 };
 
-const statusColors: Record<ChatSessionStatus, string> = {
-  [ChatSessionStatus.ACTIVE]: "bg-green-500",
-  [ChatSessionStatus.ENDED]: "bg-gray-500",
-  [ChatSessionStatus.PAUSED]: "bg-yellow-500",
-  [ChatSessionStatus.TRANSFERRED]: "bg-blue-500",
+const getStatusStyle = (status: ChatSessionStatus) => {
+  switch (status) {
+    case ChatSessionStatus.ACTIVE:
+      return "bg-primary text-primary-foreground";
+    case ChatSessionStatus.ENDED:
+      return "bg-muted text-muted-foreground";
+    case ChatSessionStatus.PAUSED:
+      return "bg-secondary text-secondary-foreground";
+    case ChatSessionStatus.TRANSFERRED:
+      return "bg-accent text-accent-foreground";
+    default:
+      return "bg-muted text-muted-foreground";
+  }
 };
 
 const channelLabels: Record<ChatChannel, string> = {
@@ -33,33 +42,36 @@ const channelLabels: Record<ChatChannel, string> = {
   [ChatChannel.EMAIL]: "Email",
 };
 
-export function SessionCard({ session }: SessionCardProps) {
-  const startDate = new Date(session.created_at);
-  const endDate = session.ended_at ? new Date(session.ended_at) : null;
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+export function InteractionSessionCard({ session }: InteractionSessionCardProps) {
+  const formatDateTime = (utcIsoString: string | undefined) => {
+    if (!utcIsoString) return { date: '', time: '' };
+    try {
+      const { date, time } = DateUtils.convertUTCToTimezone(utcIsoString, 'Australia/Melbourne');
+      const formattedDate = DateUtils.formatDateForDisplay(date);
+      const formattedTime = DateUtils.formatTimeForDisplay(time);
+      return { date: formattedDate, time: formattedTime };
+    } catch (error) {
+      console.error('Error formatting date/time:', error);
+      const fallbackDate = new Date(utcIsoString);
+      return {
+        date: fallbackDate.toLocaleDateString(),
+        time: fallbackDate.toLocaleTimeString()
+      };
+    }
   };
 
   const getDuration = () => {
-    if (!endDate) return "Ongoing";
-    const durationMs = endDate.getTime() - startDate.getTime();
-    const minutes = Math.floor(durationMs / 60000);
-    const seconds = Math.floor((durationMs % 60000) / 1000);
+    const endedAt = session.ended_at;
+    const createdAt = session.created_at;
+    if (!endedAt || !createdAt) return "Ongoing";
+    
+    const totalMinutes = DateUtils.diffMinutesUTC(createdAt, endedAt);
+    const minutes = Math.floor(totalMinutes);
+    const seconds = Math.floor((totalMinutes * 60) % 60);
     return `${minutes}m ${seconds}s`;
   };
+
+  const { date: startDateFormatted, time: startTimeFormatted } = formatDateTime(session.created_at);
 
   return (
     <Card className="p-6 hover:shadow-lg transition-shadow">
@@ -73,7 +85,7 @@ export function SessionCard({ session }: SessionCardProps) {
                 {channelLabels[session.channel]}
               </h3>
             </div>
-            <Badge className={`${statusColors[session.status]} text-white`}>
+            <Badge className={getStatusStyle(session.status)}>
               {session.status.toUpperCase()}
             </Badge>
           </div>
@@ -93,11 +105,11 @@ export function SessionCard({ session }: SessionCardProps) {
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4" />
-            <span>{formatDate(startDate)}</span>
+            <span>{startDateFormatted}</span>
           </div>
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4" />
-            <span>{formatTime(startDate)}</span>
+            <span>{startTimeFormatted}</span>
           </div>
         </div>
 

@@ -9,6 +9,7 @@ import { InteractionMessage } from "./interaction-message";
 import { ChatChannel, ChatSessionStatus, MessageSenderType } from "@/features/shared/lib/database/types/chat-sessions";
 import { useEffect, useState } from "react";
 import type { Interaction } from "@/features/shared/lib/database/types/interactions";
+import { DateUtils } from "@/features/shared/utils/date-utils";
 
 interface ConversationDetailProps {
   session: SessionWithInteractions;
@@ -21,41 +22,44 @@ const channelIcons = {
   [ChatChannel.WEBSITE]: Globe,
 };
 
-const channelColors = {
-  [ChatChannel.PHONE]: "bg-blue-500",
-  [ChatChannel.WHATSAPP]: "bg-green-500",
-  [ChatChannel.WEBSITE]: "bg-purple-500",
+const getChannelStyle = (channel: ChatChannel) => {
+  switch (channel) {
+    case ChatChannel.PHONE:
+      return "bg-primary text-primary-foreground";
+    case ChatChannel.WHATSAPP:
+      return "bg-accent text-accent-foreground";
+    case ChatChannel.WEBSITE:
+      return "bg-secondary text-secondary-foreground";
+    case ChatChannel.FACEBOOK:
+      return "bg-chart-1 text-primary-foreground";
+    case ChatChannel.EMAIL:
+    default:
+      return "bg-muted text-muted-foreground";
+  }
 };
 
 export function ConversationDetail({ session, onBack }: ConversationDetailProps) {
   const Icon = channelIcons[session.channel];
   
-  const formatTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+  const formatDateTime = (utcIsoString: string) => {
+    try {
+      const { date, time } = DateUtils.convertUTCToTimezone(utcIsoString, 'Australia/Melbourne');
+      const formattedDate = DateUtils.formatDateForDisplay(date);
+      const formattedTime = DateUtils.formatTimeForDisplay(time);
+      return `${formattedDate} at ${formattedTime}`;
+    } catch (error) {
+      console.error('Error formatting date/time:', error);
+      return new Date(utcIsoString).toLocaleString();
+    }
   };
 
   const getDuration = () => {
-    if (!session.ended_at) return "Active conversation";
+    const endedAt = session.ended_at;
+    if (!endedAt) return "Active conversation";
     
-    const start = new Date(session.created_at);
-    const end = new Date(session.ended_at);
-    const durationMs = end.getTime() - start.getTime();
-    const minutes = Math.floor(durationMs / 60000);
-    const seconds = Math.floor((durationMs % 60000) / 1000);
+    const totalMinutes = DateUtils.diffMinutesUTC(session.created_at, endedAt);
+    const minutes = Math.floor(totalMinutes);
+    const seconds = Math.floor((totalMinutes * 60) % 60);
     
     return `${minutes}m ${seconds}s`;
   };
@@ -80,13 +84,13 @@ export function ConversationDetail({ session, onBack }: ConversationDetailProps)
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div className="flex items-center gap-3 flex-1">
-          <div className={`${channelColors[session.channel]} p-3 rounded-full`}>
-            <Icon className="w-5 h-5 text-white" />
+          <div className={`${getChannelStyle(session.channel)} p-3 rounded-full`}>
+            <Icon className="w-5 h-5" />
           </div>
           <div>
             <h2 className="text-xl font-semibold capitalize">{session.channel} Conversation</h2>
             <p className="text-sm text-muted-foreground">
-              {formatDate(session.created_at)} • {getDuration()}
+              {session.created_at && formatDateTime(session.created_at)} • {getDuration()}
             </p>
           </div>
         </div>

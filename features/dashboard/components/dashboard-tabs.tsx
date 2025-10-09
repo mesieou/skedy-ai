@@ -6,7 +6,7 @@ import type { User } from "@/features/auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/features/shared/components/ui/tabs";
 import { Card } from "@/features/shared/components/ui/card";
 import { WeeklyCalendar } from "./weekly-calendar";
-import { ConversationList } from "./conversation-list";
+import { ConversationsList } from "./conversations-list";
 import { ConversationDetail } from "./conversation-detail";
 import type { BookingWithServices, SessionWithInteractions } from "../lib/actions";
 
@@ -77,7 +77,7 @@ export function DashboardTabs({ user, bookings, sessions }: DashboardTabsProps) 
             ) : (
               <div>
                 <h2 className="text-2xl font-semibold mb-4">Your Conversations</h2>
-                <ConversationList
+                <ConversationsList
                   sessions={sessions}
                   selectedSessionId={selectedSessionId}
                   onSelectSession={setSelectedSessionId}

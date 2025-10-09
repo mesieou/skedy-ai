@@ -5,41 +5,55 @@ import { Card } from "@/features/shared/components/ui/card";
 import { Badge } from "@/features/shared/components/ui/badge";
 import type { BookingWithServices } from "../lib/actions";
 import { BookingStatus } from "@/features/shared/lib/database/types/bookings";
+import { DateUtils } from "@/features/shared/utils/date-utils";
 
 interface BookingCardProps {
   booking: BookingWithServices;
 }
 
-const statusColors: Record<BookingStatus, string> = {
-  [BookingStatus.NOT_ACCEPTED]: "bg-gray-500",
-  [BookingStatus.PENDING]: "bg-yellow-500",
-  [BookingStatus.ACCEPTED]: "bg-blue-500",
-  [BookingStatus.CONFIRMED]: "bg-green-500",
-  [BookingStatus.IN_PROGRESS]: "bg-purple-500",
-  [BookingStatus.COMPLETED]: "bg-green-700",
-  [BookingStatus.CANCELLED]: "bg-red-500",
-  [BookingStatus.REFUNDED]: "bg-orange-500",
+const getStatusStyle = (status: BookingStatus) => {
+  switch (status) {
+    case BookingStatus.CONFIRMED:
+    case BookingStatus.COMPLETED:
+      // Success states - uses primary/success colors
+      return "bg-primary text-primary-foreground";
+    case BookingStatus.PENDING:
+    case BookingStatus.ACCEPTED:
+      // In-progress states - uses secondary colors
+      return "bg-secondary text-secondary-foreground";
+    case BookingStatus.IN_PROGRESS:
+      // Active state - uses accent color
+      return "bg-accent text-accent-foreground";
+    case BookingStatus.CANCELLED:
+    case BookingStatus.REFUNDED:
+      // Error/cancelled states - uses destructive colors
+      return "bg-destructive text-destructive-foreground";
+    case BookingStatus.NOT_ACCEPTED:
+    default:
+      // Neutral/pending states - uses muted colors
+      return "bg-muted text-muted-foreground";
+  }
 };
 
 export function BookingCard({ booking }: BookingCardProps) {
-  const startDate = new Date(booking.start_at);
-  const endDate = new Date(booking.end_at);
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+  const formatDateTime = (utcIsoString: string) => {
+    try {
+      const { date, time } = DateUtils.convertUTCToTimezone(utcIsoString, 'Australia/Melbourne');
+      const formattedDate = DateUtils.formatDateForDisplay(date);
+      const formattedTime = DateUtils.formatTimeForDisplay(time);
+      return { date: formattedDate, time: formattedTime };
+    } catch (error) {
+      console.error('Error formatting date/time:', error);
+      const fallbackDate = new Date(utcIsoString);
+      return {
+        date: fallbackDate.toLocaleDateString(),
+        time: fallbackDate.toLocaleTimeString()
+      };
+    }
   };
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+  const { date: startDateFormatted, time: startTimeFormatted } = formatDateTime(booking.start_at);
+  const { time: endTimeFormatted } = formatDateTime(booking.end_at);
 
   return (
     <Card className="p-6 hover:shadow-lg transition-shadow">
@@ -50,7 +64,7 @@ export function BookingCard({ booking }: BookingCardProps) {
             <h3 className="text-lg font-semibold">
               {booking.services.map((s) => s.name).join(", ")}
             </h3>
-            <Badge className={`${statusColors[booking.status]} text-white`}>
+            <Badge className={getStatusStyle(booking.status)}>
               {booking.status.replace(/_/g, " ").toUpperCase()}
             </Badge>
           </div>
@@ -60,7 +74,7 @@ export function BookingCard({ booking }: BookingCardProps) {
             </p>
             {booking.deposit_paid && (
               <p className="text-sm text-muted-foreground">
-                Deposit paid: ${booking.deposit_amount.toFixed(2)}
+                deposit paid: ${booking.deposit_amount.toFixed(2)}
               </p>
             )}
           </div>
@@ -70,12 +84,12 @@ export function BookingCard({ booking }: BookingCardProps) {
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4" />
-            <span>{formatDate(startDate)}</span>
+            <span>{startDateFormatted}</span>
           </div>
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4" />
             <span>
-              {formatTime(startDate)} - {formatTime(endDate)}
+              {startTimeFormatted} - {endTimeFormatted}
             </span>
           </div>
         </div>
