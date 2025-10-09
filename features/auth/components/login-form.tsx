@@ -45,7 +45,7 @@ export function LoginForm({
       if (error) throw error;
 
       // Redirect to returnUrl if provided, otherwise to protected area
-      const redirectPath = returnUrl ? decodeURIComponent(returnUrl) : "/dashboard";
+      const redirectPath = returnUrl ? decodeURIComponent(returnUrl) : "/protected/dashboard";
       router.push(redirectPath);
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
