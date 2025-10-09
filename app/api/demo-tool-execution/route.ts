@@ -104,7 +104,7 @@ export async function POST(request: Request) {
       try {
         // For demo sessions, we need to simulate the normal cleanup process
         // Since there's no WebSocket to close, we call the cleanup directly
-        await connectionHandlers.handleAbnormalWebSocketClosure(session, 1000, 'Demo session ended by user');
+        await connectionHandlers.handleWebSocketClose(session, 1000, 'Demo session ended by user');
 
         console.log(`✅ [API] Demo session ${sessionId} ended and cleaned up successfully`);
 

@@ -2,7 +2,7 @@
 import { Session } from '../sessions/session';
 import { WebhookEvent } from '@/app/api/voice/twilio-webhook/route';
 import { acceptCall } from './callHandlers';
-import { createAndConnectWebSocket, initiateWebSocketClose } from '../real-time-open-ai/eventHandlers/connectionHandlers';
+import { createAndConnectWebSocket } from '../real-time-open-ai/eventHandlers/connectionHandlers';
 import { sentry } from '@/features/shared/utils/sentryService';
 import { addPromptToSession } from '../services/addPromptToSession';
 import { getInitialRequestedTools } from '@/features/shared/lib/database/types/tools';
@@ -22,12 +22,8 @@ export async function handleCallEvent(session: Session, event: WebhookEvent) {
         await createAndConnectWebSocket(session);
         break;
 
-      case 'realtime.call.ended':
-        console.log(`🤖 [CallRouter] Realtime call ended: ${session.id}`);
-        // Initiate graceful WebSocket closure to avoid 1006 errors
-        await initiateWebSocketClose(session);
-        // Persist session and interactions to database are handled in the connection handlers
-        break;
+      // Note: realtime.call.ended event doesn't exist in OpenAI Realtime API
+      // Call endings are detected via WebSocket closure and handled immediately in handleWebSocketClose
 
       default:
         console.log('Unhandled event type:', event.type);
