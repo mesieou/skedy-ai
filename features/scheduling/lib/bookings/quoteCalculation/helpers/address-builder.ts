@@ -4,6 +4,7 @@ import type { BookingAddress } from '../../../types/booking-calculations';
 import { AddressRole } from '../../../types/booking-calculations';
 import { AddressUtils } from '../../../../../shared/utils/address-utils';
 import type { QuoteRequestData } from '../../../types/booking-domain';
+import { TravelChargingModel, isMobileService } from '../../../../../shared/lib/database/types/service';
 
 export class AddressBuilder {
 
@@ -93,6 +94,33 @@ export class AddressBuilder {
       });
     }
 
+    // Add return to base address for travel models that require it
+    if (this.requiresReturnToBase(service)) {
+      addresses.push({
+        id: 'business_base_return',
+        address: AddressUtils.parseAddressString(business.address),
+        role: AddressRole.BUSINESS_BASE,
+        sequence_order: sequenceOrder++,
+        service_id: service.id
+      });
+    }
+
     return addresses;
+  }
+
+  /**
+   * Determine if a service requires returning to base based on its travel charging model
+   */
+  private requiresReturnToBase(service: Service): boolean {
+    if (!isMobileService(service)) return false;
+
+    const travelModel = service.travel_charging_model;
+    if (!travelModel) return false;
+
+    return [
+      TravelChargingModel.CUSTOMERS_AND_BACK_TO_BASE,
+      TravelChargingModel.FULL_ROUTE,
+      TravelChargingModel.BETWEEN_CUSTOMERS_AND_BACK_TO_BASE
+    ].includes(travelModel);
   }
 }

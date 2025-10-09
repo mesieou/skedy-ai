@@ -93,7 +93,7 @@ export class TravelCalculator {
         duration_mins: distance_data.duration_mins,
         is_chargeable: segment.is_chargeable,
         service_id: segment.service_id,
-        segment_type: "customer_to_customer",
+        segment_type: segment.segment_type,
       };
 
       route_segments.push(route_segment);
@@ -222,12 +222,14 @@ export class TravelCalculator {
     to_address: string;
     is_chargeable: boolean;
     service_id?: string;
+    segment_type: 'customer_to_customer' | 'base_to_customer' | 'customer_to_base';
   }> {
     const segments: Array<{
       from_address: string;
       to_address: string;
       is_chargeable: boolean;
       service_id?: string;
+      segment_type: 'customer_to_customer' | 'base_to_customer' | 'customer_to_base';
     }> = [];
 
     // Sort addresses by sequence_order
@@ -249,6 +251,7 @@ export class TravelCalculator {
             }`,
             is_chargeable: true,
             service_id: customerAddresses[i].service_id,
+            segment_type: 'customer_to_customer',
           });
         }
         break;
@@ -257,8 +260,17 @@ export class TravelCalculator {
         // Include base to first customer, then customer-to-customer
         for (let i = 0; i < sortedAddresses.length - 1; i++) {
           const isFirstSegment = i === 0;
-          const fromBase =
-            sortedAddresses[i].role === AddressRole.BUSINESS_BASE;
+          const fromBase = sortedAddresses[i].role === AddressRole.BUSINESS_BASE;
+          const toBase = sortedAddresses[i + 1].role === AddressRole.BUSINESS_BASE;
+
+          let segmentType: 'customer_to_customer' | 'base_to_customer' | 'customer_to_base';
+          if (fromBase) {
+            segmentType = 'base_to_customer';
+          } else if (toBase) {
+            segmentType = 'customer_to_base';
+          } else {
+            segmentType = 'customer_to_customer';
+          }
 
           segments.push({
             from_address: `${sortedAddresses[i].address.address_line_1}, ${sortedAddresses[i].address.city}`,
@@ -267,6 +279,7 @@ export class TravelCalculator {
             }`,
             is_chargeable: isFirstSegment || !fromBase,
             service_id: sortedAddresses[i].service_id,
+            segment_type: segmentType,
           });
         }
         break;
@@ -276,6 +289,16 @@ export class TravelCalculator {
         const allAddresses = sortedAddresses;
         for (let i = 0; i < allAddresses.length - 1; i++) {
           const isFromBase = allAddresses[i].role === AddressRole.BUSINESS_BASE;
+          const isToBase = allAddresses[i + 1].role === AddressRole.BUSINESS_BASE;
+
+          let segmentType: 'customer_to_customer' | 'base_to_customer' | 'customer_to_base';
+          if (isFromBase) {
+            segmentType = 'base_to_customer';
+          } else if (isToBase) {
+            segmentType = 'customer_to_base';
+          } else {
+            segmentType = 'customer_to_customer';
+          }
 
           segments.push({
             from_address: `${allAddresses[i].address.address_line_1}, ${allAddresses[i].address.city}`,
@@ -284,6 +307,7 @@ export class TravelCalculator {
             }`,
             is_chargeable: !isFromBase, // Don't charge from base, but charge back to base
             service_id: allAddresses[i].service_id,
+            segment_type: segmentType,
           });
         }
         break;
@@ -291,6 +315,18 @@ export class TravelCalculator {
       case TravelChargingModel.FULL_ROUTE:
         // Charge for everything including return to base
         for (let i = 0; i < sortedAddresses.length - 1; i++) {
+          const isFromBase = sortedAddresses[i].role === AddressRole.BUSINESS_BASE;
+          const isToBase = sortedAddresses[i + 1].role === AddressRole.BUSINESS_BASE;
+
+          let segmentType: 'customer_to_customer' | 'base_to_customer' | 'customer_to_base';
+          if (isFromBase) {
+            segmentType = 'base_to_customer';
+          } else if (isToBase) {
+            segmentType = 'customer_to_base';
+          } else {
+            segmentType = 'customer_to_customer';
+          }
+
           segments.push({
             from_address: `${sortedAddresses[i].address.address_line_1}, ${sortedAddresses[i].address.city}`,
             to_address: `${sortedAddresses[i + 1].address.address_line_1}, ${
@@ -298,6 +334,7 @@ export class TravelCalculator {
             }`,
             is_chargeable: true,
             service_id: sortedAddresses[i].service_id,
+            segment_type: segmentType,
           });
         }
         break;
@@ -309,6 +346,15 @@ export class TravelCalculator {
           const isToBase = sortedAddresses[i + 1].role === AddressRole.BUSINESS_BASE;
           const isBetweenCustomers = !isFromBase && !isToBase;
 
+          let segmentType: 'customer_to_customer' | 'base_to_customer' | 'customer_to_base';
+          if (isFromBase) {
+            segmentType = 'base_to_customer';
+          } else if (isToBase) {
+            segmentType = 'customer_to_base';
+          } else {
+            segmentType = 'customer_to_customer';
+          }
+
           segments.push({
             from_address: `${sortedAddresses[i].address.address_line_1}, ${sortedAddresses[i].address.city}`,
             to_address: `${sortedAddresses[i + 1].address.address_line_1}, ${
@@ -316,6 +362,7 @@ export class TravelCalculator {
             }`,
             is_chargeable: isBetweenCustomers || isToBase, // Charge between customers or back to base
             service_id: sortedAddresses[i].service_id,
+            segment_type: segmentType,
           });
         }
         break;
@@ -323,7 +370,17 @@ export class TravelCalculator {
       case TravelChargingModel.FROM_BASE_AND_BETWEEN_CUSTOMERS:
         // Charge from base to customers + between customers (skip return to base)
         for (let i = 0; i < sortedAddresses.length - 1; i++) {
+          const isFromBase = sortedAddresses[i].role === AddressRole.BUSINESS_BASE;
           const isToBase = sortedAddresses[i + 1].role === AddressRole.BUSINESS_BASE;
+
+          let segmentType: 'customer_to_customer' | 'base_to_customer' | 'customer_to_base';
+          if (isFromBase) {
+            segmentType = 'base_to_customer';
+          } else if (isToBase) {
+            segmentType = 'customer_to_base';
+          } else {
+            segmentType = 'customer_to_customer';
+          }
 
           segments.push({
             from_address: `${sortedAddresses[i].address.address_line_1}, ${sortedAddresses[i].address.city}`,
@@ -332,6 +389,7 @@ export class TravelCalculator {
             }`,
             is_chargeable: !isToBase, // Charge everything except return to base
             service_id: sortedAddresses[i].service_id,
+            segment_type: segmentType,
           });
         }
         break;

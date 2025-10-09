@@ -44,22 +44,10 @@ function formatTigaQuoteResponse(
 ): Record<string, unknown> {
   const travelBreakdown = detailedResult.price_breakdown.travel_breakdown;
 
-  // Calculate real back-to-base time from route segments
-  let backToBaseTime = 0;
-
-  if (travelBreakdown.route_segments) {
-    // Find segments that go back to base/depot
-    const backToBaseSegments = travelBreakdown.route_segments.filter(segment =>
-      segment.is_chargeable &&
-      (segment.to_address.toLowerCase().includes('base') ||
-       segment.to_address.toLowerCase().includes('depot') ||
-       segment.segment_type === 'customer_to_base')
-    );
-
-    if (backToBaseSegments.length > 0) {
-      backToBaseTime = backToBaseSegments.reduce((sum, s) => sum + s.duration_mins, 0);
-    }
-  }
+  // Get back-to-base time directly from route segments
+  const backToBaseTime = travelBreakdown.route_segments
+    ?.filter(segment => segment.segment_type === 'customer_to_base' && segment.is_chargeable)
+    .reduce((sum, segment) => sum + segment.duration_mins, 0) || 0;
 
   const roundedworkEstimateTimeHours = Math.ceil(detailedResult.total_estimate_time_in_minutes / 30) * 0.5;
   const roundedBackToBaseTimeHours = Math.ceil(backToBaseTime / 15) * 0.25;
@@ -91,6 +79,7 @@ function formatTigaQuoteResponse(
     gst_included: business.prices_include_gst
   };
 }
+
 
 /**
  * Default quote formatting for other businesses
