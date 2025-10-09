@@ -81,18 +81,28 @@ export class StripePaymentService {
    */
   private static async _createStripePaymentLink(data: PaymentLinkData): Promise<CreatePaymentLinkResult> {
     try {
+      console.log(`💳 [StripePaymentService] Starting payment link creation for business: ${data.businessId}`);
+
       // Validate business has Stripe Connect account
       const businessRepo = new BusinessRepository();
       const business = await businessRepo.findOne({ id: data.businessId });
 
       if (!business) {
+        console.error(`💳 [StripePaymentService] Business not found: ${data.businessId}`);
         return {
           success: false,
           error: 'Business not found'
         };
       }
 
+      console.log(`💳 [StripePaymentService] Business found: ${business.name}`);
+      console.log(`💳 [StripePaymentService] Stripe Connect Account ID: ${business.stripe_connect_account_id || 'NOT SET'}`);
+      console.log(`💳 [StripePaymentService] Stripe Account Status: ${business.stripe_account_status || 'NOT SET'}`);
+
       if (!business.stripe_connect_account_id || business.stripe_account_status !== 'active') {
+        console.error(`💳 [StripePaymentService] Business payment account not configured properly`);
+        console.error(`💳 [StripePaymentService] - Connect Account ID: ${business.stripe_connect_account_id || 'MISSING'}`);
+        console.error(`💳 [StripePaymentService] - Account Status: ${business.stripe_account_status || 'MISSING'}`);
         return {
           success: false,
           error: 'Business payment account not configured'
@@ -102,7 +112,10 @@ export class StripePaymentService {
       const depositAmountCents = Math.round(data.depositAmount * 100);
       const totalAmountCents = depositAmountCents; // All fees already included in quote
 
+      console.log(`💳 [StripePaymentService] Payment amounts - Deposit: $${data.depositAmount} (${depositAmountCents} cents), Platform fee: $${data.platformFee}`);
+
       // Create a price first, then use it in the payment link
+      console.log(`💳 [StripePaymentService] Creating Stripe price for: ${data.serviceDescription}`);
       const price = await getStripe().prices.create({
         currency: 'aud',
         product_data: {
@@ -120,8 +133,12 @@ export class StripePaymentService {
         },
         unit_amount: totalAmountCents,
       });
+      console.log(`💳 [StripePaymentService] Created Stripe price: ${price.id}`);
 
       // Create payment link with application fee (split payment)
+      console.log(`💳 [StripePaymentService] Creating payment link with Connect account: ${business.stripe_connect_account_id}`);
+      console.log(`💳 [StripePaymentService] Application fee amount: ${Math.round(data.platformFee * 100)} cents`);
+
       const paymentLink = await getStripe().paymentLinks.create({
         line_items: [
           {
@@ -147,13 +164,32 @@ export class StripePaymentService {
           },
         },
       });
+      console.log(`💳 [StripePaymentService] Successfully created payment link: ${paymentLink.url}`);
 
       return {
         success: true,
         paymentLink: paymentLink.url,
       };
     } catch (err) {
-      console.error('Error creating Stripe payment link:', err);
+      console.error('💳 [StripePaymentService] Error creating Stripe payment link:', err);
+
+      // Log detailed error information
+      if (err && typeof err === 'object') {
+        const stripeError = err as any;
+        console.error(`💳 [StripePaymentService] Stripe Error Details:`);
+        console.error(`💳 [StripePaymentService] - Type: ${stripeError.type || 'unknown'}`);
+        console.error(`💳 [StripePaymentService] - Code: ${stripeError.code || 'unknown'}`);
+        console.error(`💳 [StripePaymentService] - Param: ${stripeError.param || 'unknown'}`);
+        console.error(`💳 [StripePaymentService] - Message: ${stripeError.message || 'unknown'}`);
+        console.error(`💳 [StripePaymentService] - Request ID: ${stripeError.requestId || 'unknown'}`);
+
+        if (stripeError.param === 'on_behalf_of' || stripeError.code === 'resource_missing') {
+          console.error(`💳 [StripePaymentService] ISSUE: The Stripe Connect account ID appears to be invalid or deleted`);
+          console.error(`💳 [StripePaymentService] - Business ID: ${data.businessId}`);
+          console.error(`💳 [StripePaymentService] - Business Name: ${data.businessName}`);
+        }
+      }
+
       return {
         success: false,
         error: err instanceof Error ? err.message : 'Failed to create payment link',

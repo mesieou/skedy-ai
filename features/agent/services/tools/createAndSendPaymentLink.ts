@@ -55,6 +55,15 @@ export async function createAndSendPaymentLink(
       quoteId: quoteId
     });
 
+    // Log detailed information before creating payment link
+    console.log(`💳 [PaymentLink] Creating payment link for session: ${session.id}`);
+    console.log(`💳 [PaymentLink] Business: ${session.businessEntity.name} (${session.businessEntity.id})`);
+    console.log(`💳 [PaymentLink] Quote ID: ${quoteId}`);
+    console.log(`💳 [PaymentLink] Deposit amount: $${quote.result.deposit_amount}`);
+    console.log(`💳 [PaymentLink] User ID: ${args.user_id}`);
+    console.log(`💳 [PaymentLink] Business Stripe account: ${session.businessEntity.stripe_connect_account_id || 'NOT SET'}`);
+    console.log(`💳 [PaymentLink] Business payment methods: ${JSON.stringify(session.businessEntity.payment_methods)}`);
+
     // Create payment link using the payment utility
     const result = await StripePaymentService.createPaymentLinkForSession(session);
     session.depositPaymentState!.paymentLink = result.paymentLink;
