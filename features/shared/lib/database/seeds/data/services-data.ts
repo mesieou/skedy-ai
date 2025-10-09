@@ -132,7 +132,7 @@ export const removalistTigaService2Data: CreateServiceData = {
             price: 160.00,
             duration_estimate_mins: {
               // "one_item": 40,
-              // "few_items": 60,
+              // "few_item": 60,
               // "house_move_1_bedroom": 120,
               "house_move_2_bedroom": 180,
               // "house_move_3_bedroom": 240,
