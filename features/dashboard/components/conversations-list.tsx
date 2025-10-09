@@ -1,6 +1,7 @@
 "use client";
 
-import { MessageSquare, Phone, Globe } from "lucide-react";
+import React from "react";
+import { MessageSquare, Phone, Globe, Mail, Facebook } from "lucide-react";
 import { Card } from "@/features/shared/components/ui/card";
 import { Badge } from "@/features/shared/components/ui/badge";
 import type { SessionWithInteractions } from "../lib/actions";
@@ -17,7 +18,9 @@ const channelIcons = {
   [ChatChannel.PHONE]: Phone,
   [ChatChannel.WHATSAPP]: MessageSquare,
   [ChatChannel.WEBSITE]: Globe,
-};
+  [ChatChannel.FACEBOOK]: Facebook,
+  [ChatChannel.EMAIL]: Mail,
+} as const satisfies Record<ChatChannel, React.ComponentType<any>>;
 
 const getChannelStyle = (channel: ChatChannel) => {
   switch (channel) {
@@ -95,7 +98,7 @@ export function ConversationsList({ sessions, selectedSessionId, onSelectSession
         </Card>
       ) : (
         sessions.map((session) => {
-          const Icon = channelIcons[session.channel];
+          const Icon = channelIcons[session.channel as keyof typeof channelIcons];
           const isSelected = session.id === selectedSessionId;
           const messageCount = session.interactions?.length || 0;
 
@@ -127,7 +130,7 @@ export function ConversationsList({ sessions, selectedSessionId, onSelectSession
                       </Badge>
                     </div>
                     <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {formatDate(session.created_at)}
+                      {session.created_at ? formatDate(session.created_at) : 'N/A'}
                     </span>
                   </div>
 
