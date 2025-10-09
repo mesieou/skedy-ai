@@ -16,6 +16,8 @@ export interface BookingWithServices extends Booking {
 
 export async function getUserBookings(userId: string): Promise<BookingWithServices[]> {
   try {
+    console.log(`📊 [Dashboard] Fetching bookings for user: ${userId}`);
+
     const bookingsRepo = new BookingsRepository();
     const bookingServiceRepo = new BookingServiceRepository();
     const serviceRepo = new ServiceRepository();
@@ -26,14 +28,19 @@ export async function getUserBookings(userId: string): Promise<BookingWithServic
       { user_id: userId }
     );
 
+    console.log(`📊 [Dashboard] Found ${bookings.length} bookings for user ${userId}`);
+
     // For each booking, get its services
     const bookingsWithServices = await Promise.all(
-      bookings.map(async (booking) => {
+      bookings.map(async (booking, index) => {
+        console.log(`📊 [Dashboard] Processing booking ${index + 1}/${bookings.length}: ${booking.id} (${booking.status})`);
+
         // Get booking services (junction table)
         const bookingServices = await bookingServiceRepo.findAll(
           {},
           { booking_id: booking.id }
         );
+        console.log(`📊 [Dashboard] Found ${bookingServices.length} services for booking ${booking.id}`);
 
         // Get the actual service details
         const services = await Promise.all(
@@ -42,13 +49,17 @@ export async function getUserBookings(userId: string): Promise<BookingWithServic
           })
         );
 
+        const validServices = services.filter((s): s is Service => s !== null);
+        console.log(`📊 [Dashboard] Booking ${booking.id} has ${validServices.length} valid services`);
+
         return {
           ...booking,
-          services: services.filter((s): s is Service => s !== null),
+          services: validServices,
         };
       })
     );
 
+    console.log(`📊 [Dashboard] Returning ${bookingsWithServices.length} bookings with services for user ${userId}`);
     return bookingsWithServices;
   } catch (error) {
     console.error("Failed to fetch user bookings:", error);

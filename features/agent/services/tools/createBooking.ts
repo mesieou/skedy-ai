@@ -28,6 +28,14 @@ export async function createBooking(
       hasSelectedQuote: !!session.selectedQuote,
       selectedQuoteId: session.selectedQuote?.result?.quote_id
     });
+
+    // Log booking creation details
+    console.log(`📅 [CreateBooking] Starting booking creation for session: ${session.id}`);
+    console.log(`📅 [CreateBooking] User ID: ${session.customerId}`);
+    console.log(`📅 [CreateBooking] Business: ${session.businessEntity.name} (${session.businessId})`);
+    console.log(`📅 [CreateBooking] Preferred date/time: ${args.preferred_date} ${args.preferred_time}`);
+    console.log(`📅 [CreateBooking] Selected quote: ${session.selectedQuote?.result?.quote_id}`);
+    console.log(`📅 [CreateBooking] Deposit payment status: ${session.depositPaymentState?.status || 'none'}`);
     // Validate date format using DateUtils
     if (!DateUtils.isValidDateFormat(args.preferred_date)) {
       // User input error - invalid date format
