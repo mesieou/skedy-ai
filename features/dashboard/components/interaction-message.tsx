@@ -48,7 +48,8 @@ export function InteractionMessage({ interaction, onFeedback }: InteractionMessa
     }
   };
 
-  const formatTime = (dateStr: string) => {
+  const formatTime = (dateStr: string | undefined) => {
+    if (!dateStr) return 'N/A';
     const date = new Date(dateStr);
     return date.toLocaleTimeString("en-US", {
       hour: "2-digit",

@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowLeft, Phone, Globe, MessageSquare, User, Bot, ThumbsUp, ThumbsDown, MessageCircle, X } from "lucide-react";
+import React from "react";
+import { ArrowLeft, Phone, Globe, MessageSquare, User, Bot, ThumbsUp, ThumbsDown, MessageCircle, X, Mail, Facebook } from "lucide-react";
 import { Card } from "@/features/shared/components/ui/card";
 import { Button } from "@/features/shared/components/ui/button";
 import { Badge } from "@/features/shared/components/ui/badge";
@@ -20,7 +21,9 @@ const channelIcons = {
   [ChatChannel.PHONE]: Phone,
   [ChatChannel.WHATSAPP]: MessageSquare,
   [ChatChannel.WEBSITE]: Globe,
-};
+  [ChatChannel.FACEBOOK]: Facebook,
+  [ChatChannel.EMAIL]: Mail,
+} as const satisfies Record<ChatChannel, React.ComponentType<any>>;
 
 const getChannelStyle = (channel: ChatChannel) => {
   switch (channel) {
@@ -39,7 +42,7 @@ const getChannelStyle = (channel: ChatChannel) => {
 };
 
 export function ConversationDetail({ session, onBack }: ConversationDetailProps) {
-  const Icon = channelIcons[session.channel];
+  const Icon = channelIcons[session.channel as keyof typeof channelIcons];
   
   const formatDateTime = (utcIsoString: string) => {
     try {
@@ -55,7 +58,7 @@ export function ConversationDetail({ session, onBack }: ConversationDetailProps)
 
   const getDuration = () => {
     const endedAt = session.ended_at;
-    if (!endedAt) return "Active conversation";
+    if (!endedAt || !session.created_at) return "Active conversation";
     
     const totalMinutes = DateUtils.diffMinutesUTC(session.created_at, endedAt);
     const minutes = Math.floor(totalMinutes);
