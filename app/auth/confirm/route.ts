@@ -5,7 +5,7 @@ import { type NextRequest } from "next/server";
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/dashboard";
+  const next = searchParams.get("next") ?? "/protected/dashboard";
   const returnUrl = searchParams.get("returnUrl");
 
   // Use a more reliable method to determine the correct origin
@@ -36,13 +36,13 @@ export async function GET(request: NextRequest) {
 
     if (!error) {
       // Check for returnUrl first (from sign-up with return URL), then next, then default to protected
-      let redirectPath = "/dashboard";
+      let redirectPath = "/protected/dashboard";
 
       if (returnUrl) {
         // Decode the return URL and redirect to it
         const decodedReturnUrl = decodeURIComponent(returnUrl);
         redirectPath = decodedReturnUrl;
-      } else if (next && next !== "/dashboard") {
+      } else if (next && next !== "/protected/dashboard") {
         redirectPath = next;
       }
 
