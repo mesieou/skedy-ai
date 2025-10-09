@@ -79,6 +79,7 @@ export async function createBooking(
     }
 
     // Use BookingOrchestrator for core booking creation (with original quote data)
+    console.log(`📅 [CreateBooking] Calling BookingOrchestrator.createBooking`);
     const bookingOrchestrator = new BookingOrchestrator();
     const result = await bookingOrchestrator.createBooking({
       quoteRequestData: session.selectedQuote.request,
@@ -89,7 +90,18 @@ export async function createBooking(
       depositPaymentState: session.depositPaymentState  // Pass payment state for proper booking creation
     });
 
+    console.log(`📅 [CreateBooking] BookingOrchestrator result:`, {
+      success: result.success,
+      bookingId: result.booking?.id,
+      bookingStatus: result.booking?.status,
+      startAt: result.booking?.start_at,
+      endAt: result.booking?.end_at,
+      totalAmount: result.booking?.total_estimate_amount,
+      error: result.error
+    });
+
     if (!result.success || !result.booking) {
+      console.error(`📅 [CreateBooking] Booking creation failed:`, result.error);
       // User input error - booking failed (availability, etc.)
       return buildToolResponse(null, result.error || `Booking could not be created. We will contact you shortly.`, false);
     }

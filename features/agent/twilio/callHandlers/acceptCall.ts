@@ -67,9 +67,22 @@ export async function acceptCall(session: Session): Promise<CallAcceptResponse> 
     console.log(`📞 [AcceptCall] Response data:`, JSON.stringify(response.data, null, 2));
 
     // Add success breadcrumb
+    // Log OpenAI response headers for debugging
+    console.log(`📊 [AcceptCall] OpenAI Response Headers:`);
+    console.log(`📊 [AcceptCall] - x-request-id: ${response.headers?.['x-request-id'] || 'not provided'}`);
+    console.log(`📊 [AcceptCall] - openai-organization: ${response.headers?.['openai-organization'] || 'not provided'}`);
+    console.log(`📊 [AcceptCall] - openai-processing-ms: ${response.headers?.['openai-processing-ms'] || 'not provided'}`);
+    console.log(`📊 [AcceptCall] - openai-version: ${response.headers?.['openai-version'] || 'not provided'}`);
+    console.log(`📊 [AcceptCall] - x-ratelimit-remaining-requests: ${response.headers?.['x-ratelimit-remaining-requests'] || 'not provided'}`);
+    console.log(`📊 [AcceptCall] - x-ratelimit-remaining-tokens: ${response.headers?.['x-ratelimit-remaining-tokens'] || 'not provided'}`);
+
     sentry.addBreadcrumb(`Call accepted successfully`, 'call-accept', {
       sessionId: session.id,
       status: response.status,
+      requestId: response.headers?.['x-request-id'],
+      processingMs: response.headers?.['openai-processing-ms'],
+      remainingRequests: response.headers?.['x-ratelimit-remaining-requests'],
+      remainingTokens: response.headers?.['x-ratelimit-remaining-tokens']
     });
 
     if (response.status >= 200 && response.status < 300) {
@@ -87,6 +100,31 @@ export async function acceptCall(session: Session): Promise<CallAcceptResponse> 
         data: response.data
       };
     } else {
+      // Enhanced logging for HTTP error responses
+      console.error(`❌ [AcceptCall] HTTP ${response.status} error for session ${session.id}`);
+
+      switch (response.status) {
+        case 401:
+          console.error(`🔐 [AcceptCall] 401 Authentication Error - Invalid API key`);
+          console.error(`🔐 [AcceptCall] - Business: ${session.businessEntity.name}`);
+          console.error(`🔐 [AcceptCall] - API key name: ${session.businessEntity.openai_api_key_name}`);
+          break;
+        case 403:
+          console.error(`🚫 [AcceptCall] 403 Forbidden - Country/region not supported or IP not authorized`);
+          break;
+        case 429:
+          console.error(`⏰ [AcceptCall] 429 Rate Limit - Too many requests or quota exceeded`);
+          break;
+        case 500:
+          console.error(`🔥 [AcceptCall] 500 Server Error - Issue on OpenAI's servers`);
+          break;
+        case 503:
+          console.error(`🚧 [AcceptCall] 503 Service Unavailable - Servers overloaded`);
+          break;
+      }
+
+      console.error(`❌ [AcceptCall] Response data:`, response.data);
+
       return {
         success: false,
         status: response.status,
