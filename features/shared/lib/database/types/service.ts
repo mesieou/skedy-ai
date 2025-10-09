@@ -16,7 +16,7 @@ export enum TravelChargingModel {
   CUSTOMERS_AND_BACK_TO_BASE = 'customers_and_back_to_base',
   // Charge entire route (base → customers → base)
   FULL_ROUTE = 'full_route',
-  // Charge between customers + return to base (skip initial base to customer)
+  // Charge between customers + return to base (skip initial base to customer
   BETWEEN_CUSTOMERS_AND_BACK_TO_BASE = 'between_customers_and_back_to_base',
   // Charge from base + between customers (skip return to base)
   FROM_BASE_AND_BETWEEN_CUSTOMERS = 'from_base_and_between_customers',
