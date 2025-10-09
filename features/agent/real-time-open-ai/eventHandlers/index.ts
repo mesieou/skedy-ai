@@ -2,7 +2,8 @@
 export {
   createAndConnectWebSocket,
   handleWebSocketOpen,
-  handleWebSocketClose,
+  handleAbnormalWebSocketClosure,
+  initiateWebSocketClose,
   handleWebSocketError
 } from './connectionHandlers';
 
