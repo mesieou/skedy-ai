@@ -175,7 +175,7 @@ export class StripePaymentService {
 
       // Log detailed error information
       if (err && typeof err === 'object') {
-        const stripeError = err as any;
+        const stripeError = err as Stripe.StripeRawError;
         console.error(`💳 [StripePaymentService] Stripe Error Details:`);
         console.error(`💳 [StripePaymentService] - Type: ${stripeError.type || 'unknown'}`);
         console.error(`💳 [StripePaymentService] - Code: ${stripeError.code || 'unknown'}`);
