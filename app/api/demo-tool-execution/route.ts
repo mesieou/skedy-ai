@@ -97,12 +97,14 @@ export async function POST(request: Request) {
     if (toolName === 'end_session') {
       console.log(`🧹 [API] Ending demo session: ${sessionId}`);
 
-      // Use the same cleanup logic as backend handleWebSocketClose
-      const { handleWebSocketClose } = await import('@/features/agent/real-time-open-ai/eventHandlers/connectionHandlers');
+      // Demo sessions use WebRTC, not WebSocket, so we need to clean up directly
+      // Import the cleanup logic from connectionHandlers
+      const connectionHandlers = await import('@/features/agent/real-time-open-ai/eventHandlers/connectionHandlers');
 
       try {
-        // Call the backend cleanup function (simulating WebSocket close)
-        await handleWebSocketClose(session, 1000, 'Demo session ended by user');
+        // For demo sessions, we need to simulate the normal cleanup process
+        // Since there's no WebSocket to close, we call the cleanup directly
+        await connectionHandlers.handleAbnormalWebSocketClosure(session, 1000, 'Demo session ended by user');
 
         console.log(`✅ [API] Demo session ${sessionId} ended and cleaned up successfully`);
 
