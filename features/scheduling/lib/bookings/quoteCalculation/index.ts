@@ -12,5 +12,5 @@ export { AddressBuilder } from './helpers/address-builder';
 export { ServiceRequirementsGenerator } from './helpers/service-requirements-generator';
 
 // Re-export types
-export type { QuoteResultInfo, ServiceWithQuantity, TravelBreakdown, ServiceBreakdown, BusinessFeeBreakdown } from '../../types/booking-calculations';
+export type { DetailedQuoteResult, ServiceWithQuantity, TravelBreakdown, ServiceBreakdown, BusinessFeeBreakdown } from '../../types/booking-calculations';
 export type { QuoteRequestData } from '../../types/booking-domain';

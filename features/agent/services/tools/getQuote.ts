@@ -2,9 +2,8 @@ import { ServiceRepository } from '../../../shared/lib/database/repositories/ser
 import { BookingCalculator } from '../../../scheduling/lib/bookings/quoteCalculation';
 import { AddressValidator } from '../../../scheduling/lib/bookings/address-validator';
 import type { QuoteRequestData } from '../../../scheduling/lib/types/booking-domain';
-import type { QuoteResultInfo } from '../../../scheduling/lib/types/booking-calculations';
 import type { Session } from '../../sessions/session';
-import { buildToolResponse } from '../helpers/responseBuilder';
+import { buildToolResponse, buildQuoteToolResponse } from '../helpers/responseBuilder';
 import { sentry } from '@/features/shared/utils/sentryService';
 
 /**
@@ -88,25 +87,11 @@ export async function getQuote(
       totalTimeMinutes: detailedResult.total_estimate_time_in_minutes
     });
 
-    // Create simplified quote response using the proper interface
-    const simplifiedQuoteResponse: QuoteResultInfo = {
-      quote_id: detailedResult.quote_id,
-      service_name: service.name,
-      total_estimate_amount: detailedResult.total_estimate_amount,
-      total_estimate_time_in_minutes: detailedResult.total_estimate_time_in_minutes,
-      deposit_amount: detailedResult.deposit_amount,
-      currency: session.businessEntity.currency_code,
-
-      // Simple breakdown for customer questions (prevents AI from double-adding GST)
-      labor_cost: detailedResult.price_breakdown?.service_breakdowns?.[0]?.total_cost || 0,
-      travel_cost: detailedResult.price_breakdown?.travel_breakdown?.total_travel_cost || 0,
-      gst_amount: detailedResult.price_breakdown?.business_fees?.gst_amount || 0,
-      gst_included: session.businessEntity.prices_include_gst // true if GST is included in total, false if additional
-    };
-
-    return buildToolResponse(
-      simplifiedQuoteResponse as unknown as Record<string, unknown>,
-      `Here's your quote - total estimate cost is $${detailedResult.total_estimate_amount}. Deposit required: $${detailedResult.deposit_amount}. Remember this is an estimate and the final cost may vary.`,
+    // Pass DetailedQuoteResult directly to business-specific formatter
+    return buildQuoteToolResponse(
+      detailedResult,
+      session.businessEntity,
+      service.name,
       true
     );
 

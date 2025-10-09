@@ -20,7 +20,7 @@ export const removalistTigaService1Data: CreateServiceData = {
   description: "Professional one bedroon house/apartment and furniture relocation services.",
   how_it_works: "We send a team with a 4 tonne truck to pick up your items from the pickup location, transport them safely, and deliver to your dropoff location. You don't lift a finger - we handle all the heavy lifting, packing protection, and careful placement at the destination.",
   location_type: LocationType.PICKUP_AND_DROPOFF,
-  travel_charging_model: TravelChargingModel.BETWEEN_CUSTOMER_LOCATIONS,
+  travel_charging_model: TravelChargingModel.BETWEEN_CUSTOMERS_AND_BACK_TO_BASE,
   pricing_config: {
     components: [
       {
@@ -101,11 +101,11 @@ export const removalistTigaService1Data: CreateServiceData = {
 
 export const removalistTigaService2Data: CreateServiceData = {
   business_id: "placeholder-business-id", // Will be replaced with actual business_id
-  name: "Medium house/apartment and small offices relocation",
+  name: "2 bedroom house/apartment and small offices relocation",
   description: "Professional medium house/apartment and small offices relocation services",
   how_it_works: "We send a team with a 6 tonne truck to pick up your items from the pickup location, transport them safely, and deliver to your dropoff location. You don't lift a finger - we handle all the heavy lifting, packing protection, and careful placement at the destination.",
   location_type: LocationType.PICKUP_AND_DROPOFF,
-  travel_charging_model: TravelChargingModel.BETWEEN_CUSTOMER_LOCATIONS,
+  travel_charging_model: TravelChargingModel.BETWEEN_CUSTOMERS_AND_BACK_TO_BASE,
   pricing_config: {
     components: [
       {
@@ -186,11 +186,11 @@ export const removalistTigaService2Data: CreateServiceData = {
 
 export const removalistTigaService3Data: CreateServiceData = {
   business_id: "placeholder-business-id", // Will be replaced with actual business_id
-  name: "Large house/apartment and medium offices relocation",
+  name: "3 bedroom house/apartment and medium offices relocation",
   description: "Professional large house/apartment and medium offices relocation services",
   how_it_works: "We send a team with a 8 tonne truck to pick up your items from the pickup location, transport them safely, and deliver to your dropoff location. You don't lift a finger - we handle all the heavy lifting, packing protection, and careful placement at the destination.",
   location_type: LocationType.PICKUP_AND_DROPOFF,
-  travel_charging_model: TravelChargingModel.BETWEEN_CUSTOMER_LOCATIONS,
+  travel_charging_model: TravelChargingModel.BETWEEN_CUSTOMERS_AND_BACK_TO_BASE,
   pricing_config: {
     components: [
       {
@@ -252,11 +252,11 @@ export const removalistTigaService3Data: CreateServiceData = {
 
 export const removalistTigaService4Data: CreateServiceData = {
   business_id: "placeholder-business-id", // Will be replaced with actual business_id
-  name: "Large house/apartment and large offices relocation",
+  name: "4 bedroom house/apartment and large offices relocation",
   description: "Professional large house/apartment and large office relocation services",
   how_it_works: "We send a team with a 10 tonne truck to pick up your items from the pickup location, transport them safely, and deliver to your dropoff location. You don't lift a finger - we handle all the heavy lifting, packing protection, and careful placement at the destination.",
   location_type: LocationType.PICKUP_AND_DROPOFF,
-  travel_charging_model: TravelChargingModel.BETWEEN_CUSTOMER_LOCATIONS,
+  travel_charging_model: TravelChargingModel.BETWEEN_CUSTOMERS_AND_BACK_TO_BASE,
   pricing_config: {
     components: [
       {
@@ -318,11 +318,11 @@ export const removalistTigaService4Data: CreateServiceData = {
 
 export const removalistTigaService5Data: CreateServiceData = {
   business_id: "placeholder-business-id", // Will be replaced with actual business_id
-  name: "Large house/apartment and massive offices relocation",
+  name: "5 bedroom house/apartment and massive offices relocation",
   description: "Professional large house/apartment and massive offices relocation services",
   how_it_works: "We send a team with a 12 tonne truck to pick up your items from the pickup location, transport them safely, and deliver to your dropoff location. You don't lift a finger - we handle all the heavy lifting, packing protection, and careful placement at the destination.",
   location_type: LocationType.PICKUP_AND_DROPOFF,
-  travel_charging_model: TravelChargingModel.BETWEEN_CUSTOMER_LOCATIONS,
+  travel_charging_model: TravelChargingModel.BETWEEN_CUSTOMERS_AND_BACK_TO_BASE,
   pricing_config: {
     components: [
       {

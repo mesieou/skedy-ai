@@ -5,14 +5,16 @@ import type { Session } from '../agent/sessions/session';
 import type { BookingAddress } from '../scheduling/lib/types/booking-calculations';
 import { AddressRole } from '../scheduling/lib/types/booking-calculations';
 import { DateUtils } from '../shared/utils/date-utils';
+import { buildQuoteToolResponse } from '../agent/services/helpers/responseBuilder';
 
 /**
  * Booking notification service - handles all SMS notifications
  */
 
-// SMS Templates
+// SMS Templates - Single unified system
 const SMS_TEMPLATES = {
-  QUOTE_DETAILS: `👤 CUSTOMER DETAILS:
+  // Default quote details template
+  QUOTE_DETAILS_DEFAULT: `👤 CUSTOMER DETAILS:
 Name: {fullName}
 Phone: {customerPhone}
 Email: {customerEmail}
@@ -33,7 +35,6 @@ Total Estimate Time: {timeEstimate}
 Total Quote Estimate: {totalAmount}
 ⚠️ This is an estimate - final costs may vary based on actual work required.
 
-
 📋 Payment Details:
 Deposit Required: {depositAmount}
 Deposit Paid: {depositPaid}
@@ -44,8 +45,43 @@ Preferred Payment Method at service: {paymentMethod}
 If you have any questions, please text us at {businessPhone}.
 
 Skedy
-- {businessName}
-`,
+- {businessName}`,
+
+  // Tiga-specific quote details template
+  QUOTE_DETAILS_TIGA: `👤 CUSTOMER DETAILS:
+Name: {fullName}
+Phone: {customerPhone}
+Email: {customerEmail}
+
+Service: {serviceName}
+Number of Removalists: {numberOfRemovalists}
+
+📍 Locations:
+Pickup Locations:
+{pickupText}
+Drop-off Locations:
+{dropoffText}
+
+📅 Preferred Date & Time:
+{formattedDate} at {formattedTime}
+
+💰 QUOTE BREAKDOWN:
+Work estimate: {workEstimate} ({workEstimateTime}h)
+Back to base: {backToBaseCost} ({backToBaseTime}h)
+GST {gstStatus}
+⚠️ THIS IS ONLY AN ESTIMATE, THE FINAL COST MAY VARY.
+
+📋 Payment Details:
+Deposit Required: {depositAmount}
+Deposit Paid: {depositPaid}
+
+Preferred Payment Method at service: {paymentMethod}
+
+If you have any questions, please text us at {businessPhone}.
+
+Skedy
+- {businessName}`,
+
   PAYMENT_REQUIRED: `💳 PAYMENT REQUIRED
 Hi {customerName} 😊!
 
@@ -56,21 +92,19 @@ Please complete your deposit payment to secure your booking with {businessName}.
 ⚠️ Your booking is not confirmed until payment is completed.
 
 📋 Quote Details:
-{QUOTE_DETAILS}`,
+{quoteDetails}`,
 
   BOOKING_CONFIRMATION: `🎉 Hi {customerName} 😊! Your booking is confirmed with {businessName}
 
 📋 Booking Details:
-{QUOTE_DETAILS}
-`,
+{quoteDetails}`,
 
   PRE_BOOKING_CONFIRMATION: `Hi {customerName} 😊!
 
 Can you please confirm all details are correct?
 
 📋 Booking Details:
-{QUOTE_DETAILS}
-`
+{quoteDetails}`
 };
 
 // Helper functions
@@ -112,42 +146,84 @@ const formatAddressesByRole = (addresses: BookingAddress[], role: AddressRole): 
     .join('\n');
 };
 
+/**
+ * Extract common notification data from session - eliminates duplication
+ */
+const extractNotificationData = (session: Session, preferredDate?: string, preferredTime?: string, booking?: Booking) => {
+  const customer = session.customerEntity!;
+  const business = session.businessEntity!;
+  const quoteRequest = session.selectedQuote!.request;
+  const quoteResult = session.selectedQuote!.result;
+
+  // Use booking dates if available, otherwise use preferred dates
+  let finalDate = preferredDate;
+  let finalTime = preferredTime;
+
+  if (booking) {
+    const { date, time } = DateUtils.convertUTCToTimezone(booking.start_at, business.time_zone);
+    finalDate = date;
+    finalTime = time;
+  }
+
+  // Base data for all businesses
+  const baseData = {
+    customerName: formatCustomerName(customer),
+    fullName: formatFullName(customer),
+    customerPhone: customer.phone_number || 'Not provided',
+    customerEmail: customer.email || 'Not provided',
+    businessName: business.name,
+    businessPhone: business.phone_number,
+    serviceName: quoteRequest.services[0]?.service?.name || 'Service',
+    numberOfRemovalists: quoteRequest.number_of_people?.toString() || '1',
+    pickupText: formatAddressesByRole(quoteRequest.addresses || [], AddressRole.PICKUP),
+    dropoffText: formatAddressesByRole(quoteRequest.addresses || [], AddressRole.DROPOFF),
+    formattedDate: finalDate ? DateUtils.formatDateForDisplay(finalDate) : 'TBD',
+    formattedTime: finalTime ? DateUtils.formatTimeForDisplay(finalTime) : 'TBD',
+    timeEstimate: formatTimeEstimate(quoteResult.total_estimate_time_in_minutes),
+    totalAmount: formatCurrency(quoteResult.total_estimate_amount),
+    depositAmount: formatCurrency(quoteResult.deposit_amount),
+    depositPaid: session.depositPaymentState?.status === 'completed' ? 'Yes' : 'No',
+    remainingBalance: formatCurrency(quoteResult.total_estimate_amount - quoteResult.deposit_amount),
+    paymentMethod: business.preferred_payment_method,
+    paymentLink: session.depositPaymentState?.paymentLink || '',
+    bookingRef: booking ? formatBookingRef(booking.id) : ''
+  };
+
+  // Add Tiga-specific data if needed
+  if (business.name.toLowerCase().includes('tiga')) {
+    const formattedQuoteResponse = buildQuoteToolResponse(quoteResult, business, baseData.serviceName, true);
+    return {
+      ...baseData,
+      workEstimate: `$${formattedQuoteResponse.work_estimate}`,
+      workEstimateTime: String(formattedQuoteResponse.work_estimate_time),
+      backToBaseCost: `$${formattedQuoteResponse.back_to_base_cost}`,
+      backToBaseTime: String(formattedQuoteResponse.back_to_base_time),
+      gstStatus: formattedQuoteResponse.gst_included ? 'Included' : 'Excluded',
+      quoteDetails: SMS_TEMPLATES.QUOTE_DETAILS_TIGA
+    };
+  }
+
+  // Default business data
+  return {
+    ...baseData,
+    quoteDetails: SMS_TEMPLATES.QUOTE_DETAILS_DEFAULT
+  };
+};
+
+/**
+ * Simple template processor - single unified system
+ */
 const processTemplate = (template: string, data: Record<string, string>): string => {
   let result = template;
 
-  // First, process nested templates like {QUOTE_DETAILS}
-  if (result.includes('{QUOTE_DETAILS}')) {
-    const quoteDetailsData = {
-      fullName: data.fullName || '',
-      customerPhone: data.customerPhone || '',
-      customerEmail: data.customerEmail || '',
-      serviceName: data.serviceName || '',
-      numberOfRemovalists: data.numberOfRemovalists || '',
-      pickupText: data.pickupText || '',
-      dropoffText: data.dropoffText || '',
-      formattedDate: data.formattedDate || '',
-      formattedTime: data.formattedTime || '',
-      timeEstimate: data.timeEstimate || '',
-      totalAmount: data.totalAmount || '',
-      depositAmount: data.depositAmount || '',
-      depositPaid: data.depositPaid || '',
-      remainingBalance: data.remainingBalance || '',
-      paymentMethod: data.paymentMethod || '',
-      businessPhone: data.businessPhone || '',
-      businessName: data.businessName || ''
-    };
-
-    const processedQuoteDetails = processTemplate(SMS_TEMPLATES.QUOTE_DETAILS, quoteDetailsData);
-    result = result.replace('{QUOTE_DETAILS}', processedQuoteDetails);
-  }
-
-  // Then process all other template variables
+  // Process all template variables
   for (const [key, value] of Object.entries(data)) {
     result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
   }
 
   return result;
 };
+
 
 export class BookingNotifications {
 
@@ -162,45 +238,14 @@ export class BookingNotifications {
       const customer = session.customerEntity!;
       const business = session.businessEntity!;
 
-      const { date, time } = DateUtils.convertUTCToTimezone(booking.start_at, business.time_zone);
-      const { time: endTime } = DateUtils.convertUTCToTimezone(booking.end_at, business.time_zone);
-
-      // Get quote data from session (validated by tools)
-      const quoteRequest = session.selectedQuote!.request;
-      const serviceName = quoteRequest.services[0]?.service?.name;
-
-      const templateData = {
-        customerName: formatCustomerName(customer),
-        businessName: business.name,
-        serviceName: serviceName!,
-        date,
-        time,
-        endTime,
-        totalAmount: formatCurrency(booking.total_estimate_amount),
-        depositAmount: formatCurrency(booking.deposit_amount),
-        businessPhone: business.phone_number,
-        businessEmail: business.email,
-        bookingRef: formatBookingRef(booking.id),
-        // Additional data for QUOTE_DETAILS
-        fullName: formatFullName(customer),
-        customerPhone: customer.phone_number!,
-        customerEmail: customer.email || '',
-        numberOfRemovalists: quoteRequest.number_of_people!.toString(),
-        pickupText: formatAddressesByRole(quoteRequest.addresses || [], AddressRole.PICKUP),
-        dropoffText: formatAddressesByRole(quoteRequest.addresses || [], AddressRole.DROPOFF),
-        formattedDate: date,
-        formattedTime: time,
-        timeEstimate: formatTimeEstimate(booking.total_estimate_time_in_minutes),
-        depositPaid: booking.deposit_paid ? 'Yes' : 'No',
-        remainingBalance: formatCurrency(booking.remaining_balance),
-        paymentMethod: business.preferred_payment_method
-      };
+      // Extract all common data in one place
+      const templateData = extractNotificationData(session, undefined, undefined, booking);
 
       const message = processTemplate(SMS_TEMPLATES.BOOKING_CONFIRMATION, templateData);
       const result = await sendText(customer.phone_number!, message, business.twilio_number!);
 
       if (result.success) {
-        console.log(`✅ Booking confirmation sent to ${formatCustomerName(customer)}`);
+        console.log(`✅ Booking confirmation sent to ${templateData.customerName}`);
       }
 
       return result;
@@ -225,18 +270,17 @@ export class BookingNotifications {
       const customer = session.customerEntity!;
       const business = session.businessEntity!;
 
-      const { date, time } = DateUtils.convertUTCToTimezone(booking.start_at, business.time_zone);
-      const bookingRef = formatBookingRef(booking.id);
+      const templateData = extractNotificationData(session, undefined, undefined, booking);
 
-      const message = `⏰ Reminder: Your ${business.name} booking is tomorrow!
-📅 ${date} at ${time}
+      const message = `⏰ Reminder: Your ${templateData.businessName} booking is tomorrow!
+📅 ${templateData.formattedDate} at ${templateData.formattedTime}
 📍 We'll contact you 30min before arrival
-Ref: ${bookingRef}`;
+Ref: ${templateData.bookingRef}`;
 
       const result = await sendText(customer.phone_number!, message, business.twilio_number!);
 
       if (result.success) {
-        console.log(`✅ Booking reminder sent to ${formatCustomerName(customer)}`);
+        console.log(`✅ Booking reminder sent to ${templateData.customerName}`);
       }
 
       return result;
@@ -261,43 +305,14 @@ Ref: ${bookingRef}`;
     try {
       const customer = session.customerEntity!;
       const business = session.businessEntity!;
-      const quoteResult = session.selectedQuote!.result;
-      const quoteRequest = session.selectedQuote!.request;
-      const paymentLink = session.depositPaymentState!.paymentLink;
 
-      const serviceName = quoteRequest.services[0]?.service?.name;
-
-      const pickupText = formatAddressesByRole(quoteRequest.addresses || [], AddressRole.PICKUP);
-      const dropoffText = formatAddressesByRole(quoteRequest.addresses || [], AddressRole.DROPOFF);
-
-      const templateData = {
-        customerName: formatCustomerName(customer),
-        businessName: business.name,
-        serviceName: serviceName!,
-        depositAmount: formatCurrency(quoteResult.deposit_amount),
-        paymentLink: paymentLink!,
-        businessPhone: business.phone_number!,
-        // Additional data for QUOTE_DETAILS
-        fullName: formatFullName(customer),
-        customerPhone: customer.phone_number!,
-        customerEmail: customer.email || '',
-        numberOfRemovalists: quoteRequest.number_of_people!.toString(),
-        pickupText,
-        dropoffText,
-        formattedDate: DateUtils.formatDateForDisplay(preferredDate),
-        formattedTime: DateUtils.formatTimeForDisplay(preferredTime),
-        timeEstimate: formatTimeEstimate(quoteResult.total_estimate_time_in_minutes),
-        totalAmount: formatCurrency(quoteResult.total_estimate_amount),
-        depositPaid: session.depositPaymentState?.status === 'completed' ? 'Yes' : 'No',
-        remainingBalance: formatCurrency(quoteResult.total_estimate_amount),
-        paymentMethod: business.preferred_payment_method
-      };
+      const templateData = extractNotificationData(session, preferredDate, preferredTime);
 
       const message = processTemplate(SMS_TEMPLATES.PAYMENT_REQUIRED, templateData);
       const result = await sendText(customer.phone_number!, message, business.twilio_number!);
 
       if (result.success) {
-        console.log(`✅ Payment link sent to ${formatCustomerName(customer)}`);
+        console.log(`✅ Payment link sent to ${templateData.customerName}`);
       }
 
       return result;
@@ -322,44 +337,14 @@ Ref: ${bookingRef}`;
     try {
       const customer = session.customerEntity!;
       const business = session.businessEntity!;
-      const quote = session.selectedQuote!;
-      const quoteRequest = quote.request;
 
-      const pickupText = formatAddressesByRole(quoteRequest.addresses || [], AddressRole.PICKUP);
-      const dropoffText = formatAddressesByRole(quoteRequest.addresses || [], AddressRole.DROPOFF);
-      const serviceName = quoteRequest.services[0]?.service?.name;
-
-      // Use provided date/time (validated by tools)
-      const finalPreferredDate = preferredDate;
-      const finalPreferredTime = preferredTime;
-
-      const templateData = {
-        customerName: formatCustomerName(customer),
-        fullName: formatFullName(customer),
-        customerPhone: customer.phone_number!,
-        customerEmail: customer.email || '',
-        serviceName: serviceName!,
-        totalAmount: formatCurrency(quote.result.total_estimate_amount),
-        depositAmount: formatCurrency(quote.result.deposit_amount),
-        timeEstimate: formatTimeEstimate(quote.result.total_estimate_time_in_minutes),
-        pickupText,
-        dropoffText,
-        formattedDate: DateUtils.formatDateForDisplay(finalPreferredDate),
-        formattedTime: DateUtils.formatTimeForDisplay(finalPreferredTime),
-        businessPhone: business.phone_number!,
-        businessName: business.name,
-        // Additional data for QUOTE_DETAILS
-        numberOfRemovalists: quoteRequest.number_of_people!.toString(),
-        depositPaid: session.depositPaymentState?.status === 'completed' ? 'Yes' : 'No',
-        remainingBalance: formatCurrency(quote.result.total_estimate_amount - quote.result.deposit_amount),
-        paymentMethod: business.preferred_payment_method
-      };
+      const templateData = extractNotificationData(session, preferredDate, preferredTime);
 
       const message = processTemplate(SMS_TEMPLATES.PRE_BOOKING_CONFIRMATION, templateData);
       const result = await sendText(customer.phone_number!, message, business.twilio_number!);
 
       if (result.success) {
-        console.log(`✅ Pre-booking confirmation sent to ${formatCustomerName(customer)}`);
+        console.log(`✅ Pre-booking confirmation sent to ${templateData.customerName}`);
       }
 
       return result;

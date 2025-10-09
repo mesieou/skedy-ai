@@ -84,21 +84,7 @@ export interface PriceBreakdown {
   business_fees: BusinessFeeBreakdown;
 }
 
-// Result of quote calculation - the calculated quote (for tool responses)
-export interface QuoteResultInfo {
-  quote_id: string;
-  service_name: string;
-  total_estimate_amount: number;
-  total_estimate_time_in_minutes: number;
-  deposit_amount: number;
-  currency: string;
-
-  // Simple breakdown for customer questions (prevents AI from double-adding GST)
-  labor_cost: number;
-  travel_cost: number;
-  gst_amount: number;
-  gst_included: boolean; // true if GST is included in total_estimate_amount, false if GST is additional
-}
+// QuoteResultInfo deleted - we now pass DetailedQuoteResult directly to response formatters
 
 // Internal detailed quote result (for calculations and session storage)
 export interface DetailedQuoteResult {
