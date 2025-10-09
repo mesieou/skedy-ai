@@ -1,7 +1,7 @@
 import { Session } from "../sessions/session";
 import {
   handleWebSocketOpen,
-  handleWebSocketClose,
+  handleAbnormalWebSocketClosure,
   handleWebSocketError
 } from "./eventHandlers/connectionHandlers";
 import assert from "assert";
@@ -29,7 +29,7 @@ export function attachWSHandlers(session: Session) {
   });
 
   session.ws.on("close", async (code: number, reason: Buffer) => {
-    await handleWebSocketClose(session, code, reason.toString());
+    await handleAbnormalWebSocketClosure(session, code, reason.toString());
   });
 
   session.ws.on("error", async (error: Error) => {
