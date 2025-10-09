@@ -28,6 +28,14 @@ export async function createBooking(
       hasSelectedQuote: !!session.selectedQuote,
       selectedQuoteId: session.selectedQuote?.result?.quote_id
     });
+
+    // Log booking creation details
+    console.log(`📅 [CreateBooking] Starting booking creation for session: ${session.id}`);
+    console.log(`📅 [CreateBooking] User ID: ${session.customerId}`);
+    console.log(`📅 [CreateBooking] Business: ${session.businessEntity.name} (${session.businessId})`);
+    console.log(`📅 [CreateBooking] Preferred date/time: ${args.preferred_date} ${args.preferred_time}`);
+    console.log(`📅 [CreateBooking] Selected quote: ${session.selectedQuote?.result?.quote_id}`);
+    console.log(`📅 [CreateBooking] Deposit payment status: ${session.depositPaymentState?.status || 'none'}`);
     // Validate date format using DateUtils
     if (!DateUtils.isValidDateFormat(args.preferred_date)) {
       // User input error - invalid date format
@@ -71,6 +79,7 @@ export async function createBooking(
     }
 
     // Use BookingOrchestrator for core booking creation (with original quote data)
+    console.log(`📅 [CreateBooking] Calling BookingOrchestrator.createBooking`);
     const bookingOrchestrator = new BookingOrchestrator();
     const result = await bookingOrchestrator.createBooking({
       quoteRequestData: session.selectedQuote.request,
@@ -81,7 +90,18 @@ export async function createBooking(
       depositPaymentState: session.depositPaymentState  // Pass payment state for proper booking creation
     });
 
+    console.log(`📅 [CreateBooking] BookingOrchestrator result:`, {
+      success: result.success,
+      bookingId: result.booking?.id,
+      bookingStatus: result.booking?.status,
+      startAt: result.booking?.start_at,
+      endAt: result.booking?.end_at,
+      totalAmount: result.booking?.total_estimate_amount,
+      error: result.error
+    });
+
     if (!result.success || !result.booking) {
+      console.error(`📅 [CreateBooking] Booking creation failed:`, result.error);
       // User input error - booking failed (availability, etc.)
       return buildToolResponse(null, result.error || `Booking could not be created. We will contact you shortly.`, false);
     }
