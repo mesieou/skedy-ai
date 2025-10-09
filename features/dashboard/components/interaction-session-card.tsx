@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { Phone, MessageSquare, Clock, Calendar } from "lucide-react";
 import { Card } from "@/features/shared/components/ui/card";
 import { Badge } from "@/features/shared/components/ui/badge";
