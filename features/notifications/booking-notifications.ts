@@ -192,21 +192,30 @@ const extractNotificationData = (session: Session, preferredDate?: string, prefe
   // Add Tiga-specific data if needed
   if (business.name.toLowerCase().includes('tiga')) {
     const formattedQuoteResponse = buildQuoteToolResponse(quoteResult, business, baseData.serviceName, true);
-    return {
+    const tigaData = {
       ...baseData,
       workEstimate: `$${formattedQuoteResponse.work_estimate}`,
       workEstimateTime: String(formattedQuoteResponse.work_estimate_time),
       backToBaseCost: `$${formattedQuoteResponse.back_to_base_cost}`,
       backToBaseTime: String(formattedQuoteResponse.back_to_base_time),
-      gstStatus: formattedQuoteResponse.gst_included ? 'Included' : 'Excluded',
-      quoteDetails: SMS_TEMPLATES.QUOTE_DETAILS_TIGA
+      gstStatus: formattedQuoteResponse.gst_included ? 'Included' : 'Excluded'
+    };
+
+    // Process the Tiga template with the data
+    const processedQuoteDetails = processTemplate(SMS_TEMPLATES.QUOTE_DETAILS_TIGA, tigaData);
+
+    return {
+      ...tigaData,
+      quoteDetails: processedQuoteDetails
     };
   }
 
-  // Default business data
+  // Default business data - process the template with the data
+  const processedQuoteDetails = processTemplate(SMS_TEMPLATES.QUOTE_DETAILS_DEFAULT, baseData);
+
   return {
     ...baseData,
-    quoteDetails: SMS_TEMPLATES.QUOTE_DETAILS_DEFAULT
+    quoteDetails: processedQuoteDetails
   };
 };
 

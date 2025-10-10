@@ -24,7 +24,7 @@ export const OPENAI_AUDIO_CONFIG = {
       eagerness: "auto" as const
     },
     transcription: {
-      model: "gpt-4o-transcribe",
+      model: "whisper-1",
       language: "en"
     },
     noise_reduction: {

@@ -18,6 +18,7 @@ import { ServerRateLimitsUpdatedEvent } from "./types/server/events/rateLimints/
 import { ServerResponseFunctionCallArgumentsDoneEvent } from "./types/server/events/response/serverResponseFunctionCallArgumentsDoneTypes";
 import { ServerResponseOutputAudioTranscriptDoneEvent } from "./types/server/events/response/serverResponseOutputAudioTranscriptDoneTypes";
 import { ServerInputAudioTranscriptionCompletedEvent } from "./types/server/events/conversation/serverInputAudioTranscriptionCompletedTypes";
+import { ServerInputAudioTranscriptionDeltaEvent } from "./types/server/events/conversation/serverInputAudioTranscriptionDeltaTypes";
 
 // WebSocket event router
 export function attachWSHandlers(session: Session) {
@@ -64,8 +65,9 @@ export function attachWSHandlers(session: Session) {
 
       // Conversation Events
       case "conversation.item.input_audio_transcription.completed":
-        // Store user speech transcript
-        await storeUserTranscript(session, event as ServerInputAudioTranscriptionCompletedEvent);
+        // For Whisper-1: already processed in delta event for faster response
+        // Skip to avoid duplicate processing
+        console.log(`🎯 [Transcription] Completed event for item ${(event as ServerInputAudioTranscriptionCompletedEvent).item_id} - already processed in delta`);
         break;
 
       case "response.output_audio_transcript.done":
@@ -153,7 +155,9 @@ export function attachWSHandlers(session: Session) {
         break;
 
       case "conversation.item.input_audio_transcription.delta":
-        // Real-time user speech transcription (handled by conversation.item.input_audio_transcription.completed)
+        // For Whisper-1: delta contains full transcript, same as completed event
+        // Process immediately for faster response
+        await storeUserTranscript(session, event as ServerInputAudioTranscriptionDeltaEvent);
         break;
 
       case "output_audio_buffer.cleared":
