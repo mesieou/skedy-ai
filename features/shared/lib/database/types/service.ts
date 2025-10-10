@@ -103,8 +103,8 @@ interface BaseService extends BaseEntity {
   description: string;
   how_it_works?: string;
   pricing_config: PricingConfig | null;
-  ai_function_requirements: string[];           // Required fields: ['pickup_addresses', 'number_of_people']
-  ai_job_scope_options: string[] | null;        // Valid job scope options: ['one_item', 'few_items', 'house_move_1_bedroom']
+  ai_function_requirements?: string[];           // Required fields: ['pickup_addresses', 'number_of_people']
+  ai_job_scope_options?: string[] | null;        // Valid job scope options: ['one_item', 'few_items', 'house_move_1_bedroom']
 }
 
 // Business service (no travel required)
@@ -132,7 +132,7 @@ export function isBusinessService(service: Service): service is BusinessService 
 }
 
 export type CreateServiceData =
-  | Omit<BusinessService, 'id' | 'created_at' | 'updated_at' | 'ai_function_requirements' | 'ai_job_scope_options'>
-  | Omit<MobileService, 'id' | 'created_at' | 'updated_at' | 'ai_function_requirements' | 'ai_job_scope_options'>;
+  | Omit<BusinessService, 'id' | 'created_at' | 'updated_at'>
+  | Omit<MobileService, 'id' | 'created_at' | 'updated_at'>;
 
 export type UpdateServiceData = Partial<Omit<Service, 'id' | 'created_at'>>
