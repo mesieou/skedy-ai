@@ -27,7 +27,7 @@ export interface Booking extends BaseEntity {
   deposit_amount: number;
   remaining_balance: number;
   deposit_paid: boolean;
-  price_breakdown: PriceBreakdown;
+  price_breakdown?: PriceBreakdown;
 }
 
 export interface CreateBookingWithServicesAndAddressesData {

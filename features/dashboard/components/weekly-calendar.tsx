@@ -81,9 +81,14 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
     status: BookingStatus.PENDING,
     totalEstimateAmount: 0,
     depositAmount: 0,
-    depositPaid: false,
-    gstAmount: 0
+    depositPaid: false
   });
+  const [formErrors, setFormErrors] = useState<{
+    newCustomerFirstName?: string;
+    newCustomerEmail?: string;
+    newCustomerPhone?: string;
+    general?: string;
+  }>({});
 
   const getWeekDays = (startDate: Date) => {
     const days = [];
@@ -235,8 +240,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
       status: BookingStatus.PENDING,
       totalEstimateAmount: 0,
       depositAmount: 0,
-      depositPaid: false,
-      gstAmount: 0
+      depositPaid: false
     });
     setCustomerType('existing');
     setIsModalOpen(true);
@@ -262,6 +266,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedDate(null);
+    setFormErrors({}); // Clear errors when closing modal
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -300,19 +305,26 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
         return;
       }
 
+      // Clear previous errors
+      setFormErrors({});
+
       if (customerType === 'new') {
+        const errors: typeof formErrors = {};
+        
         if (!formData.newCustomerFirstName.trim()) {
-          alert('Please enter customer first name');
-          setIsSubmitting(false);
-          return;
+          errors.newCustomerFirstName = 'First name is required';
         }
         if (!formData.newCustomerEmail.trim()) {
-          alert('Please enter customer email');
-          setIsSubmitting(false);
-          return;
+          errors.newCustomerEmail = 'Email is required';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.newCustomerEmail)) {
+          errors.newCustomerEmail = 'Invalid email format';
         }
         if (!formData.newCustomerPhone.trim()) {
-          alert('Please enter customer phone number');
+          errors.newCustomerPhone = 'Phone number is required';
+        }
+        
+        if (Object.keys(errors).length > 0) {
+          setFormErrors(errors);
           setIsSubmitting(false);
           return;
         }
@@ -324,6 +336,12 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
       if (customerType === 'new') {
         // Create new customer in database
         try {
+          console.log('Creating new customer with:', {
+            firstName: formData.newCustomerFirstName,
+            lastName: formData.newCustomerLastName,
+            email: formData.newCustomerEmail,
+            phone: formData.newCustomerPhone
+          });
           const newCustomer = await createNewCustomer({
             currentUserId: user.sub,
             firstName: formData.newCustomerFirstName,
@@ -335,7 +353,17 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
           console.log('Created new customer:', newCustomer);
         } catch (error) {
           console.error('Failed to create new customer:', error);
-          alert('Failed to create new customer. Please try again.');
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          
+          // Check for specific error types
+          if (errorMessage.includes('email') || errorMessage.includes('duplicate') || errorMessage.includes('already exists')) {
+            setFormErrors({ newCustomerEmail: 'This email is already registered. Please use a different email.' });
+          } else if (errorMessage.includes('phone')) {
+            setFormErrors({ newCustomerPhone: errorMessage });
+          } else {
+            setFormErrors({ general: `Failed to create customer: ${errorMessage}` });
+          }
+          
           setIsSubmitting(false);
           return;
         }
@@ -359,25 +387,26 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
         totalEstimateTimeInMinutes: durationMinutes,
         depositAmount: formData.depositAmount,
         remainingBalance: remainingBalance,
-        depositPaid: formData.depositPaid,
-        gstAmount: formData.gstAmount
+        depositPaid: formData.depositPaid
       });
 
       handleCloseModal();
 
-      // Notify parent component to refresh bookings
-      if (onBookingCreated) {
-        onBookingCreated();
-      }
+      // Notify parent component to refresh bookings with a small delay to ensure DB transaction completes
+      setTimeout(() => {
+        if (onBookingCreated) {
+          onBookingCreated();
+        }
+      }, 300);
 
-      // Remove loading state after a short delay to ensure data is refreshed
+      // Remove loading state after data is refreshed
       setTimeout(() => {
         setLoadingDates(prev => {
           const newSet = new Set(prev);
           newSet.delete(dateKey);
           return newSet;
         });
-      }, 1000);
+      }, 1500);
     } catch (error) {
       console.error('Failed to create booking:', error);
       alert('Failed to create booking. Please try again.');
@@ -659,6 +688,13 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
               </div>
             )}
 
+            {/* General Error Message */}
+            {formErrors.general && (
+              <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                {formErrors.general}
+              </div>
+            )}
+
             {/* New Customer Fields (only for new customers) */}
             {customerType === 'new' && (
               <div className="space-y-4">
@@ -670,9 +706,18 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                       type="text"
                       placeholder="First name"
                       value={formData.newCustomerFirstName}
-                      onChange={(e) => setFormData({ ...formData, newCustomerFirstName: e.target.value })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, newCustomerFirstName: e.target.value });
+                        if (formErrors.newCustomerFirstName) {
+                          setFormErrors({ ...formErrors, newCustomerFirstName: undefined });
+                        }
+                      }}
+                      className={formErrors.newCustomerFirstName ? 'border-destructive' : ''}
                       required
                     />
+                    {formErrors.newCustomerFirstName && (
+                      <p className="text-sm text-destructive">{formErrors.newCustomerFirstName}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="newCustomerLastName">Last Name</Label>
@@ -692,9 +737,18 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                     type="email"
                     placeholder="customer@example.com"
                     value={formData.newCustomerEmail}
-                    onChange={(e) => setFormData({ ...formData, newCustomerEmail: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, newCustomerEmail: e.target.value });
+                      if (formErrors.newCustomerEmail) {
+                        setFormErrors({ ...formErrors, newCustomerEmail: undefined });
+                      }
+                    }}
+                    className={formErrors.newCustomerEmail ? 'border-destructive' : ''}
                     required
                   />
+                  {formErrors.newCustomerEmail && (
+                    <p className="text-sm text-destructive">{formErrors.newCustomerEmail}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="newCustomerPhone">Phone Number *</Label>
@@ -703,9 +757,18 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                     type="tel"
                     placeholder="+1234567890"
                     value={formData.newCustomerPhone}
-                    onChange={(e) => setFormData({ ...formData, newCustomerPhone: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, newCustomerPhone: e.target.value });
+                      if (formErrors.newCustomerPhone) {
+                        setFormErrors({ ...formErrors, newCustomerPhone: undefined });
+                      }
+                    }}
+                    className={formErrors.newCustomerPhone ? 'border-destructive' : ''}
                     required
                   />
+                  {formErrors.newCustomerPhone && (
+                    <p className="text-sm text-destructive">{formErrors.newCustomerPhone}</p>
+                  )}
                 </div>
               </div>
             )}
@@ -776,32 +839,17 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
               </select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="totalEstimateAmount">Total Amount ($)</Label>
-                <Input
-                  id="totalEstimateAmount"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.totalEstimateAmount}
-                  onChange={(e) => setFormData({ ...formData, totalEstimateAmount: parseFloat(e.target.value) || 0 })}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="gstAmount">GST Amount ($)</Label>
-                <Input
-                  id="gstAmount"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.gstAmount}
-                  onChange={(e) => setFormData({ ...formData, gstAmount: parseFloat(e.target.value) || 0 })}
-                  required
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="totalEstimateAmount">Total Amount ($)</Label>
+              <Input
+                id="totalEstimateAmount"
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.totalEstimateAmount === 0 ? '' : formData.totalEstimateAmount}
+                onChange={(e) => setFormData({ ...formData, totalEstimateAmount: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
+                required
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -812,8 +860,8 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                   type="number"
                   min="0"
                   step="0.01"
-                  value={formData.depositAmount}
-                  onChange={(e) => setFormData({ ...formData, depositAmount: parseFloat(e.target.value) || 0 })}
+                  value={formData.depositAmount === 0 ? '' : formData.depositAmount}
+                  onChange={(e) => setFormData({ ...formData, depositAmount: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
                   required
                 />
               </div>
@@ -937,11 +985,6 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                     </div>
                   </div>
 
-                  <div>
-                    <Label className="text-muted-foreground">GST Amount</Label>
-                    <p className="mt-2 font-medium">${selectedBooking.price_breakdown.business_fees.gst_amount.toFixed(2)}</p>
-                  </div>
-
                   <div className="flex gap-3 pt-4 border-t">
                     <button
                       onClick={() => {
@@ -950,14 +993,13 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                         const endTime = new Date(selectedBooking.end_at);
                         setFormData({
                           ...formData,
-                          serviceId: selectedBooking.price_breakdown.service_breakdowns[0]?.service_id || '',
+                          serviceId: selectedBooking.services[0]?.id || '',
                           startTime: `${String(startTime.getUTCHours()).padStart(2, '0')}:${String(startTime.getUTCMinutes()).padStart(2, '0')}`,
                           endTime: `${String(endTime.getUTCHours()).padStart(2, '0')}:${String(endTime.getUTCMinutes()).padStart(2, '0')}`,
                           status: selectedBooking.status,
                           totalEstimateAmount: selectedBooking.total_estimate_amount,
                           depositAmount: selectedBooking.deposit_amount,
-                          depositPaid: selectedBooking.deposit_paid,
-                          gstAmount: selectedBooking.price_breakdown.business_fees.gst_amount
+                          depositPaid: selectedBooking.deposit_paid
                         });
                         setIsEditMode(true);
                       }}
@@ -994,8 +1036,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                         status: formData.status,
                         totalEstimateAmount: formData.totalEstimateAmount,
                         depositAmount: formData.depositAmount,
-                        depositPaid: formData.depositPaid,
-                        gstAmount: formData.gstAmount
+                        depositPaid: formData.depositPaid
                       });
                       
                       setIsBookingDetailsOpen(false);
@@ -1075,29 +1116,16 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                     </select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="editTotalAmount">Total Amount ($)</Label>
-                      <Input
-                        id="editTotalAmount"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={formData.totalEstimateAmount}
-                        onChange={(e) => setFormData({ ...formData, totalEstimateAmount: parseFloat(e.target.value) || 0 })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="editGstAmount">GST Amount ($)</Label>
-                      <Input
-                        id="editGstAmount"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={formData.gstAmount}
-                        onChange={(e) => setFormData({ ...formData, gstAmount: parseFloat(e.target.value) || 0 })}
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editTotalAmount">Total Amount ($)</Label>
+                    <Input
+                      id="editTotalAmount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.totalEstimateAmount === 0 ? '' : formData.totalEstimateAmount}
+                      onChange={(e) => setFormData({ ...formData, totalEstimateAmount: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
+                    />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -1108,8 +1136,8 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                         type="number"
                         min="0"
                         step="0.01"
-                        value={formData.depositAmount}
-                        onChange={(e) => setFormData({ ...formData, depositAmount: parseFloat(e.target.value) || 0 })}
+                        value={formData.depositAmount === 0 ? '' : formData.depositAmount}
+                        onChange={(e) => setFormData({ ...formData, depositAmount: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
                       />
                     </div>
                     <div className="space-y-2">
