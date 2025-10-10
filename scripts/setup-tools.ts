@@ -28,7 +28,7 @@ async function createUpdateTools(toolName?: string) {
 
       if (toolsToProcess.length === 0) {
         console.log(`❌ Tool "${toolName}" not found in available tools`);
-        console.log('\n💡 Available tools:');
+        console.log('\n💡 Available tools: ');
         allAvailableTools.forEach(tool => {
           console.log(`   - ${tool.name} (v${tool.version})`);
         });
