@@ -5,6 +5,8 @@ import { GoogleAnalyticsProvider } from "../features/shared/components/analytics
 import { FacebookPixelProvider } from "../features/shared/components/analytics/facebook-pixel-provider";
 import "./globals.css";
 
+export const dynamic = 'force-dynamic';
+
 const defaultUrl = process.env.NODE_ENV === 'production'
   ? "https://skedy.io"
   : "http://localhost:3000";
