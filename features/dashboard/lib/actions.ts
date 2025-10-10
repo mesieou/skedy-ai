@@ -208,7 +208,6 @@ export async function createNewCustomer(data: {
       email: data.email.trim()
     };
 
-    console.log(`📊 [Dashboard] Creating customer with data:`, { userData, authUserData });
     const newCustomer = await userRepo.createWithAuth(userData, authUserData);
     console.log(`📊 [Dashboard] Created new customer: ${newCustomer.id}`);
 
@@ -218,12 +217,7 @@ export async function createNewCustomer(data: {
     };
   } catch (error) {
     console.error("Failed to create new customer:", error);
-    // Log the full error details
-    if (error instanceof Error) {
-      console.error("Error message:", error.message);
-      console.error("Error stack:", error.stack);
-    }
-    throw error; // Throw the original error to preserve details
+    throw new Error("Failed to create new customer");
   }
 }
 
@@ -315,6 +309,7 @@ export async function createSimpleBooking(data: {
   depositAmount: number;
   remainingBalance: number;
   depositPaid: boolean;
+  gstAmount: number;
 }): Promise<Booking> {
   try {
     console.log(`📊 [Dashboard] Creating booking for customer: ${data.customerId}`);
@@ -336,7 +331,7 @@ export async function createSimpleBooking(data: {
     const bookingsRepo = new BookingsRepository();
     const bookingServiceRepo = new BookingServiceRepository();
 
-    // Create booking
+    // Create booking with proper price breakdown
     const booking = await bookingsRepo.create({
       user_id: data.customerId, // Use the selected customer ID
       business_id: user.business_id,
@@ -347,18 +342,41 @@ export async function createSimpleBooking(data: {
       total_estimate_time_in_minutes: data.totalEstimateTimeInMinutes,
       deposit_amount: data.depositAmount,
       remaining_balance: data.remainingBalance,
-      deposit_paid: data.depositPaid
+      deposit_paid: data.depositPaid,
+      price_breakdown: {
+        service_breakdowns: [
+          {
+            service_id: data.serviceId,
+            service_name: data.serviceName,
+            quantity: 1,
+            service_cost: data.totalEstimateAmount - data.gstAmount,
+            total_cost: data.totalEstimateAmount - data.gstAmount,
+            estimated_duration_mins: data.totalEstimateTimeInMinutes,
+            component_breakdowns: []
+          }
+        ],
+        travel_breakdown: {
+          total_distance_km: 0,
+          total_travel_time_mins: 0,
+          total_travel_cost: 0,
+          route_segments: []
+        },
+        business_fees: {
+          gst_amount: data.gstAmount,
+          platform_fee: 0,
+          payment_processing_fee: 0,
+          other_fees: []
+        }
+      }
     });
 
     // Create booking_service relationship
-    const bookingService = await bookingServiceRepo.create({
+    await bookingServiceRepo.create({
       booking_id: booking.id,
       service_id: data.serviceId
     });
 
-    console.log(`📊 [Dashboard] Created booking: ${booking.id}`);
-    console.log(`📊 [Dashboard] Created booking_service relationship: booking_id=${bookingService.booking_id}, service_id=${bookingService.service_id}`);
-    
+    console.log(`📊 [Dashboard] Created booking: ${booking.id} with service: ${data.serviceId}`);
     return booking;
   } catch (error) {
     console.error("Failed to create booking:", error);
@@ -377,6 +395,7 @@ export async function updateBooking(data: {
   totalEstimateTimeInMinutes?: number;
   depositAmount?: number;
   depositPaid?: boolean;
+  gstAmount?: number;
 }): Promise<Booking> {
   try {
     console.log(`📊 [Dashboard] Updating booking: ${data.bookingId}`);
@@ -408,16 +427,44 @@ export async function updateBooking(data: {
       updateData.remaining_balance = data.depositPaid ? totalAmount - depositAmount : totalAmount;
     }
 
-    // Update booking_service if service changed
-    if (data.serviceId) {
-      // Delete old booking_service
-      await bookingServiceRepo.deleteOne({ booking_id: data.bookingId });
-      
-      // Create new booking_service
-      await bookingServiceRepo.create({
-        booking_id: data.bookingId,
-        service_id: data.serviceId
-      });
+    // Update price breakdown if service or amounts changed
+    if (data.serviceId || data.totalEstimateAmount !== undefined || data.gstAmount !== undefined) {
+      const serviceId = data.serviceId ?? existingBooking.price_breakdown.service_breakdowns[0]?.service_id;
+      const serviceName = data.serviceName ?? existingBooking.price_breakdown.service_breakdowns[0]?.service_name;
+      const totalAmount = data.totalEstimateAmount ?? existingBooking.total_estimate_amount;
+      const gstAmount = data.gstAmount ?? existingBooking.price_breakdown.business_fees.gst_amount;
+      const duration = data.totalEstimateTimeInMinutes ?? existingBooking.total_estimate_time_in_minutes;
+
+      updateData.price_breakdown = {
+        service_breakdowns: [
+          {
+            service_id: serviceId,
+            service_name: serviceName,
+            quantity: 1,
+            service_cost: totalAmount - gstAmount,
+            total_cost: totalAmount - gstAmount,
+            estimated_duration_mins: duration,
+            component_breakdowns: []
+          }
+        ],
+        travel_breakdown: existingBooking.price_breakdown.travel_breakdown,
+        business_fees: {
+          ...existingBooking.price_breakdown.business_fees,
+          gst_amount: gstAmount
+        }
+      };
+
+      // Update booking_service if service changed
+      if (data.serviceId && data.serviceId !== existingBooking.price_breakdown.service_breakdowns[0]?.service_id) {
+        // Delete old booking_service
+        await bookingServiceRepo.deleteOne({ booking_id: data.bookingId });
+        
+        // Create new booking_service
+        await bookingServiceRepo.create({
+          booking_id: data.bookingId,
+          service_id: data.serviceId
+        });
+      }
     }
 
     const updatedBooking = await bookingsRepo.updateOne({ id: data.bookingId }, updateData);
