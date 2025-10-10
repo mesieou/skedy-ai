@@ -143,7 +143,10 @@ export class GoogleDistanceApiService implements IDistanceApiService {
   }
 
   private addOptionalParams(params: URLSearchParams, request: DistanceApiRequest): void {
-    if (request.avoid) params.append('avoid', request.avoid);
+    if (request.avoidTolls) {
+      params.append('avoid', 'tolls');
+    }
+
     if (request.traffic_model) params.append('traffic_model', request.traffic_model);
     if (request.departure_time) {
       const timestamp = Math.floor(new Date(request.departure_time).getTime() / 1000);

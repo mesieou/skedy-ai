@@ -1,5 +1,5 @@
 import { GoogleDistanceApiService } from '../../../lib/services/google-distance-api';
-import { DistanceUnits, AvoidanceOptions } from '../../../lib/types/google-distance-api';
+import { DistanceUnits } from '../../../lib/types/google-distance-api';
 import { DateUtils } from '@/features/shared/utils/date-utils';
 
 describe('GoogleDistanceApiService', () => {
@@ -128,12 +128,26 @@ describe('GoogleDistanceApiService', () => {
     expect(result.duration_mins).toBeGreaterThan(0);
   });
 
-  it('should handle avoid parameter', async () => {
+  it('should handle avoidTolls parameter', async () => {
     const request = {
       origin: '123 Main St, Sydney NSW 2000',
       destination: '456 Collins St, Melbourne VIC 3000',
       units: DistanceUnits.METRIC,
-      avoid: AvoidanceOptions.TOLLS
+      avoidTolls: true
+    };
+
+    const result = await service.getDistanceAndDuration(request);
+
+    expect(result.status).toBe('OK');
+    expect(result.distance_km).toBeGreaterThan(0);
+    expect(result.duration_mins).toBeGreaterThan(0);
+  });
+
+  it('should work without avoidTolls parameter', async () => {
+    const request = {
+      origin: '123 Main St, Sydney NSW 2000',
+      destination: '456 Collins St, Melbourne VIC 3000',
+      units: DistanceUnits.METRIC
     };
 
     const result = await service.getDistanceAndDuration(request);
@@ -146,15 +160,15 @@ describe('GoogleDistanceApiService', () => {
   // Real API integration test (only runs if API key is available)
   describe('Real API Integration', () => {
     const hasApiKey = !!process.env.GOOGLE_MAPS_API_KEY;
-    
+
     (hasApiKey ? it : it.skip)('should work with real Google API (will fallback to mock if fetch unavailable)', async () => {
       // Override environment to force real API BEFORE creating service
       const originalEnv = process.env.USE_MOCK_DISTANCE_API;
       process.env.USE_MOCK_DISTANCE_API = 'false';
-      
+
       // Force real API usage by providing key and disabling mock
       const realService = new GoogleDistanceApiService(process.env.GOOGLE_MAPS_API_KEY);
-      
+
       try {
         const request = {
           origin: 'Sydney Town Hall, Sydney NSW 2000, Australia',
@@ -167,9 +181,9 @@ describe('GoogleDistanceApiService', () => {
         expect(result.status).toBe('OK');
         expect(result.distance_km).toBeGreaterThan(0);
         expect(result.duration_mins).toBeGreaterThan(0);
-        
+
         console.log(`API result: ${result.distance_km}km, ${result.duration_mins}mins`);
-        
+
         // If this is real API data, it should be more realistic
         if (result.distance_km > 10 || result.duration_mins > 30) {
           console.log('Note: This appears to be mock data (fetch not available in Jest)');
@@ -185,9 +199,9 @@ describe('GoogleDistanceApiService', () => {
     (hasApiKey ? it : it.skip)('should handle real API batch requests (will fallback to mock if fetch unavailable)', async () => {
       const originalEnv = process.env.USE_MOCK_DISTANCE_API;
       process.env.USE_MOCK_DISTANCE_API = 'false';
-      
+
       const realService = new GoogleDistanceApiService(process.env.GOOGLE_MAPS_API_KEY);
-      
+
       try {
         const requests = [
           {
@@ -209,7 +223,7 @@ describe('GoogleDistanceApiService', () => {
         expect(results).toHaveLength(2);
         expect(results[0].status).toBe('OK');
         expect(results[1].status).toBe('OK');
-        
+
         console.log(`Real batch API completed in ${duration}ms`);
         expect(duration).toBeLessThan(5000); // Should be faster than individual calls
       } finally {

@@ -38,7 +38,7 @@ export interface DistanceApiRequest {
   readonly origin: string;
   readonly destination: string;
   readonly units?: DistanceUnits;
-  readonly avoid?: AvoidanceOptions;
+  readonly avoidTolls?: boolean;
   readonly traffic_model?: TrafficModel;
   readonly departure_time?: string; // UTC ISO string
 }
@@ -74,7 +74,7 @@ export interface MatrixRequest {
   readonly origins: readonly string[];
   readonly destinations: readonly string[];
   readonly units?: DistanceUnits;
-  readonly avoid?: AvoidanceOptions;
+  readonly avoidTolls?: boolean;
   readonly traffic_model?: TrafficModel;
   readonly departure_time?: string;
 }
@@ -104,5 +104,5 @@ export const DEFAULT_DRIVING_SPEED_KMH = 40;
 export const API_BASE_URL = 'https://maps.googleapis.com/maps/api/distancematrix/json';
 
 // Type guards
-export const isSuccessfulResponse = (response: DistanceApiResponse): boolean => 
+export const isSuccessfulResponse = (response: DistanceApiResponse): boolean =>
   response.status === DistanceApiStatus.OK && response.distance_km > 0;
