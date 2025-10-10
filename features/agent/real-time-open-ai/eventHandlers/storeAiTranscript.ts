@@ -12,6 +12,20 @@ export async function storeAiTranscript(
     const { transcript, item_id } = event;
 
     console.log(`🤖 [AI Transcript] AI said: "${transcript}"`);
+    console.log(`🤖 [AI Transcript] Transcript length: ${transcript.length} characters`);
+
+    // Check for potential truncation indicators
+    if (transcript.length > 500) {
+      console.log(`📏 [AI Transcript] Long transcript detected (${transcript.length} chars) - checking for truncation`);
+    }
+
+    if (transcript.endsWith('...') || transcript.endsWith('…')) {
+      console.warn(`✂️ [AI Transcript] WARNING: Transcript appears to be truncated (ends with ellipsis)`);
+    }
+
+    if (!transcript.trim().endsWith('.') && !transcript.trim().endsWith('?') && !transcript.trim().endsWith('!')) {
+      console.warn(`✂️ [AI Transcript] WARNING: Transcript may be incomplete (doesn't end with punctuation)`);
+    }
 
     // Add breadcrumb for AI transcript
     sentry.addBreadcrumb(`AI transcript received`, 'ai-transcript', {
@@ -19,7 +33,8 @@ export async function storeAiTranscript(
       businessId: session.businessId,
       conversationId: session.openAiConversationId,
       itemId: item_id,
-      transcriptLength: transcript.length
+      transcriptLength: transcript.length,
+      possiblyTruncated: transcript.endsWith('...') || transcript.endsWith('…')
     });
 
     // Validate required session data

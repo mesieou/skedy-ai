@@ -7,7 +7,7 @@
 export const OPENAI_REALTIME_CONFIG = {
   BASE_URL: "https://api.openai.com/v1/realtime/calls",
   MODEL: "gpt-realtime", // Use gpt-realtime for both SIP and WebRTC
-  VOICE: "alloy",
+  VOICE: "marin",
 } as const;
 
 // Shared audio configuration for OpenAI Realtime

@@ -66,16 +66,6 @@ export async function acceptCall(session: Session): Promise<CallAcceptResponse> 
 
     console.log(`📞 [AcceptCall] Response data:`, JSON.stringify(response.data, null, 2));
 
-    // Add success breadcrumb
-    // Log OpenAI response headers for debugging
-    console.log(`📊 [AcceptCall] OpenAI Response Headers:`);
-    console.log(`📊 [AcceptCall] - x-request-id: ${response.headers?.['x-request-id'] || 'not provided'}`);
-    console.log(`📊 [AcceptCall] - openai-organization: ${response.headers?.['openai-organization'] || 'not provided'}`);
-    console.log(`📊 [AcceptCall] - openai-processing-ms: ${response.headers?.['openai-processing-ms'] || 'not provided'}`);
-    console.log(`📊 [AcceptCall] - openai-version: ${response.headers?.['openai-version'] || 'not provided'}`);
-    console.log(`📊 [AcceptCall] - x-ratelimit-remaining-requests: ${response.headers?.['x-ratelimit-remaining-requests'] || 'not provided'}`);
-    console.log(`📊 [AcceptCall] - x-ratelimit-remaining-tokens: ${response.headers?.['x-ratelimit-remaining-tokens'] || 'not provided'}`);
-
     sentry.addBreadcrumb(`Call accepted successfully`, 'call-accept', {
       sessionId: session.id,
       status: response.status,

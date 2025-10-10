@@ -20,20 +20,6 @@ export function DashboardTabs({ user, bookings, sessions }: DashboardTabsProps) 
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const selectedSession = sessions.find(s => s.id === selectedSessionId);
 
-  // Client-side logging
-  console.log(`📊 [DashboardTabs] Rendering dashboard for user: ${user.email}`);
-  console.log(`📊 [DashboardTabs] Received ${bookings.length} bookings and ${sessions.length} sessions`);
-  
-  if (bookings.length > 0) {
-    console.log(`📊 [DashboardTabs] Bookings:`, bookings.map(b => ({
-      id: b.id,
-      status: b.status,
-      start_at: b.start_at,
-      services: b.services.length
-    })));
-  } else {
-    console.log(`📊 [DashboardTabs] No bookings found for user`);
-  }
 
   return (
     <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-8 pb-16">
@@ -85,9 +71,9 @@ export function DashboardTabs({ user, bookings, sessions }: DashboardTabsProps) 
 
           <TabsContent value="transcription" className="space-y-4">
             {selectedSession ? (
-              <ConversationDetail 
-                session={selectedSession} 
-                onBack={() => setSelectedSessionId(null)} 
+              <ConversationDetail
+                session={selectedSession}
+                onBack={() => setSelectedSessionId(null)}
               />
             ) : (
               <div>

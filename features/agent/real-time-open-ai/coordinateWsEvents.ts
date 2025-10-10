@@ -161,7 +161,10 @@ export function attachWSHandlers(session: Session) {
         break;
 
       case "conversation.item.truncated":
-        // Conversation item was truncated
+        // Conversation item was truncated - this is important for debugging!
+        console.warn(`✂️ [WS Event] TRUNCATION DETECTED for session ${session.id}`);
+        console.warn(`✂️ [WS Event] Truncated item details:`, event);
+
         break;
 
       // Error Events
