@@ -51,7 +51,7 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // If there is no user and the user tries to access a protected route
-  if (!user && pathname.startsWith("/dashboard")) {
+  if (!user && pathname.startsWith("/protected/dashboard")) {
     // Preserve the original URL (including query parameters) as a return URL
     const returnUrl = encodeURIComponent(request.nextUrl.pathname + request.nextUrl.search);
     return NextResponse.redirect(new URL(`/auth/login?returnUrl=${returnUrl}`, request.url));
@@ -59,12 +59,12 @@ export async function updateSession(request: NextRequest) {
 
   // If user is authenticated and trying to access auth pages, redirect to protected
   if (user && (pathname === "/auth/login" || pathname === "/auth/sign-up")) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/protected/dashboard", request.url));
   }
 
   // If user is authenticated and on root, redirect to protected
   if (user && pathname === "/") {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/protected/dashboard", request.url));
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.
