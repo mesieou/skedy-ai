@@ -4,7 +4,6 @@ import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { GoogleAnalyticsProvider } from "../features/shared/components/analytics/google-analytics-provider";
 import { FacebookPixelProvider } from "../features/shared/components/analytics/facebook-pixel-provider";
-import Script from "next/script";
 import "./globals.css";
 
 // 1️⃣ Force dynamic rendering so runtime envs are available
@@ -135,27 +134,24 @@ const structuredData = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  // 6️⃣ Runtime env for client
-  const publicEnv = {
-    SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY,
-    GOOGLE_ANALYTICS_ID: process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID,
-    FACEBOOK_PIXEL_ID: process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID,
-  };
-
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* 7️⃣ Inject runtime env safely */}
-        <Script id="runtime-env" strategy="beforeInteractive">
-          {`window.__ENV = ${JSON.stringify(publicEnv)};`}
-        </Script>
+        {/* 6️⃣ Inject runtime env safely using raw <script> */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.__ENV = {
+              NEXT_PUBLIC_SUPABASE_URL: "${process.env.NEXT_PUBLIC_SUPABASE_URL}",
+              NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY: "${process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY}",
+              NEXT_PUBLIC_GOOGLE_ANALYTICS_ID: "${process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID}",
+              NEXT_PUBLIC_FACEBOOK_PIXEL_ID: "${process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID}"
+            };`,
+          }}
+        />
 
-        {/* 8️⃣ Structured data for SEO */}
-        <Script
-          id="structured-data"
+        {/* 7️⃣ Structured data for SEO */}
+        <script
           type="application/ld+json"
-          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
       </head>
