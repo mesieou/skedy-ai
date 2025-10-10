@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Calendar, FileText } from "lucide-react";
 import type { User } from "@/features/auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/features/shared/components/ui/tabs";
@@ -17,8 +18,14 @@ interface DashboardTabsProps {
 }
 
 export function DashboardTabs({ user, bookings, sessions }: DashboardTabsProps) {
+  const router = useRouter();
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const selectedSession = sessions.find(s => s.id === selectedSessionId);
+
+  const handleBookingCreated = () => {
+    // Refresh the page data to show the new booking
+    router.refresh();
+  };
 
 
   return (
@@ -49,7 +56,7 @@ export function DashboardTabs({ user, bookings, sessions }: DashboardTabsProps) 
 
           <TabsContent value="bookings" className="space-y-4">
             {bookings.length > 0 ? (
-              <WeeklyCalendar bookings={bookings} />
+              <WeeklyCalendar bookings={bookings} user={user} onBookingCreated={handleBookingCreated} />
             ) : (
               <Card className="p-6">
                 <div className="space-y-4">

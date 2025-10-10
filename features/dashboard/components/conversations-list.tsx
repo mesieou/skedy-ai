@@ -1,9 +1,10 @@
 "use client";
 
-import React from "react";
-import { MessageSquare, Phone, Globe, Mail, Facebook } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { MessageSquare, Phone, Globe, Mail, Facebook, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card } from "@/features/shared/components/ui/card";
 import { Badge } from "@/features/shared/components/ui/badge";
+import { Button } from "@/features/shared/components/ui/button";
 import type { SessionWithInteractions } from "../lib/actions";
 import { ChatChannel, ChatSessionStatus } from "@/features/shared/lib/database/types/chat-sessions";
 import { DateUtils } from "@/features/shared/utils/date-utils";
@@ -53,7 +54,26 @@ const getStatusStyle = (status: ChatSessionStatus) => {
   }
 };
 
+const ITEMS_PER_PAGE = 10;
+
 export function ConversationsList({ sessions, selectedSessionId, onSelectSession }: ConversationsListProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = Math.ceil(sessions.length / ITEMS_PER_PAGE);
+  
+  const paginatedSessions = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return sessions.slice(startIndex, endIndex);
+  }, [sessions, currentPage]);
+
+  // Reset to page 1 if current page exceeds total pages
+  React.useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [currentPage, totalPages]);
+
   const formatDate = (dateStr: string) => {
     try {
       const now = DateUtils.nowUTC();
@@ -90,14 +110,15 @@ export function ConversationsList({ sessions, selectedSessionId, onSelectSession
   };
 
   return (
-    <div className="space-y-2">
-      {sessions.length === 0 ? (
-        <Card className="p-8 text-center">
-          <MessageSquare className="w-12 h-12 mx-auto mb-4 text-muted-foreground/30" />
-          <p className="text-muted-foreground">No conversations yet</p>
-        </Card>
-      ) : (
-        sessions.map((session) => {
+    <div className="space-y-4">
+      <div className="space-y-2">
+        {sessions.length === 0 ? (
+          <Card className="p-8 text-center">
+            <MessageSquare className="w-12 h-12 mx-auto mb-4 text-muted-foreground/30" />
+            <p className="text-muted-foreground">No conversations yet</p>
+          </Card>
+        ) : (
+          paginatedSessions.map((session) => {
           const Icon = channelIcons[session.channel as keyof typeof channelIcons];
           const isSelected = session.id === selectedSessionId;
           const messageCount = session.interactions?.length || 0;
@@ -149,6 +170,67 @@ export function ConversationsList({ sessions, selectedSessionId, onSelectSession
             </Card>
           );
         })
+      )}
+      </div>
+
+      {/* Pagination Controls */}
+      {sessions.length > ITEMS_PER_PAGE && (
+        <div className="flex items-center justify-between pt-2 border-t">
+          <p className="text-sm text-muted-foreground">
+            Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, sessions.length)} of {sessions.length} conversations
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Previous
+            </Button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                // Show first page, last page, current page, and pages around current
+                const showPage = 
+                  page === 1 || 
+                  page === totalPages || 
+                  (page >= currentPage - 1 && page <= currentPage + 1);
+                
+                const showEllipsis = 
+                  (page === currentPage - 2 && currentPage > 3) ||
+                  (page === currentPage + 2 && currentPage < totalPages - 2);
+
+                if (showEllipsis) {
+                  return <span key={page} className="px-2 text-muted-foreground">...</span>;
+                }
+
+                if (!showPage) return null;
+
+                return (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(page)}
+                    className="min-w-[2.5rem]"
+                  >
+                    {page}
+                  </Button>
+                );
+              })}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );
