@@ -105,10 +105,6 @@ export function attachWSHandlers(session: Session) {
 
       case "response.output_audio_transcript.delta":
         // Real-time transcript delta as AI speaks (handled by response.output_audio_transcript.done)
-        const deltaEvent = event as { delta?: string; item_id?: string };
-        if (deltaEvent.delta) {
-          console.log(`🔄 [AI Transcript Delta] Session ${session.id} | Delta: "${deltaEvent.delta}" (${deltaEvent.delta.length} chars)`);
-        }
         break;
 
       case "output_audio_buffer.started":

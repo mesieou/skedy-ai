@@ -68,8 +68,8 @@ export async function getServiceDetails(
       const pricingInfo = PricingFormatter.formatServicePricingInfo(service);
       const completePricingOverview = PricingFormatter.generateCompletePricingOverview(service);
 
-      // Create enhanced message with pricing details
-      const enhancedMessage = `We offer ${service.name}. ${service.description}. ${completePricingOverview}`;
+      // Create enhanced message with pricing details - MUST mention ALL tiers
+      const enhancedMessage = `We offer ${service.name}. ${service.description}. IMPORTANT: You must mention ALL of these pricing options to the customer: ${completePricingOverview}`;
 
       // Success: return service data with comprehensive pricing information
       return buildToolResponse(
