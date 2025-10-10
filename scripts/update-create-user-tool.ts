@@ -50,7 +50,7 @@ async function updateCreateUserTool() {
 
     console.log('\n🎉 create_user tool update completed!');
     console.log('📋 Changes:');
-    console.log('   - Version: 1.0.0 → 1.0.1');
+    console.log('   - Version: 1.0.0 → 1.0.1 ');
     console.log('   - Required: first_name, phone_number');
     console.log('   - Optional: last_name');
     console.log('   - Removed: email requirement');
