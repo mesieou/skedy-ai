@@ -2,6 +2,7 @@ import Fuse from 'fuse.js';
 import { ServiceRepository } from '../../../shared/lib/database/repositories/service-repository';
 import type { Session } from '../../sessions/session';
 import { buildToolResponse } from '../helpers/responseBuilder';
+import { PricingFormatter } from '../helpers/pricingFormatter';
 import { sentry } from '@/features/shared/utils/sentryService';
 
 /**
@@ -63,12 +64,22 @@ export async function getServiceDetails(
         searchScore: searchResults[0].score
       });
 
-      // Success: return service data
-        return buildToolResponse(
-          service as unknown as Record<string, unknown>,
-          `We offer ${service.name}. ${service.description}`,
-          true
-        );
+      // Generate comprehensive pricing information
+      const pricingInfo = PricingFormatter.formatServicePricingInfo(service);
+      const completePricingOverview = PricingFormatter.generateCompletePricingOverview(service);
+
+      // Create enhanced message with pricing details
+      const enhancedMessage = `We offer ${service.name}. ${service.description}. ${completePricingOverview}`;
+
+      // Success: return service data with comprehensive pricing information
+      return buildToolResponse(
+        {
+          ...(service as unknown as Record<string, unknown>),
+          pricing_tiers: pricingInfo.pricingTiers,
+        },
+        enhancedMessage,
+        true
+      );
     } else {
       // User input error - service name not found (fuzzy search failed)
       const suggestions = session.serviceNames.slice(0, 3).join(', ');
