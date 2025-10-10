@@ -10,7 +10,7 @@ export async function createUser(
   args: {
     first_name: string;
     last_name?: string;
-    phone_number: string;
+    mobile_number: string;
   },
   session: Session
 ) {
@@ -23,7 +23,7 @@ export async function createUser(
       businessId: session.businessId,
       firstName: args.first_name,
       hasLastName: !!args.last_name,
-      phoneNumber: args.phone_number
+      phoneNumber: args.mobile_number
     });
     // Validate required fields (user input validation)
     if (!args.first_name || args.first_name.trim().length === 0) {
@@ -31,15 +31,15 @@ export async function createUser(
       return buildToolResponse(null, `First name is required to create your profile.`, false);
     }
 
-    if (!args.phone_number || args.phone_number.trim().length === 0) {
+    if (!args.mobile_number || args.mobile_number.trim().length === 0) {
       // User input error - empty phone
-      return buildToolResponse(null, `Phone number is required to create your profile.`, false);
+      return buildToolResponse(null, `Mobile number is required to create your profile.`, false);
     }
 
     // Prepare user data for creation
     const userData = {
       name: args.first_name.trim(),
-      phone_number: args.phone_number.trim(),
+      phone_number: args.mobile_number.trim(),
       business_id: session.businessEntity.id,
       // Optional fields
       last_name: args.last_name?.trim() || undefined
@@ -88,7 +88,7 @@ export async function createUser(
         duration: duration,
         firstName: args.first_name,
         hasLastName: !!args.last_name,
-        phoneNumber: args.phone_number,
+        phoneNumber: args.mobile_number,
         errorName: (error as Error).name
       }
     });

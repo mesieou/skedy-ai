@@ -142,12 +142,12 @@ export const createUserTool: CreateToolData = {
           type: 'string',
           description: 'Customer last name'
         },
-        phone_number: {
+        mobile_number: {
           type: 'string',
           description: 'Customer mobile number (e.g., 0412345678)'
         }
       },
-      required: ['first_name', 'phone_number'],
+      required: ['first_name', 'mobile_number'],
       additionalProperties: false
     }
   },

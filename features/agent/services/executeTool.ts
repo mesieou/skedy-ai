@@ -86,7 +86,7 @@ export async function executeToolFunction(
         break;
       case 'create_user':
         result = await createUser(
-          args as { first_name: string; last_name?: string; phone_number: string },
+          args as { first_name: string; last_name?: string; mobile_number: string },
           session
         );
         break;

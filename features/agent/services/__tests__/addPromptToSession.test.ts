@@ -5,9 +5,7 @@ import { BusinessToolsRepository } from '../../../shared/lib/database/repositori
 import { ServiceRepository } from '../../../shared/lib/database/repositories/service-repository';
 import { PROMPTS_NAMES } from '../../../shared/lib/database/types/prompt';
 import { createUniqueRemovalistBusinessData } from '../../../shared/lib/database/seeds/data/business-data';
-import { removalistPrompt } from '../../../shared/lib/database/seeds/data/prompts-data';
 import { removalistTools } from '../../../shared/lib/database/seeds/data/tools-data';
-import { removalistExample1ServiceData } from '../../../shared/lib/database/seeds/data/services-data';
 import type { Session } from '../../sessions/session';
 import type { Business } from '../../../shared/lib/database/types/business';
 import type { Prompt } from '../../../shared/lib/database/types/prompt';

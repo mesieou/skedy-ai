@@ -249,7 +249,7 @@ export async function POST(request: NextRequest) {
         business: {
           id: business.id,
           name: business.name,
-          phone: business.phone_number,
+          phone_number: business.phone_number,
           email: business.email
         },
         users: {
