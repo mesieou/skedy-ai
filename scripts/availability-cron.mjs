@@ -46,7 +46,7 @@ async function runRollover() {
 // Run every hour at minute 0
 cron.schedule('0 * * * *', async () => {
   const currentTime = new Date().toISOString();
-  console.log(`[AvailabilityCron] 🕐 Running availability rollover check at ${currentTime}`);
+  console.log(` [AvailabilityCron] 🕐 Running availability rollover check at ${currentTime}`);
 
   sentry.addBreadcrumb('Cron job triggered', 'cron-schedule', {
     currentTime,
