@@ -6,9 +6,6 @@ import { GoogleAnalyticsProvider } from "../features/shared/components/analytics
 import { FacebookPixelProvider } from "../features/shared/components/analytics/facebook-pixel-provider";
 import "./globals.css";
 
-// 1️⃣ Force dynamic rendering so runtime envs are available
-export const dynamic = 'force-dynamic';
-
 // 2️⃣ Default URL for metadata
 const defaultUrl =
   process.env.NODE_ENV === "production"
@@ -137,19 +134,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* 6️⃣ Inject runtime env safely using raw <script> */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `window.__ENV = {
-              NEXT_PUBLIC_SUPABASE_URL: "${process.env.NEXT_PUBLIC_SUPABASE_URL}",
-              NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY: "${process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY}",
-              NEXT_PUBLIC_GOOGLE_ANALYTICS_ID: "${process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID}",
-              NEXT_PUBLIC_FACEBOOK_PIXEL_ID: "${process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID}"
-            };`,
-          }}
-        />
-
-        {/* 7️⃣ Structured data for SEO */}
+        {/* Structured data for SEO */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}

@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import Script from 'next/script';
-import { getGoogleAnalyticsId } from '../../lib/client-env';
+// Google Analytics ID from environment variables
 
 type GtagCommand = 'config' | 'event' | 'js' | 'set';
 type GtagConfigParams = {
@@ -32,7 +32,7 @@ interface GoogleAnalyticsProviderProps {
  * for the application. Only loads when a valid tracking ID is provided.
  */
 export function GoogleAnalyticsProvider({ children }: GoogleAnalyticsProviderProps) {
-  const googleAnalyticsId = getGoogleAnalyticsId();
+  const googleAnalyticsId = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID;
 
   useEffect(() => {
     if (!googleAnalyticsId) {
@@ -90,7 +90,7 @@ export function trackGoogleAnalyticsEvent(
   eventName: string,
   parameters?: GtagEventParams
 ) {
-  const googleAnalyticsId = getGoogleAnalyticsId();
+  const googleAnalyticsId = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID;
 
   if (!googleAnalyticsId || typeof window === 'undefined' || !window.gtag) {
     return;
@@ -107,7 +107,7 @@ export function trackGoogleAnalyticsEvent(
  * Track page views with Google Analytics
  */
 export function trackGoogleAnalyticsPageView(url: string, title?: string) {
-  const googleAnalyticsId = getGoogleAnalyticsId();
+  const googleAnalyticsId = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID;
 
   if (!googleAnalyticsId || typeof window === 'undefined' || !window.gtag) {
     return;

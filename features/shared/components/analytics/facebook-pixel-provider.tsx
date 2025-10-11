@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import Script from 'next/script';
-import { getFacebookPixelId } from '../../lib/client-env';
+// Facebook Pixel ID from environment variables
 
 // TypeScript declarations for Facebook Pixel
 interface FacebookPixelFunction {
@@ -32,7 +32,7 @@ interface FacebookPixelProviderProps {
  * for the application. Only loads when a valid Pixel ID is provided.
  */
 export function FacebookPixelProvider({ children }: FacebookPixelProviderProps) {
-  const facebookPixelId = getFacebookPixelId();
+  const facebookPixelId = process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID;
 
   useEffect(() => {
     if (!facebookPixelId) {
@@ -136,7 +136,7 @@ export function trackFacebookPixelEvent(
   eventName: string,
   parameters?: Record<string, unknown>
 ) {
-  const facebookPixelId = getFacebookPixelId();
+  const facebookPixelId = process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID;
 
   if (!facebookPixelId || typeof window === 'undefined' || !window.fbq) {
     return;
@@ -152,7 +152,7 @@ export function trackFacebookPixelCustomEvent(
   eventName: string,
   parameters?: Record<string, unknown>
 ) {
-  const facebookPixelId = getFacebookPixelId();
+  const facebookPixelId = process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID;
 
   if (!facebookPixelId || typeof window === 'undefined' || !window.fbq) {
     return;

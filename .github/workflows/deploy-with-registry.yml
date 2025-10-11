@@ -46,20 +46,6 @@ jobs:
           type=raw,value=latest,enable={{is_default_branch}}
           type=raw,value={{date 'YYYYMMDD-HHmmss'}}
 
-    - name: Debug environment variables
-      run: |
-        echo "Checking if secrets are available (will show empty if not set):"
-        echo "SUPABASE_URL length: ${#NEXT_PUBLIC_SUPABASE_URL}"
-        echo "SUPABASE_KEY length: ${#NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY}"
-        echo "GA_ID length: ${#NEXT_PUBLIC_GOOGLE_ANALYTICS_ID}"
-        echo "FB_ID length: ${#NEXT_PUBLIC_FACEBOOK_PIXEL_ID}"
-        echo "Build triggered at: $(date -u)"
-      env:
-        NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY }}
-        NEXT_PUBLIC_GOOGLE_ANALYTICS_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID }}
-        NEXT_PUBLIC_FACEBOOK_PIXEL_ID: ${{ secrets.NEXT_PUBLIC_FACEBOOK_PIXEL_ID }}
-
     - name: Build and push Docker image
       id: build
       uses: docker/build-push-action@v5
@@ -69,9 +55,8 @@ jobs:
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
-        # Temporarily disable cache to force fresh build with environment variables
-        # cache-from: type=gha
-        # cache-to: type=gha,mode=max
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
         platforms: linux/amd64
         build-args: |
           NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
