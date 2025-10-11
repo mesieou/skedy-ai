@@ -99,36 +99,6 @@ export function ConversationDetail({ session, onBack }: ConversationDetailProps)
         </div>
       </div>
 
-      {/* Session Info Card */}
-      <Card className="p-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div>
-            <p className="text-muted-foreground">Status</p>
-            <Badge className={session.status === ChatSessionStatus.ACTIVE ? "bg-green-500" : "bg-gray-500"}>
-              {session.status}
-            </Badge>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Interactions</p>
-            <p className="font-semibold">{interactions.length}</p>
-          </div>
-          {session.token_spent && (
-            <>
-              <div>
-                <p className="text-muted-foreground">Tokens Used</p>
-                <p className="font-semibold">
-                  {(session.token_spent.inputTokens || 0) + (session.token_spent.outputTokens || 0)}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Cost</p>
-                <p className="font-semibold">${session.token_spent.totalCost?.toFixed(4)}</p>
-              </div>
-            </>
-          )}
-        </div>
-      </Card>
-
       {/* Interactions */}
       <Card className="p-6">
         <h3 className="text-lg font-semibold mb-4">Conversation</h3>
@@ -149,39 +119,6 @@ export function ConversationDetail({ session, onBack }: ConversationDetailProps)
           )}
         </div>
       </Card>
-
-      {/* Token Usage Details (if available) */}
-      {session.token_spent && (
-        <Card className="p-4">
-          <h3 className="text-sm font-semibold mb-3">Token Usage Details</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
-            <div>
-              <p className="text-muted-foreground">Input Tokens</p>
-              <p className="font-semibold">{session.token_spent.inputTokens || 0}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Output Tokens</p>
-              <p className="font-semibold">{session.token_spent.outputTokens || 0}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Cached Tokens</p>
-              <p className="font-semibold">{session.token_spent.cachedTokens || 0}</p>
-            </div>
-            {session.token_spent.audioInputTokens !== undefined && (
-              <>
-                <div>
-                  <p className="text-muted-foreground">Audio Input</p>
-                  <p className="font-semibold">{session.token_spent.audioInputTokens}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Audio Output</p>
-                  <p className="font-semibold">{session.token_spent.audioOutputTokens || 0}</p>
-                </div>
-              </>
-            )}
-          </div>
-        </Card>
-      )}
     </div>
   );
 }
