@@ -405,39 +405,41 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
   return (
     <div className="space-y-4">
       {/* Header with navigation */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h2 className="text-2xl font-semibold">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+          <h2 className="text-lg sm:text-2xl font-semibold">
             {formatMonthYear(viewMode === 'week' ? currentWeekStart : currentMonth)}
           </h2>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={goToToday}
-            className="hover:text-foreground"
-          >
-            Today
-          </Button>
-          <Button 
-            variant="outline" 
-            size={viewMode === 'month' ? 'sm' : 'icon'}
-            onClick={toggleViewMode}
-            title={viewMode === 'week' ? 'Switch to month view' : 'Switch to week view'}
-            className="hover:text-foreground"
-          >
-            {viewMode === 'week' ? (
-              <Calendar className="w-4 h-4" />
-            ) : (
-              'Weekly'
-            )}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={goToToday}
+              className="hover:text-foreground text-xs sm:text-sm"
+            >
+              Today
+            </Button>
+            <Button 
+              variant="outline" 
+              size={viewMode === 'month' ? 'sm' : 'icon'}
+              onClick={toggleViewMode}
+              title={viewMode === 'week' ? 'Switch to month view' : 'Switch to week view'}
+              className="hover:text-foreground"
+            >
+              {viewMode === 'week' ? (
+                <Calendar className="w-4 h-4" />
+              ) : (
+                <span className="text-xs sm:text-sm">Weekly</span>
+              )}
+            </Button>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button 
             variant="outline" 
             size="icon" 
             onClick={handlePrevious}
-            className="hover:text-foreground"
+            className="hover:text-foreground h-8 w-8 sm:h-10 sm:w-10"
           >
             <ChevronLeft className="w-4 h-4" />
           </Button>
@@ -445,7 +447,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
             variant="outline" 
             size="icon" 
             onClick={handleNext}
-            className="hover:text-foreground"
+            className="hover:text-foreground h-8 w-8 sm:h-10 sm:w-10"
           >
             <ChevronRight className="w-4 h-4" />
           </Button>
@@ -453,7 +455,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
       </div>
 
       {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2">
         {displayDays.map((day, index) => {
           const dayBookings = getBookingsForDay(day);
           const isTodayDate = isToday(day);
@@ -462,7 +464,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
           return (
             <Card
               key={index}
-              className={`p-3 ${viewMode === 'week' ? 'min-h-[200px]' : 'min-h-[120px]'} ${
+              className={`p-2 sm:p-3 ${viewMode === 'week' ? 'min-h-[150px] sm:min-h-[200px]' : 'min-h-[100px] sm:min-h-[120px]'} ${
                 isTodayDate ? "ring-2 ring-primary" : ""
               } ${
                 viewMode === 'month' && !isInCurrentMonth ? "opacity-40" : ""
@@ -472,13 +474,11 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
               <div className="space-y-2">
                 {/* Day header */}
                 <div className="text-center pb-2 border-b">
-                  {viewMode === 'week' && (
-                    <div className="text-xs text-muted-foreground font-medium">
-                      {day.toLocaleDateString("en-US", { weekday: "short" })}
-                    </div>
-                  )}
+                  <div className="text-xs text-muted-foreground font-medium">
+                    {day.toLocaleDateString("en-US", { weekday: "short" })}
+                  </div>
                   <div
-                    className={`text-lg font-semibold ${
+                    className={`text-base sm:text-lg font-semibold ${
                       isTodayDate ? "text-primary" : ""
                     }`}
                   >
@@ -487,11 +487,11 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                 </div>
 
                 {/* Bookings for this day */}
-                <div className="space-y-1.5">
+                <div className="space-y-1 sm:space-y-1.5">
                   {loadingDates.has(day.toISOString().split('T')[0]) && (
-                    <div className="flex items-center justify-center py-8">
+                    <div className="flex items-center justify-center py-4 sm:py-8">
                       <div className="flex flex-col items-center gap-2">
-                        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                        <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin text-primary" />
                         <span className="text-xs text-muted-foreground">Adding booking...</span>
                       </div>
                     </div>
@@ -501,7 +501,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                       {dayBookings.slice(0, 5).map((booking) => (
                         <div
                           key={booking.id}
-                          className="px-2 py-1.5 rounded-md bg-muted/60 hover:bg-muted transition-colors cursor-pointer border border-muted-foreground/10"
+                          className="px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-md bg-muted/60 hover:bg-muted transition-colors cursor-pointer border border-muted-foreground/10"
                           onClick={async (e) => {
                             e.stopPropagation();
                             setSelectedBooking(booking);
@@ -522,26 +522,26 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                             }
                           }}
                         >
-                          <div className="flex items-center justify-between gap-2 mb-1">
+                          <div className="flex items-center justify-between gap-1 sm:gap-2 mb-0.5 sm:mb-1">
                             <Badge
-                              className={`${getStatusStyle(booking.status)} text-[9px] px-1.5 py-0 h-4`}
+                              className={`${getStatusStyle(booking.status)} text-[8px] sm:text-[9px] px-1 sm:px-1.5 py-0 h-3 sm:h-4`}
                             >
                               {booking.status}
                             </Badge>
-                            <span className="text-[10px] font-semibold text-muted-foreground">
+                            <span className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground">
                               {formatTime(booking.start_at)}
                             </span>
                           </div>
-                          <p className="text-[11px] font-medium line-clamp-1 text-foreground/90">
+                          <p className="text-[10px] sm:text-[11px] font-medium line-clamp-1 text-foreground/90">
                             {booking.services.length > 0 
                               ? booking.services.map((s) => s.name).join(", ")
                               : "No service"}
                           </p>
-                          <div className="flex items-center justify-between mt-1">
-                            <span className="text-[10px] text-muted-foreground">
+                          <div className="flex items-center justify-between mt-0.5 sm:mt-1">
+                            <span className="text-[9px] sm:text-[10px] text-muted-foreground">
                               {booking.total_estimate_time_in_minutes}min
                             </span>
-                            <span className="text-[11px] font-semibold text-foreground">
+                            <span className="text-[10px] sm:text-[11px] font-semibold text-foreground">
                               ${booking.total_estimate_amount.toFixed(0)}
                             </span>
                           </div>
@@ -554,7 +554,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                             setDayViewDate(day);
                             setIsDayViewOpen(true);
                           }}
-                          className="w-full py-1.5 text-[11px] font-medium text-primary hover:text-primary/80 transition-colors rounded-md hover:bg-primary/5"
+                          className="w-full py-1 sm:py-1.5 text-[10px] sm:text-[11px] font-medium text-primary hover:text-primary/80 transition-colors rounded-md hover:bg-primary/5"
                         >
                           +{dayBookings.length - 5} more booking{dayBookings.length - 5 > 1 ? 's' : ''}
                         </button>
@@ -562,8 +562,8 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                     </>
                   ) : (
                     !loadingDates.has(day.toISOString().split('T')[0]) && viewMode === 'week' && (
-                      <div className="text-center py-4">
-                        <Calendar className="w-6 h-6 mx-auto text-muted-foreground/30" />
+                      <div className="text-center py-2 sm:py-4">
+                        <Calendar className="w-5 h-5 sm:w-6 sm:h-6 mx-auto text-muted-foreground/30" />
                       </div>
                     )
                   )}
@@ -574,20 +574,9 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
         })}
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center gap-4 text-sm">
-        <span className="text-muted-foreground">Status:</span>
-        <div className="flex items-center gap-2">
-          <Badge className={getStatusStyle(BookingStatus.CONFIRMED)}>Confirmed</Badge>
-          <Badge className={getStatusStyle(BookingStatus.COMPLETED)}>Completed</Badge>
-          <Badge className={getStatusStyle(BookingStatus.PENDING)}>Pending</Badge>
-          <Badge className={getStatusStyle(BookingStatus.CANCELLED)}>Cancelled</Badge>
-        </div>
-      </div>
-
       {/* Booking Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-lg" onClose={handleCloseModal}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" onClose={handleCloseModal}>
           <DialogHeader>
             <DialogTitle>Create New Booking</DialogTitle>
             <DialogDescription>
@@ -604,7 +593,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
             </DialogDescription>
           </DialogHeader>
           
-          <form onSubmit={handleSubmit} className="p-6 pt-2 space-y-4">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 pt-2 space-y-3 sm:space-y-4">
             {/* Customer Type Selection */}
             <div className="space-y-2">
               <Label>Customer Type</Label>
@@ -661,8 +650,8 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
 
             {/* New Customer Fields (only for new customers) */}
             {customerType === 'new' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-3 sm:space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="newCustomerFirstName">First Name *</Label>
                     <Input
@@ -733,7 +722,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="startTime">Start Time</Label>
                 <Input
@@ -776,7 +765,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
               </select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="totalEstimateAmount">Total Amount ($)</Label>
                 <Input
@@ -804,7 +793,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="depositAmount">Deposit Amount ($)</Label>
                 <Input
@@ -857,7 +846,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
 
       {/* Booking Details Modal */}
       <Dialog open={isBookingDetailsOpen} onOpenChange={setIsBookingDetailsOpen}>
-        <DialogContent className="max-w-2xl" onClose={() => {
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onClose={() => {
           setIsBookingDetailsOpen(false);
           setIsEditMode(false);
         }}>
@@ -876,11 +865,11 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
           </DialogHeader>
 
           {selectedBooking && (
-            <div className="px-6 pb-6 space-y-6">
+            <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-4 sm:space-y-6">
               {!isEditMode ? (
                 /* View Mode */
                 <>
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                     <div>
                       <Label className="text-muted-foreground">Status</Label>
                       <div className="mt-2">
@@ -899,7 +888,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                     <div>
                       <Label className="text-muted-foreground">Start Time</Label>
                       <p className="mt-2 font-medium">{formatTime(selectedBooking.start_at)}</p>
@@ -910,18 +899,18 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                     <div>
                       <Label className="text-muted-foreground">Duration</Label>
                       <p className="mt-2 font-medium">{selectedBooking.total_estimate_time_in_minutes} minutes</p>
                     </div>
                     <div>
                       <Label className="text-muted-foreground">Total Amount</Label>
-                      <p className="mt-2 text-xl font-bold">${selectedBooking.total_estimate_amount.toFixed(2)}</p>
+                      <p className="mt-2 text-lg sm:text-xl font-bold">${selectedBooking.total_estimate_amount.toFixed(2)}</p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                     <div>
                       <Label className="text-muted-foreground">Deposit Amount</Label>
                       <p className="mt-2 font-medium">
@@ -1037,7 +1026,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                     </select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="editStartTime">Start Time</Label>
                       <Input
@@ -1075,7 +1064,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                     </select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="editTotalAmount">Total Amount ($)</Label>
                       <Input
@@ -1100,7 +1089,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="editDepositAmount">Deposit Amount ($)</Label>
                       <Input
@@ -1154,7 +1143,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
 
       {/* Day View Modal - Timeline of all bookings */}
       <Dialog open={isDayViewOpen} onOpenChange={setIsDayViewOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col" onClose={() => setIsDayViewOpen(false)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" onClose={() => setIsDayViewOpen(false)}>
           <DialogHeader>
             <DialogTitle>
               {dayViewDate && dayViewDate.toLocaleDateString("en-US", {
@@ -1169,7 +1158,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
             </DialogDescription>
           </DialogHeader>
           
-          <div className="flex-1 overflow-y-auto px-6 pb-6">
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-4 sm:pb-6">
             <div className="space-y-3">
               {dayViewDate && getBookingsForDay(dayViewDate)
                 .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
@@ -1182,25 +1171,25 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                       key={booking.id}
                       className="pb-3 last:pb-0"
                     >
-                      <div className="bg-card border border-border rounded-lg p-4 hover:shadow-md transition-shadow">
-                        <div className="flex items-start justify-between gap-4 mb-3">
+                      <div className="bg-card border border-border rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow">
+                        <div className="flex flex-col sm:flex-row items-start justify-between gap-2 sm:gap-4 mb-3">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <Badge className={getStatusStyle(booking.status)}>
+                              <Badge className={`${getStatusStyle(booking.status)} text-xs`}>
                                 {booking.status}
                               </Badge>
-                              <span className="text-sm font-semibold text-foreground">
+                              <span className="text-xs sm:text-sm font-semibold text-foreground">
                                 {formatTime(booking.start_at)} - {formatTime(booking.end_at)}
                               </span>
                             </div>
-                            <h4 className="text-base font-semibold text-foreground mb-1">
+                            <h4 className="text-sm sm:text-base font-semibold text-foreground mb-1">
                               {booking.services.length > 0 
                                 ? booking.services.map((s) => s.name).join(", ")
                                 : "No service assigned"}
                             </h4>
                           </div>
-                          <div className="text-right">
-                            <div className="text-lg font-bold text-foreground">
+                          <div className="text-right sm:text-right">
+                            <div className="text-base sm:text-lg font-bold text-foreground">
                               ${booking.total_estimate_amount.toFixed(2)}
                             </div>
                             <div className="text-xs text-muted-foreground">
@@ -1209,7 +1198,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                           </div>
                         </div>
                         
-                        <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
                           <div>
                             <span className="text-muted-foreground">Deposit:</span>
                             <span className="ml-2 font-medium">
@@ -1237,7 +1226,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
-        <DialogContent className="max-w-md" onClose={() => setIsDeleteConfirmOpen(false)}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" onClose={() => setIsDeleteConfirmOpen(false)}>
           <DialogHeader>
             <DialogTitle className="text-destructive">Delete Booking</DialogTitle>
             <DialogDescription>
@@ -1246,7 +1235,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
           </DialogHeader>
           
           {selectedBooking && (
-            <div className="px-6 pb-6 space-y-4">
+            <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-3 sm:space-y-4">
               {/* Booking Summary */}
               <div className="p-4 rounded-lg bg-muted/50 border border-border space-y-2">
                 <div className="flex items-center justify-between">
@@ -1332,9 +1321,9 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                     }
                   }}
                   disabled={isDeleting}
-                  className="flex-1 h-10 px-4 py-2 rounded-md bg-destructive text-destructive-foreground shadow hover:bg-destructive/90 disabled:opacity-50 disabled:pointer-events-none font-medium"
+                  className="flex-1 h-10 px-2 sm:px-4 py-2 rounded-md bg-destructive text-destructive-foreground shadow hover:bg-destructive/90 disabled:opacity-50 disabled:pointer-events-none font-medium text-xs sm:text-sm"
                 >
-                  {isDeleting ? 'Deleting...' : 'Confirm Delete'}
+                  {isDeleting ? 'Deleting...' : <><span className="hidden sm:inline">Confirm </span>Delete</>}
                 </button>
               </div>
             </div>
