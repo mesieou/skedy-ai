@@ -28,7 +28,7 @@ async function runRollover() {
 
     if (response.ok) {
       const result = await response.text();
-      console.log(`[AvailabilityCron] ✅ Rollover completed: ${result}`);
+      console.log(`AvailabilityCron] ✅ Rollover completed: ${result}`);
       sentry.addBreadcrumb('Availability rollover completed successfully', 'cron-rollover', {
         responseText: result
       });
