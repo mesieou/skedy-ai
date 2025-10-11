@@ -5,6 +5,16 @@ const nextConfig: NextConfig = {
   // Optimize for production - exclude packages that shouldn't be bundled
   serverExternalPackages: ['@sentry/nextjs', 'ws', 'openai'],
 
+  // Exclude standalone scripts from Next.js compilation
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals.push({
+        'googleapis': 'googleapis',
+      });
+    }
+    return config;
+  },
+
   // Configure headers for WebRTC and WebSocket support
   // Note: CSP is handled by nginx in production to avoid duplicate headers
   async headers() {

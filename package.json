@@ -18,7 +18,8 @@
     "setup-tool": "tsx scripts/setup-single-tool.ts",
     "setup-tools": "tsx scripts/setup-tools.ts",
     "deploy-tool": "tsx scripts/deploy-tool-to-businesses.ts",
-    "remove-tool": "tsx scripts/remove-tool-from-businesses.ts"
+    "remove-tool": "tsx scripts/remove-tool-from-businesses.ts",
+    "rd-monthly": "tsx scripts/git-sheets/simple-rd-system.ts monthly-summary"
   },
   "dependencies": {
     "@cartesia/cartesia-js": "^2.2.5",
@@ -45,6 +46,7 @@
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.12",
     "fuse.js": "^7.1.0",
+    "googleapis": "^162.0.0",
     "ioredis": "^5.7.0",
     "lucide-react": "^0.511.0",
     "luxon": "^3.7.2",

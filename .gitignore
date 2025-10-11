@@ -44,3 +44,6 @@ next-env.d.ts
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+# Google Sheets service account credentials
+scripts/git-sheets/service-account-key.json
