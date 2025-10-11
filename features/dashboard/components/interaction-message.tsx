@@ -78,11 +78,7 @@ export function InteractionMessage({ interaction, onFeedback }: InteractionMessa
   return (
     <>
       {customerMessage}
-      <div
-        className="flex gap-3 group"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
+      <div className="flex gap-3 group">
         {/* Avatar */}
         <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-primary">
           <Bot className="w-4 h-4 text-primary-foreground" />
@@ -90,7 +86,11 @@ export function InteractionMessage({ interaction, onFeedback }: InteractionMessa
 
         {/* Message Content */}
         <div className="flex-1 max-w-[70%]">
-          <div className="rounded-lg px-4 py-2 bg-muted text-foreground relative">
+          <div
+            className="rounded-lg px-4 py-2 bg-muted text-foreground relative"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+          >
             <p className="text-sm whitespace-pre-wrap">{interaction.model_output}</p>
             
             {/* Feedback Buttons - Show on hover or if feedback exists */}
