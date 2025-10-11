@@ -1,0 +1,73 @@
+{
+  "spreadsheet": {
+    "id": "1Qcv30Cvg40utsWDHO4RmAJdEWsna1yQLczOb1eVKWv8",
+    "dailyLogSheetName": "rd-daily-logs",
+    "monthlySummarySheetName": "rd-monthly-summaries"
+  },
+  "serviceAccount": {
+    "email": "skedy-358@seventh-odyssey-474804-m2.iam.gserviceaccount.com",
+    "keyFile": "service-account-key.json"
+  },
+  "authorMapping": {
+    "mesieou": "Juan Bernal",
+    "juanbernal": "Juan Bernal",
+    "Juan Bernal": "Juan Bernal",
+    "Juan David Bernal": "Juan Bernal",
+    "nyorpablo": "Paul Christian De Guzman",
+    "Paul Christian De Guzman": "Paul Christian De Guzman"
+  },
+  "developers": [
+    "Juan Bernal",
+    "Paul Christian De Guzman"
+  ],
+  "rdActivities": {
+    "AI Model Integration & Evaluation": {
+      "auditDescription": "Research and development of AI model integration, testing chatbot logic, RAG systems, OpenAI API integration, and prompt engineering experiments for novel conversational AI capabilities",
+      "keywords": ["ai", "model", "openai", "chatbot", "prompt", "rag", "agent", "llm", "gpt", "embedding", "conversation"],
+      "technicalFocus": "Experimental AI system development and evaluation methodologies"
+    },
+    "Natural Language Processing (NLP) Experiments": {
+      "auditDescription": "Experimental development of natural language understanding systems, entity recognition algorithms, intent classification research, and novel NLP processing techniques",
+      "keywords": ["nlp", "intent", "entity", "understanding", "classification", "language", "text", "parsing", "semantic"],
+      "technicalFocus": "Advanced natural language processing research and algorithm development"
+    },
+    "Scalable Embedding Systems": {
+      "auditDescription": "Research and development of scalable vector database systems using advanced embedding techniques for business-specific query processing and similarity matching",
+      "keywords": ["embedding", "vector", "supabase", "search", "similarity", "database", "query", "indexing"],
+      "technicalFocus": "Vector database architecture and embedding system optimization"
+    },
+    "Semantic Categorization Algorithms": {
+      "auditDescription": "Development and validation of semantic content classification algorithms for automated website content categorization and intelligent data processing",
+      "keywords": ["semantic", "categorization", "crawl", "classification", "content", "algorithm", "taxonomy"],
+      "technicalFocus": "Machine learning algorithms for content classification and semantic analysis"
+    },
+    "Performance Testing & Iteration": {
+      "auditDescription": "Systematic evaluation and optimization of AI system performance, accuracy measurement methodologies, and iterative improvement frameworks for production systems",
+      "keywords": ["performance", "test", "benchmark", "accuracy", "evaluation", "optimization", "metrics", "monitoring"],
+      "technicalFocus": "AI system performance analysis and optimization methodologies"
+    },
+    "Developing Modular AI Architecture": {
+      "auditDescription": "Research and development of novel modular AI architecture for adaptive conversational context retention, dynamic task switching, and scalable AI system design",
+      "keywords": ["architecture", "modular", "context", "retention", "switching", "adaptive", "conversation", "scalable"],
+      "technicalFocus": "Advanced AI architecture design and modular system development"
+    },
+    "Navigation and Backend Integration Research": {
+      "auditDescription": "Research into seamless integration between natural language processing systems and backend task execution frameworks for intelligent automation",
+      "keywords": ["backend", "api", "integration", "task", "action", "navigation", "execution", "automation"],
+      "technicalFocus": "System integration research and intelligent task orchestration"
+    },
+    "Market Research & User Studies": {
+      "auditDescription": "Market research activities including user interviews, pain point analysis, feasibility studies for AI agent adoption, and user experience research for AI systems",
+      "keywords": ["market", "user", "research", "interview", "feedback", "painpoint", "study", "analysis", "ux"],
+      "technicalFocus": "User research and market analysis for AI technology adoption"
+    }
+  },
+  "excludePatterns": [
+    "Merge branch",
+    "Merge pull request",
+    "Initial commit",
+    "Update README",
+    "Version bump",
+    "Release"
+  ]
+}
