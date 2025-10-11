@@ -69,8 +69,9 @@ jobs:
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        # Temporarily disable cache to force fresh build with environment variables
+        # cache-from: type=gha
+        # cache-to: type=gha,mode=max
         platforms: linux/amd64
         build-args: |
           NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
