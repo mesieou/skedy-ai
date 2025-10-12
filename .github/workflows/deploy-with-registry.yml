@@ -128,10 +128,21 @@ jobs:
           systemctl disable nginx
         fi
 
-        # Restart Docker nginx to pick up updated config
+        # Update Docker nginx configuration
         if docker ps | grep -q skedy-ai-nginx-1; then
-          echo "🔧 Restarting nginx to reload configuration..."
-          docker exec skedy-ai-nginx-1 nginx -s reload
+          echo "🔧 Updating nginx configuration..."
+          # Copy the updated nginx.conf from repo to the container
+          docker cp \$APP_DIR/nginx.conf skedy-ai-nginx-1:/etc/nginx/nginx.conf
+
+          # Test the configuration before reloading
+          if docker exec skedy-ai-nginx-1 nginx -t; then
+            echo "✅ Nginx config is valid, reloading..."
+            docker exec skedy-ai-nginx-1 nginx -s reload
+            echo "✅ Nginx configuration updated and reloaded successfully"
+          else
+            echo "❌ Nginx config test failed - keeping old configuration"
+            exit 1
+          fi
         fi
 
         echo "🧹 Aggressive Docker cleanup to free maximum space..."
