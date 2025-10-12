@@ -1,9 +1,8 @@
-import { AddressRole } from '@/features/scheduling/lib/types/booking-calculations';
-
-
 // ===================================================================
 // BOOKING TEST SCENARIOS FOR ALL 9 EXAMPLES
 // ===================================================================
+
+import { AddressType } from '@/features/scheduling/lib/types/booking-calculations';
 
 // Clean, structured booking scenarios - each scenario is complete and self-contained
 export interface BookingScenario {
@@ -15,7 +14,7 @@ export interface BookingScenario {
     quantity: number;
   }>;
   addresses: Array<{
-    role: AddressRole;
+    type: AddressType;
     addressKey: string;
     sequence_order: number;
   }>;
@@ -33,13 +32,13 @@ export const removalistScenarios: BookingScenario[] = [
     businessType: 'removalist',
     services: [{ serviceKey: 'removalistExample1', quantity: 2 }],
     addresses: [
-      { role: AddressRole.BUSINESS_BASE, addressKey: 'removalistBase', sequence_order: 0 },
-      { role: AddressRole.PICKUP, addressKey: 'melbournePickup', sequence_order: 1 },
-      { role: AddressRole.DROPOFF, addressKey: 'richmondDropoff', sequence_order: 2 },
-      { role: AddressRole.BUSINESS_BASE, addressKey: 'removalistBase', sequence_order: 3 }
+      { type: AddressType.BUSINESS, addressKey: 'removalistBase', sequence_order: 0 },
+      { type: AddressType.PICKUP, addressKey: 'melbournePickup', sequence_order: 1 },
+      { type: AddressType.DROPOFF, addressKey: 'richmondDropoff', sequence_order: 2 },
+      { type: AddressType.BUSINESS, addressKey: 'removalistBase', sequence_order: 3 }
     ]
   },
-  
+
   // Example 2: FROM_BASE_AND_BETWEEN_CUSTOMERS
   {
     name: "Example 2: Base + Between Customers",
@@ -47,14 +46,14 @@ export const removalistScenarios: BookingScenario[] = [
     businessType: 'removalist',
     services: [{ serviceKey: 'removalistExample2', quantity: 2 }],
     addresses: [
-      { role: AddressRole.BUSINESS_BASE, addressKey: 'removalistBase', sequence_order: 0 },
-      { role: AddressRole.PICKUP, addressKey: 'melbournePickup', sequence_order: 1 },
-      { role: AddressRole.PICKUP, addressKey: 'hawthornPickup', sequence_order: 2 },
-      { role: AddressRole.DROPOFF, addressKey: 'richmondDropoff', sequence_order: 3 },
-      { role: AddressRole.BUSINESS_BASE, addressKey: 'removalistBase', sequence_order: 4 }
+      { type: AddressType.BUSINESS, addressKey: 'removalistBase', sequence_order: 0 },
+      { type: AddressType.PICKUP, addressKey: 'melbournePickup', sequence_order: 1 },
+      { type: AddressType.PICKUP, addressKey: 'hawthornPickup', sequence_order: 2 },
+      { type: AddressType.DROPOFF, addressKey: 'richmondDropoff', sequence_order: 3 },
+      { type: AddressType.BUSINESS, addressKey: 'removalistBase', sequence_order: 4 }
     ]
   },
-  
+
   // Example 3: BETWEEN_CUSTOMERS_AND_BACK_TO_BASE
   {
     name: "Example 3: Between Customers + Return",
@@ -62,14 +61,14 @@ export const removalistScenarios: BookingScenario[] = [
     businessType: 'removalist',
     services: [{ serviceKey: 'removalistExample3', quantity: 3 }],
     addresses: [
-      { role: AddressRole.BUSINESS_BASE, addressKey: 'removalistBase', sequence_order: 0 },
-      { role: AddressRole.PICKUP, addressKey: 'brightonPickup', sequence_order: 1 },
-      { role: AddressRole.PICKUP, addressKey: 'hawthornPickup', sequence_order: 2 },
-      { role: AddressRole.DROPOFF, addressKey: 'toorakDropoff', sequence_order: 3 },
-      { role: AddressRole.BUSINESS_BASE, addressKey: 'removalistBase', sequence_order: 4 }
+      { type: AddressType.BUSINESS, addressKey: 'removalistBase', sequence_order: 0 },
+      { type: AddressType.PICKUP, addressKey: 'brightonPickup', sequence_order: 1 },
+      { type: AddressType.PICKUP, addressKey: 'hawthornPickup', sequence_order: 2 },
+      { type: AddressType.DROPOFF, addressKey: 'toorakDropoff', sequence_order: 3 },
+      { type: AddressType.BUSINESS, addressKey: 'removalistBase', sequence_order: 4 }
     ]
   },
-  
+
   // Example 4: FULL_ROUTE
   {
     name: "Example 4: Full Route Charging",
@@ -77,10 +76,10 @@ export const removalistScenarios: BookingScenario[] = [
     businessType: 'removalist',
     services: [{ serviceKey: 'removalistExample4', quantity: 2 }],
     addresses: [
-      { role: AddressRole.BUSINESS_BASE, addressKey: 'removalistBase', sequence_order: 0 },
-      { role: AddressRole.PICKUP, addressKey: 'melbournePickup', sequence_order: 1 },
-      { role: AddressRole.DROPOFF, addressKey: 'camberweelDropoff', sequence_order: 2 },
-      { role: AddressRole.BUSINESS_BASE, addressKey: 'removalistBase', sequence_order: 3 }
+      { type: AddressType.BUSINESS, addressKey: 'removalistBase', sequence_order: 0 },
+      { type: AddressType.PICKUP, addressKey: 'melbournePickup', sequence_order: 1 },
+      { type: AddressType.DROPOFF, addressKey: 'camberweelDropoff', sequence_order: 2 },
+      { type: AddressType.BUSINESS, addressKey: 'removalistBase', sequence_order: 3 }
     ]
   }
 ];
@@ -100,12 +99,12 @@ export const manicuristScenarios: BookingScenario[] = [
       { serviceKey: 'manicuristExample5Service2', quantity: 1 }
     ],
     addresses: [
-      { role: AddressRole.BUSINESS_BASE, addressKey: 'manicuristBase', sequence_order: 0 },
-      { role: AddressRole.SERVICE, addressKey: 'northMelbourneHome', sequence_order: 1 },
-      { role: AddressRole.BUSINESS_BASE, addressKey: 'manicuristBase', sequence_order: 2 }
+      { type: AddressType.BUSINESS, addressKey: 'manicuristBase', sequence_order: 0 },
+      { type: AddressType.CUSTOMER, addressKey: 'northMelbourneHome', sequence_order: 1 },
+      { type: AddressType.BUSINESS, addressKey: 'manicuristBase', sequence_order: 2 }
     ]
   },
-  
+
   // Example 6: One service, multiple components
   {
     name: "Example 6: Service with Separate Travel",
@@ -113,12 +112,12 @@ export const manicuristScenarios: BookingScenario[] = [
     businessType: 'manicurist',
     services: [{ serviceKey: 'manicuristExample6', quantity: 1 }],
     addresses: [
-      { role: AddressRole.BUSINESS_BASE, addressKey: 'manicuristBase', sequence_order: 0 },
-      { role: AddressRole.SERVICE, addressKey: 'southYarraApartment', sequence_order: 1 },
-      { role: AddressRole.BUSINESS_BASE, addressKey: 'manicuristBase', sequence_order: 2 }
+      { type: AddressType.BUSINESS, addressKey: 'manicuristBase', sequence_order: 0 },
+      { type: AddressType.CUSTOMER, addressKey: 'southYarraApartment', sequence_order: 1 },
+      { type: AddressType.BUSINESS, addressKey: 'manicuristBase', sequence_order: 2 }
     ]
   },
-  
+
   // Example 7: Multiple services, multiple components
   {
     name: "Example 7: Services with Callout Fees",
@@ -129,12 +128,12 @@ export const manicuristScenarios: BookingScenario[] = [
       { serviceKey: 'manicuristExample7Service2', quantity: 1 }
     ],
     addresses: [
-      { role: AddressRole.BUSINESS_BASE, addressKey: 'manicuristBase', sequence_order: 0 },
-      { role: AddressRole.SERVICE, addressKey: 'fitzroyOffice', sequence_order: 1 },
-      { role: AddressRole.BUSINESS_BASE, addressKey: 'manicuristBase', sequence_order: 2 }
+      { type: AddressType.BUSINESS, addressKey: 'manicuristBase', sequence_order: 0 },
+      { type: AddressType.CUSTOMER, addressKey: 'fitzroyOffice', sequence_order: 1 },
+      { type: AddressType.BUSINESS, addressKey: 'manicuristBase', sequence_order: 2 }
     ]
   },
-  
+
   // Example 8: Mixed mobile/non-mobile services
   {
     name: "Example 8: Mixed Service Types",
@@ -145,9 +144,9 @@ export const manicuristScenarios: BookingScenario[] = [
       { serviceKey: 'manicuristExample8Service2', quantity: 1 }  // Mobile
     ],
     addresses: [
-      { role: AddressRole.BUSINESS_BASE, addressKey: 'manicuristBase', sequence_order: 0 },
-      { role: AddressRole.SERVICE, addressKey: 'carltonHome', sequence_order: 1 },
-      { role: AddressRole.BUSINESS_BASE, addressKey: 'manicuristBase', sequence_order: 2 }
+      { type: AddressType.BUSINESS, addressKey: 'manicuristBase', sequence_order: 0 },
+      { type: AddressType.CUSTOMER, addressKey: 'carltonHome', sequence_order: 1 },
+      { type: AddressType.BUSINESS, addressKey: 'manicuristBase', sequence_order: 2 }
     ]
   }
 ];
@@ -167,7 +166,7 @@ export const spaScenarios: BookingScenario[] = [
       { serviceKey: 'massageExample9Service2', quantity: 1 }
     ],
     addresses: [
-      { role: AddressRole.BUSINESS_BASE, addressKey: 'spaBase', sequence_order: 0 }
+      { type: AddressType.BUSINESS, addressKey: 'spaBase', sequence_order: 0 }
     ]
   }
 ];
@@ -188,14 +187,14 @@ export const complexScenarios: BookingScenario[] = [
       { serviceKey: 'manicuristExample5Service2', quantity: 1 }
     ],
     addresses: [
-      { role: AddressRole.BUSINESS_BASE, addressKey: 'manicuristBase', sequence_order: 0 },
-      { role: AddressRole.SERVICE, addressKey: 'northMelbourneHome', sequence_order: 1 },
-      { role: AddressRole.SERVICE, addressKey: 'southYarraApartment', sequence_order: 2 },
-      { role: AddressRole.SERVICE, addressKey: 'carltonHome', sequence_order: 3 },
-      { role: AddressRole.BUSINESS_BASE, addressKey: 'manicuristBase', sequence_order: 4 }
+      { type: AddressType.BUSINESS, addressKey: 'manicuristBase', sequence_order: 0 },
+      { type: AddressType.CUSTOMER, addressKey: 'northMelbourneHome', sequence_order: 1 },
+      { type: AddressType.CUSTOMER, addressKey: 'southYarraApartment', sequence_order: 2 },
+      { type: AddressType.CUSTOMER, addressKey: 'carltonHome', sequence_order: 3 },
+      { type: AddressType.BUSINESS, addressKey: 'manicuristBase', sequence_order: 4 }
     ]
   },
-  
+
   // Multi-stop removalist move
   {
     name: "Multi-Stop Move",
@@ -203,12 +202,12 @@ export const complexScenarios: BookingScenario[] = [
     businessType: 'removalist',
     services: [{ serviceKey: 'removalistExample1', quantity: 3 }],
     addresses: [
-      { role: AddressRole.BUSINESS_BASE, addressKey: 'removalistBase', sequence_order: 0 },
-      { role: AddressRole.PICKUP, addressKey: 'melbournePickup', sequence_order: 1 },
-      { role: AddressRole.PICKUP, addressKey: 'hawthornPickup', sequence_order: 2 },
-      { role: AddressRole.DROPOFF, addressKey: 'richmondDropoff', sequence_order: 3 },
-      { role: AddressRole.DROPOFF, addressKey: 'toorakDropoff', sequence_order: 4 },
-      { role: AddressRole.BUSINESS_BASE, addressKey: 'removalistBase', sequence_order: 5 }
+      { type: AddressType.BUSINESS, addressKey: 'removalistBase', sequence_order: 0 },
+      { type: AddressType.PICKUP, addressKey: 'melbournePickup', sequence_order: 1 },
+      { type: AddressType.PICKUP, addressKey: 'hawthornPickup', sequence_order: 2 },
+      { type: AddressType.DROPOFF, addressKey: 'richmondDropoff', sequence_order: 3 },
+      { type: AddressType.DROPOFF, addressKey: 'toorakDropoff', sequence_order: 4 },
+      { type: AddressType.BUSINESS, addressKey: 'removalistBase', sequence_order: 5 }
     ]
   }
 ];

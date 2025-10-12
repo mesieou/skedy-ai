@@ -72,7 +72,7 @@ export class BookingOrchestrator {
       );
 
       // Step 3: Create booking with pre-calculated data (no recalculation)
-      const booking = await this.bookingsRepository.createBookingWithServicesAndAddresses(
+      const booking = await this.bookingsRepository.createBookingFromQuote(
         quoteRequestData,
         userId,
         start_at,

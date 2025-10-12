@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Calendar, FileText } from "lucide-react";
 import type { User } from "@/features/auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/features/shared/components/ui/tabs";
-import { Card } from "@/features/shared/components/ui/card";
 import { WeeklyCalendar } from "./weekly-calendar";
 import { ConversationsList } from "./conversations-list";
 import { ConversationDetail } from "./conversation-detail";
@@ -55,25 +54,15 @@ export function DashboardTabs({ user, bookings, sessions }: DashboardTabsProps) 
           </TabsList>
 
           <TabsContent value="bookings" className="space-y-4">
-            {bookings.length > 0 ? (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-2xl font-semibold">Your Bookings</h2>
+                <p className="text-muted-foreground">
+                  View and manage your scheduled appointments
+                </p>
+              </div>
               <WeeklyCalendar bookings={bookings} user={user} onBookingCreated={handleBookingCreated} />
-            ) : (
-              <Card className="p-6">
-                <div className="space-y-4">
-                  <h2 className="text-2xl font-semibold">Your Bookings</h2>
-                  <p className="text-muted-foreground">
-                    View and manage your scheduled appointments
-                  </p>
-                  <div className="border-2 border-dashed border-muted rounded-lg p-12 text-center">
-                    <Calendar className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                    <p className="text-muted-foreground">No bookings yet</p>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Your upcoming appointments will appear here
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            )}
+            </div>
           </TabsContent>
 
           <TabsContent value="transcription" className="space-y-4">

@@ -1,7 +1,7 @@
 import type { Service } from '../../../../../shared/lib/database/types/service';
 import type { Business } from '../../../../../shared/lib/database/types/business';
 import type { BookingAddress } from '../../../types/booking-calculations';
-import { AddressRole } from '../../../types/booking-calculations';
+import { AddressType } from '../../../types/booking-calculations';
 import { AddressUtils } from '../../../../../shared/utils/address-utils';
 import type { QuoteRequestData } from '../../../types/booking-domain';
 import { TravelChargingModel, isMobileService } from '../../../../../shared/lib/database/types/service';
@@ -23,7 +23,7 @@ export class AddressBuilder {
     addresses.push({
       id: 'business_base',
       address: AddressUtils.parseAddressString(business.address),
-      role: AddressRole.BUSINESS_BASE,
+      type: AddressType.BUSINESS,
       sequence_order: sequenceOrder++,
       service_id: service.id
     });
@@ -34,7 +34,7 @@ export class AddressBuilder {
         addresses.push({
           id: `pickup_${index}`,
           address: AddressUtils.parseAddressString(addr),
-          role: AddressRole.PICKUP,
+          type: AddressType.PICKUP,
           sequence_order: sequenceOrder++,
           service_id: service.id
         });
@@ -43,7 +43,7 @@ export class AddressBuilder {
       addresses.push({
         id: 'pickup',
         address: AddressUtils.parseAddressString(args.pickup_address),
-        role: AddressRole.PICKUP,
+        type: AddressType.PICKUP,
         sequence_order: sequenceOrder++,
         service_id: service.id
       });
@@ -55,7 +55,7 @@ export class AddressBuilder {
         addresses.push({
           id: `dropoff_${index}`,
           address: AddressUtils.parseAddressString(addr),
-          role: AddressRole.DROPOFF,
+          type: AddressType.DROPOFF,
           sequence_order: sequenceOrder++,
           service_id: service.id
         });
@@ -64,7 +64,7 @@ export class AddressBuilder {
       addresses.push({
         id: 'dropoff',
         address: AddressUtils.parseAddressString(args.dropoff_address),
-        role: AddressRole.DROPOFF,
+        type: AddressType.DROPOFF,
         sequence_order: sequenceOrder++,
         service_id: service.id
       });
@@ -75,7 +75,7 @@ export class AddressBuilder {
       addresses.push({
         id: 'service',
         address: AddressUtils.parseAddressString(args.service_address),
-        role: AddressRole.SERVICE,
+        type: AddressType.CUSTOMER,
         sequence_order: sequenceOrder++,
         service_id: service.id
       });
@@ -87,7 +87,7 @@ export class AddressBuilder {
         addresses.push({
           id: `customer_${index}`,
           address: AddressUtils.parseAddressString(addr),
-          role: AddressRole.SERVICE,
+          type: AddressType.CUSTOMER,
           sequence_order: sequenceOrder++,
           service_id: service.id
         });
@@ -99,7 +99,7 @@ export class AddressBuilder {
       addresses.push({
         id: 'business_base_return',
         address: AddressUtils.parseAddressString(business.address),
-        role: AddressRole.BUSINESS_BASE,
+        type: AddressType.BUSINESS,
         sequence_order: sequenceOrder++,
         service_id: service.id
       });

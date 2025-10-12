@@ -17,7 +17,6 @@ import type {
   RouteSegment
 } from './booking-calculations';
 
-import { AddressRole } from './booking-calculations';
 
 // Re-export for external use
 export type {
@@ -31,7 +30,6 @@ export type {
   RouteSegment
 };
 
-export { AddressRole };
 
 // Import database types
 import type {

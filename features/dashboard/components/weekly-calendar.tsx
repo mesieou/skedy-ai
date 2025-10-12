@@ -8,11 +8,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from "@/features/shared/components/ui/input";
 import { Label } from "@/features/shared/components/ui/label";
 import type { BookingWithServices } from "../lib/actions";
-import { createSimpleBooking, getBusinessCustomers, createNewCustomer, getBusinessServices, updateBooking, deleteBooking } from "../lib/actions";
+import { createSimpleBooking, getBusinessCustomers, createNewCustomer, getBusinessServices, getServiceDetails, getGoogleMapsApiKey, updateBooking, deleteBooking, type DashboardBookingAddressInput } from "../lib/actions";
 import { BookingStatus } from "@/features/shared/lib/database/types/bookings";
-import { useState } from "react";
+import { LocationType } from "@/features/shared/lib/database/types/service";
+import type { Service } from "@/features/shared/lib/database/types/service";
+import type { AddressInput, Address } from "@/features/shared/lib/database/types/addresses";
+import { AddressType } from "@/features/shared/lib/database/types/addresses";
+import { useState, useEffect } from "react";
 import { DateUtils } from "@/features/shared/utils/date-utils";
 import type { User } from "@/features/auth";
+import { BookingAddressInputs } from "./booking-address-inputs";
 
 interface WeeklyCalendarProps {
   bookings: BookingWithServices[];
@@ -39,6 +44,48 @@ const getStatusStyle = (status: BookingStatus) => {
   }
 };
 
+const formatAddress = (address: Address) => {
+  const parts = [
+    address.address_line_1,
+    address.address_line_2,
+    address.city,
+    address.state,
+    address.postcode,
+    address.country
+  ].filter(Boolean);
+
+  return parts.join(', ');
+};
+
+const getAddressTypeLabel = (addressType: AddressType, serviceLocationType: LocationType) => {
+  switch (addressType) {
+    case AddressType.CUSTOMER:
+      return serviceLocationType === LocationType.CUSTOMER ? 'Customer Address' : 'Service Address';
+    case AddressType.PICKUP:
+      return 'Pickup Address';
+    case AddressType.DROPOFF:
+      return 'Dropoff Address';
+    case AddressType.BUSINESS:
+      return 'Business Address';
+    default:
+      return 'Address';
+  }
+};
+
+const groupAddressesByType = (addresses: Address[], serviceLocationType: LocationType) => {
+  const grouped: Record<string, Address[]> = {};
+
+  addresses.forEach(address => {
+    const label = getAddressTypeLabel(address.type, serviceLocationType);
+    if (!grouped[label]) {
+      grouped[label] = [];
+    }
+    grouped[label].push(address);
+  });
+
+  return grouped;
+};
+
 export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalendarProps) {
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
@@ -51,7 +98,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
   });
-  
+
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -69,6 +116,12 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
   const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [services, setServices] = useState<{ id: string; name: string }[]>([]);
   const [loadingServices, setLoadingServices] = useState(false);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [loadingServiceDetails, setLoadingServiceDetails] = useState(false);
+  const [googleMapsApiKey, setGoogleMapsApiKey] = useState<string>('');
+  const [pickupAddresses, setPickupAddresses] = useState<AddressInput[]>([]);
+  const [dropoffAddresses, setDropoffAddresses] = useState<AddressInput[]>([]);
+  const [serviceAddress, setServiceAddress] = useState<AddressInput | null>(null);
   const [formData, setFormData] = useState({
     customerId: '',
     newCustomerFirstName: '',
@@ -81,9 +134,36 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
     status: BookingStatus.PENDING,
     totalEstimateAmount: 0,
     depositAmount: 0,
-    depositPaid: false,
-    gstAmount: 0
+    depositPaid: false
   });
+
+  // Load Google Maps API key on component mount
+  useEffect(() => {
+    getGoogleMapsApiKey().then(setGoogleMapsApiKey).catch(console.error);
+  }, []);
+
+  // Load service details when service ID changes
+  useEffect(() => {
+    if (!formData.serviceId) {
+      setSelectedService(null);
+      return;
+    }
+
+    setLoadingServiceDetails(true);
+    getServiceDetails(user.sub, formData.serviceId)
+      .then(service => {
+        setSelectedService(service);
+        // Reset addresses when service changes
+        setPickupAddresses([]);
+        setDropoffAddresses([]);
+        setServiceAddress(null);
+      })
+      .catch(error => {
+        console.error('Failed to load service details:', error);
+        setSelectedService(null);
+      })
+      .finally(() => setLoadingServiceDetails(false));
+  }, [formData.serviceId, user.sub]);
 
   const getWeekDays = (startDate: Date) => {
     const days = [];
@@ -99,11 +179,11 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
     const days = [];
     const year = monthStart.getFullYear();
     const month = monthStart.getMonth();
-    
+
     // Get first day of month and its day of week
     const firstDay = new Date(year, month, 1);
     const firstDayOfWeek = firstDay.getDay();
-    
+
     // Add days from previous month to fill the first week
     const prevMonthDays = firstDayOfWeek;
     for (let i = prevMonthDays - 1; i >= 0; i--) {
@@ -111,20 +191,20 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
       date.setDate(date.getDate() - i - 1);
       days.push(date);
     }
-    
+
     // Add all days of current month
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     for (let i = 1; i <= daysInMonth; i++) {
       days.push(new Date(year, month, i));
     }
-    
+
     // Add days from next month to complete the grid (ensure 5-6 weeks)
     const remainingDays = 42 - days.length; // 6 weeks * 7 days
     for (let i = 1; i <= remainingDays; i++) {
       const date = new Date(year, month + 1, i);
       days.push(date);
     }
-    
+
     return days;
   };
 
@@ -235,12 +315,15 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
       status: BookingStatus.PENDING,
       totalEstimateAmount: 0,
       depositAmount: 0,
-      depositPaid: false,
-      gstAmount: 0
+      depositPaid: false
     });
     setCustomerType('existing');
+    setSelectedService(null);
+    setPickupAddresses([]);
+    setDropoffAddresses([]);
+    setServiceAddress(null);
     setIsModalOpen(true);
-    
+
     // Load customers and services when modal opens
     setLoadingCustomers(true);
     setLoadingServices(true);
@@ -282,10 +365,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
       // Calculate duration in minutes
       const durationMinutes = Math.round((endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60));
 
-      // Calculate remaining balance
-      const remainingBalance = formData.depositPaid 
-        ? formData.totalEstimateAmount - formData.depositAmount
-        : formData.totalEstimateAmount;
+      // Note: remaining_balance is calculated server-side, no need to send it
 
       // Validate customer selection/input
       if (customerType === 'existing' && !formData.customerId) {
@@ -320,7 +400,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
 
       // Determine customer ID
       let customerId = formData.customerId;
-      
+
       if (customerType === 'new') {
         // Create new customer in database
         try {
@@ -341,8 +421,37 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
         }
       }
 
-      const selectedService = services.find(s => s.id === formData.serviceId);
-      
+      // Build addresses array based on service location type
+      const addresses: DashboardBookingAddressInput[] = [];
+
+      if (selectedService) {
+        if (selectedService.location_type === LocationType.CUSTOMER && serviceAddress) {
+          addresses.push({
+            service_id: formData.serviceId,
+            type: AddressType.CUSTOMER,
+            ...serviceAddress
+          });
+        } else if (selectedService.location_type === LocationType.PICKUP_AND_DROPOFF) {
+          // Add pickup addresses
+          pickupAddresses.forEach(addr => {
+            addresses.push({
+              service_id: formData.serviceId,
+              type: AddressType.PICKUP,
+              ...addr
+            });
+          });
+          // Add dropoff addresses
+          dropoffAddresses.forEach(addr => {
+            addresses.push({
+              service_id: formData.serviceId,
+              type: AddressType.DROPOFF,
+              ...addr
+            });
+          });
+        }
+        // BUSINESS location type doesn't need addresses
+      }
+
       // Add loading state for this date
       const dateKey = selectedDate.toISOString().split('T')[0];
       setLoadingDates(prev => new Set(prev).add(dateKey));
@@ -358,9 +467,8 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
         totalEstimateAmount: formData.totalEstimateAmount,
         totalEstimateTimeInMinutes: durationMinutes,
         depositAmount: formData.depositAmount,
-        remainingBalance: remainingBalance,
         depositPaid: formData.depositPaid,
-        gstAmount: formData.gstAmount
+        addresses: addresses.length > 0 ? addresses : undefined
       });
 
       handleCloseModal();
@@ -411,16 +519,16 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
             {formatMonthYear(viewMode === 'week' ? currentWeekStart : currentMonth)}
           </h2>
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={goToToday}
               className="hover:text-foreground text-xs sm:text-sm"
             >
               Today
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size={viewMode === 'month' ? 'sm' : 'icon'}
               onClick={toggleViewMode}
               title={viewMode === 'week' ? 'Switch to month view' : 'Switch to week view'}
@@ -435,17 +543,17 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="icon" 
+          <Button
+            variant="outline"
+            size="icon"
             onClick={handlePrevious}
             className="hover:text-foreground h-8 w-8 sm:h-10 sm:w-10"
           >
             <ChevronLeft className="w-4 h-4" />
           </Button>
-          <Button 
-            variant="outline" 
-            size="icon" 
+          <Button
+            variant="outline"
+            size="icon"
             onClick={handleNext}
             className="hover:text-foreground h-8 w-8 sm:h-10 sm:w-10"
           >
@@ -507,7 +615,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                             setSelectedBooking(booking);
                             setIsEditMode(false);
                             setIsBookingDetailsOpen(true);
-                            
+
                             // Load services if not already loaded
                             if (services.length === 0) {
                               setLoadingServices(true);
@@ -524,24 +632,24 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                         >
                           <div className="flex items-center justify-between gap-1 sm:gap-2 mb-0.5 sm:mb-1">
                             <Badge
-                              className={`${getStatusStyle(booking.status)} text-[8px] sm:text-[9px] px-1 sm:px-1.5 py-0 h-3 sm:h-4`}
+                              className={`${getStatusStyle(booking.status)} text-xs sm:text-xs px-1.5 sm:px-1.5 py-0.5 h-4 sm:h-4`}
                             >
                               {booking.status}
                             </Badge>
-                            <span className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground">
+                            <span className="text-xs sm:text-xs font-semibold text-muted-foreground">
                               {formatTime(booking.start_at)}
                             </span>
                           </div>
-                          <p className="text-[10px] sm:text-[11px] font-medium line-clamp-1 text-foreground/90">
-                            {booking.services.length > 0 
+                          <p className="text-sm sm:text-sm font-medium line-clamp-1 text-foreground/90">
+                            {booking.services.length > 0
                               ? booking.services.map((s) => s.name).join(", ")
                               : "No service"}
                           </p>
                           <div className="flex items-center justify-between mt-0.5 sm:mt-1">
-                            <span className="text-[9px] sm:text-[10px] text-muted-foreground">
+                            <span className="text-xs sm:text-xs text-muted-foreground">
                               {booking.total_estimate_time_in_minutes}min
                             </span>
-                            <span className="text-[10px] sm:text-[11px] font-semibold text-foreground">
+                            <span className="text-sm sm:text-sm font-semibold text-foreground">
                               ${booking.total_estimate_amount.toFixed(0)}
                             </span>
                           </div>
@@ -554,7 +662,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                             setDayViewDate(day);
                             setIsDayViewOpen(true);
                           }}
-                          className="w-full py-1 sm:py-1.5 text-[10px] sm:text-[11px] font-medium text-primary hover:text-primary/80 transition-colors rounded-md hover:bg-primary/5"
+                          className="w-full py-1 sm:py-1.5 text-sm sm:text-sm font-medium text-primary hover:text-primary/80 transition-colors rounded-md hover:bg-primary/5"
                         >
                           +{dayBookings.length - 5} more booking{dayBookings.length - 5 > 1 ? 's' : ''}
                         </button>
@@ -592,7 +700,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
               )}
             </DialogDescription>
           </DialogHeader>
-          
+
           <form onSubmit={handleSubmit} className="p-4 sm:p-6 pt-2 space-y-3 sm:space-y-4">
             {/* Customer Type Selection */}
             <div className="space-y-2">
@@ -722,6 +830,19 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
               )}
             </div>
 
+            {/* Address Fields - Conditional based on service location type */}
+            <BookingAddressInputs
+              selectedService={selectedService}
+              loadingServiceDetails={loadingServiceDetails}
+              googleMapsApiKey={googleMapsApiKey}
+              pickupAddresses={pickupAddresses}
+              setPickupAddresses={setPickupAddresses}
+              dropoffAddresses={dropoffAddresses}
+              setDropoffAddresses={setDropoffAddresses}
+              serviceAddress={serviceAddress}
+              setServiceAddress={setServiceAddress}
+            />
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="startTime">Start Time</Label>
@@ -765,32 +886,17 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
               </select>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="totalEstimateAmount">Total Amount ($)</Label>
-                <Input
-                  id="totalEstimateAmount"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.totalEstimateAmount}
-                  onChange={(e) => setFormData({ ...formData, totalEstimateAmount: parseFloat(e.target.value) || 0 })}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="gstAmount">GST Amount ($)</Label>
-                <Input
-                  id="gstAmount"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.gstAmount}
-                  onChange={(e) => setFormData({ ...formData, gstAmount: parseFloat(e.target.value) || 0 })}
-                  required
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="totalEstimateAmount">Total Amount ($)</Label>
+              <Input
+                id="totalEstimateAmount"
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.totalEstimateAmount}
+                onChange={(e) => setFormData({ ...formData, totalEstimateAmount: parseFloat(e.target.value) || 0 })}
+                required
+              />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -803,12 +909,11 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                   step="0.01"
                   value={formData.depositAmount}
                   onChange={(e) => setFormData({ ...formData, depositAmount: parseFloat(e.target.value) || 0 })}
-                  required
                 />
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center gap-2 h-11 items-end">
+                <div className="flex items-end gap-2 h-11">
                   <input
                     id="depositPaid"
                     type="checkbox"
@@ -910,7 +1015,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                  {selectedBooking.deposit_amount > 0 && (
                     <div>
                       <Label className="text-muted-foreground">Deposit Amount</Label>
                       <p className="mt-2 font-medium">
@@ -920,16 +1025,33 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                         )}
                       </p>
                     </div>
-                    <div>
-                      <Label className="text-muted-foreground">Remaining Balance</Label>
-                      <p className="mt-2 font-medium">${selectedBooking.remaining_balance.toFixed(2)}</p>
-                    </div>
-                  </div>
+                  )}
 
-                  <div>
-                    <Label className="text-muted-foreground">GST Amount</Label>
-                    <p className="mt-2 font-medium">${selectedBooking.price_breakdown.business_fees.gst_amount.toFixed(2)}</p>
-                  </div>
+                  {/* Addresses Section */}
+                  {selectedBooking.addresses && selectedBooking.addresses.length > 0 && selectedBooking.services.length > 0 && (
+                    <div>
+                      <Label className="text-muted-foreground">Addresses</Label>
+                      <div className="mt-2 space-y-3">
+                        {(() => {
+                          const primaryService = selectedBooking.services[0];
+                          const groupedAddresses = groupAddressesByType(selectedBooking.addresses, primaryService.location_type);
+
+                          return Object.entries(groupedAddresses).map(([label, addresses]) => (
+                            <div key={label} className="p-3 border rounded-lg bg-muted/20">
+                              <h4 className="font-medium text-sm mb-2">{label}</h4>
+                              <div className="space-y-1">
+                                {addresses.map((address, index) => (
+                                  <p key={index} className="text-sm text-muted-foreground">
+                                    {formatAddress(address)}
+                                  </p>
+                                ))}
+                              </div>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex gap-3 pt-4 border-t">
                     <button
@@ -939,15 +1061,20 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                         const endTime = new Date(selectedBooking.end_at);
                         setFormData({
                           ...formData,
-                          serviceId: selectedBooking.price_breakdown.service_breakdowns[0]?.service_id || '',
+                          serviceId: selectedBooking.services[0]?.id || '',
                           startTime: `${String(startTime.getUTCHours()).padStart(2, '0')}:${String(startTime.getUTCMinutes()).padStart(2, '0')}`,
                           endTime: `${String(endTime.getUTCHours()).padStart(2, '0')}:${String(endTime.getUTCMinutes()).padStart(2, '0')}`,
                           status: selectedBooking.status,
                           totalEstimateAmount: selectedBooking.total_estimate_amount,
                           depositAmount: selectedBooking.deposit_amount,
-                          depositPaid: selectedBooking.deposit_paid,
-                          gstAmount: selectedBooking.price_breakdown.business_fees.gst_amount
+                          depositPaid: selectedBooking.deposit_paid
                         });
+
+                        // Reset address fields - they will be populated by the BookingAddressInputs component
+                        setPickupAddresses([]);
+                        setDropoffAddresses([]);
+                        setServiceAddress(null);
+
                         setIsEditMode(true);
                       }}
                       className="flex-1 h-10 px-4 py-2 rounded-md border border-input bg-background shadow-sm hover:bg-accent hover:text-foreground"
@@ -974,6 +1101,37 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                       const dateKey = bookingDate.toISOString().split('T')[0];
                       setLoadingDates(prev => new Set(prev).add(dateKey));
 
+                      // Build addresses array based on service location type
+                      const addresses: DashboardBookingAddressInput[] = [];
+
+                      if (selectedService) {
+                        if (selectedService.location_type === LocationType.CUSTOMER && serviceAddress) {
+                          addresses.push({
+                            service_id: formData.serviceId,
+                            type: AddressType.CUSTOMER,
+                            ...serviceAddress
+                          });
+                        } else if (selectedService.location_type === LocationType.PICKUP_AND_DROPOFF) {
+                          // Add pickup addresses
+                          pickupAddresses.forEach(addr => {
+                            addresses.push({
+                              service_id: formData.serviceId,
+                              type: AddressType.PICKUP,
+                              ...addr
+                            });
+                          });
+                          // Add dropoff addresses
+                          dropoffAddresses.forEach(addr => {
+                            addresses.push({
+                              service_id: formData.serviceId,
+                              type: AddressType.DROPOFF,
+                              ...addr
+                            });
+                          });
+                        }
+                        // BUSINESS location type doesn't need addresses
+                      }
+
                       await updateBooking({
                         bookingId: selectedBooking.id,
                         serviceId: formData.serviceId || undefined,
@@ -984,12 +1142,12 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                         totalEstimateAmount: formData.totalEstimateAmount,
                         depositAmount: formData.depositAmount,
                         depositPaid: formData.depositPaid,
-                        gstAmount: formData.gstAmount
+                        addresses: addresses.length > 0 ? addresses : undefined
                       });
-                      
+
                       setIsBookingDetailsOpen(false);
                       setIsEditMode(false);
-                      
+
                       if (onBookingCreated) onBookingCreated();
 
                       // Remove loading state after refresh
@@ -1025,6 +1183,21 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                       ))}
                     </select>
                   </div>
+
+                  {/* Address Fields for Edit Mode */}
+                  <BookingAddressInputs
+                    selectedService={selectedService}
+                    loadingServiceDetails={loadingServiceDetails}
+                    googleMapsApiKey={googleMapsApiKey}
+                    pickupAddresses={pickupAddresses}
+                    setPickupAddresses={setPickupAddresses}
+                    dropoffAddresses={dropoffAddresses}
+                    setDropoffAddresses={setDropoffAddresses}
+                    serviceAddress={serviceAddress}
+                    setServiceAddress={setServiceAddress}
+                    existingAddresses={selectedBooking?.addresses}
+                    isEditMode={true}
+                  />
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-2">
@@ -1064,29 +1237,16 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                     </select>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="editTotalAmount">Total Amount ($)</Label>
-                      <Input
-                        id="editTotalAmount"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={formData.totalEstimateAmount}
-                        onChange={(e) => setFormData({ ...formData, totalEstimateAmount: parseFloat(e.target.value) || 0 })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="editGstAmount">GST Amount ($)</Label>
-                      <Input
-                        id="editGstAmount"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={formData.gstAmount}
-                        onChange={(e) => setFormData({ ...formData, gstAmount: parseFloat(e.target.value) || 0 })}
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="editTotalAmount">Total Amount ($)</Label>
+                    <Input
+                      id="editTotalAmount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.totalEstimateAmount}
+                      onChange={(e) => setFormData({ ...formData, totalEstimateAmount: parseFloat(e.target.value) || 0 })}
+                    />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -1102,7 +1262,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                       />
                     </div>
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2 h-11 items-end">
+                      <div className="flex items-end gap-2 h-11">
                         <input
                           id="editDepositPaid"
                           type="checkbox"
@@ -1157,15 +1317,12 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
               {dayViewDate && `${getBookingsForDay(dayViewDate).length} booking${getBookingsForDay(dayViewDate).length !== 1 ? 's' : ''} scheduled`}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex-1 overflow-y-auto px-4 sm:px-6 pb-4 sm:pb-6">
             <div className="space-y-3">
               {dayViewDate && getBookingsForDay(dayViewDate)
                 .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
-                .map((booking, index) => {
-                  const startTime = new Date(booking.start_at);
-                  const endTime = new Date(booking.end_at);
-                  
+                .map((booking) => {
                   return (
                     <div
                       key={booking.id}
@@ -1183,7 +1340,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                               </span>
                             </div>
                             <h4 className="text-sm sm:text-base font-semibold text-foreground mb-1">
-                              {booking.services.length > 0 
+                              {booking.services.length > 0
                                 ? booking.services.map((s) => s.name).join(", ")
                                 : "No service assigned"}
                             </h4>
@@ -1197,7 +1354,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                             </div>
                           </div>
                         </div>
-                        
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
                           <div>
                             <span className="text-muted-foreground">Deposit:</span>
@@ -1233,7 +1390,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
               This action cannot be undone. Are you sure you want to delete this booking?
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedBooking && (
             <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-3 sm:space-y-4">
               {/* Booking Summary */}
@@ -1291,10 +1448,10 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                       setLoadingDates(prev => new Set(prev).add(dateKey));
 
                       await deleteBooking(selectedBooking.id);
-                      
+
                       setIsDeleteConfirmOpen(false);
                       setIsBookingDetailsOpen(false);
-                      
+
                       if (onBookingCreated) onBookingCreated();
 
                       // Remove loading state after refresh

@@ -3,7 +3,7 @@ import type { Booking } from '../shared/lib/database/types/bookings';
 import type { User } from '../shared/lib/database/types/user';
 import type { Session } from '../agent/sessions/session';
 import type { BookingAddress } from '../scheduling/lib/types/booking-calculations';
-import { AddressRole } from '../scheduling/lib/types/booking-calculations';
+import { AddressType } from '../scheduling/lib/types/booking-calculations';
 import { DateUtils } from '../shared/utils/date-utils';
 import { buildQuoteToolResponse } from '../agent/services/helpers/responseBuilder';
 
@@ -137,8 +137,8 @@ const formatAddress = (addr: BookingAddress): string => {
   return parts.join(', ');
 };
 
-const formatAddressesByRole = (addresses: BookingAddress[], role: AddressRole): string => {
-  const filtered = addresses.filter(addr => addr.role === role);
+const formatAddressesByType = (addresses: BookingAddress[], type: AddressType): string => {
+  const filtered = addresses.filter(addr => addr.address.type === type);
   if (filtered.length === 0) return 'Not specified';
 
   return filtered
@@ -175,8 +175,8 @@ const extractNotificationData = (session: Session, preferredDate?: string, prefe
     businessPhone: business.phone_number,
     serviceName: quoteRequest.services[0]?.service?.name || 'Service',
     numberOfRemovalists: quoteRequest.number_of_people?.toString() || '1',
-    pickupText: formatAddressesByRole(quoteRequest.addresses || [], AddressRole.PICKUP),
-    dropoffText: formatAddressesByRole(quoteRequest.addresses || [], AddressRole.DROPOFF),
+    pickupText: formatAddressesByType(quoteRequest.addresses || [], AddressType.PICKUP),
+    dropoffText: formatAddressesByType(quoteRequest.addresses || [], AddressType.DROPOFF),
     formattedDate: finalDate ? DateUtils.formatDateForDisplay(finalDate) : 'TBD',
     formattedTime: finalTime ? DateUtils.formatTimeForDisplay(finalTime) : 'TBD',
     timeEstimate: formatTimeEstimate(quoteResult.total_estimate_time_in_minutes),

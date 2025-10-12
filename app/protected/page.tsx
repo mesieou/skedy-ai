@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createAuthenticatedServerClient as createClient } from "@/features/shared/lib/supabase/server";
 import { DashboardTabs } from "@/features/dashboard";
-import { getUserBookings, getUserSessions } from "@/features/dashboard/lib/actions";
+import { getBusinessBookingsByUserId, getBusinessSessionsByUserId } from "@/features/dashboard/lib/actions";
 
 export default async function ProtectedPage() {
   const supabase = await createClient();
@@ -12,8 +12,8 @@ export default async function ProtectedPage() {
   }
 
   const [bookings, sessions] = await Promise.all([
-    getUserBookings(data.claims.sub),
-    getUserSessions(data.claims.sub),
+    getBusinessBookingsByUserId(data.claims.sub),
+    getBusinessSessionsByUserId(data.claims.sub),
   ]);
 
   return <DashboardTabs user={data.claims} bookings={bookings} sessions={sessions} />;

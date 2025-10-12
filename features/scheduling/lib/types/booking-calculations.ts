@@ -1,24 +1,10 @@
 import type { Service, PricingTier, PricingCombination } from '../../../shared/lib/database/types/service';
 import type { Business } from '../../../shared/lib/database/types/business';
-import type { Address } from '../../../shared/lib/database/types/addresses';
+import type { BookingAddress } from '../../../shared/lib/database/types/addresses';
 
-// Address roles for booking context
-export enum AddressRole {
-  PICKUP = 'pickup',
-  DROPOFF = 'dropoff',
-  SERVICE = 'service',
-  BUSINESS_BASE = 'business_base'
-}
-
-// Booking address with context
-export interface BookingAddress {
-  id: string;
-  address: Address;
-  role: AddressRole;
-  sequence_order: number;
-  service_id?: string;
-  special_instructions?: string;
-}
+// Re-export address types from shared types (single source of truth)
+export type { BookingAddress, AddressInput, ParsedGoogleAddress } from '../../../shared/lib/database/types/addresses';
+export { AddressType } from '../../../shared/lib/database/types/addresses';
 
 // Service with quantity for booking
 export interface ServiceWithQuantity {

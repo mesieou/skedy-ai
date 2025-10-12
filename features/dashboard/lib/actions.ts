@@ -4,8 +4,11 @@ import { BookingsRepository } from "@/features/shared/lib/database/repositories/
 import { BookingServiceRepository } from "@/features/shared/lib/database/repositories/booking-service-repository";
 import { ServiceRepository } from "@/features/shared/lib/database/repositories/service-repository";
 import { UserRepository } from "@/features/shared/lib/database/repositories/user-repository";
-import type { Booking } from "@/features/shared/lib/database/types/bookings";
+import { AddressRepository } from "@/features/shared/lib/database/repositories/address-repository";
+import type { Booking, BookingStatus } from "@/features/shared/lib/database/types/bookings";
 import type { Service } from "@/features/shared/lib/database/types/service";
+import type { CreateAddressData, AddressType, AddressInput, Address } from "@/features/shared/lib/database/types/addresses";
+import { UserRole } from "@/features/shared/lib/database/types/user";
 import { ChatMessage, ChatSession } from "@/features/shared/lib/database/types";
 import { ChatSessionRepository } from "@/features/shared/lib/database/repositories/chat-session-repository";
 import { InteractionsRepository } from "@/features/shared/lib/database/repositories/interactions-repository";
@@ -13,19 +16,20 @@ import type { Interaction } from "@/features/shared/lib/database/types/interacti
 
 export interface BookingWithServices extends Booking {
   services: Service[];
+  addresses: Address[];
 }
 
 export async function getBusinessBookingsByUserId(userId: string): Promise<BookingWithServices[]> {
   try {
     console.log(`📊 [Dashboard] Fetching bookings for user: ${userId}`);
 
-    // Get user record to find their business_id
+    // Get user record to extract verified business_id (security: can't trust client params)
     const userRepo = new UserRepository();
     const user = await userRepo.findOne({ id: userId });
 
-    if (!user) {
-      console.error(`📊 [Dashboard] User not found: ${userId}`);
-      throw new Error("User not found");
+    if (!user?.business_id) {
+      console.error(`📊 [Dashboard] User not found or has no business: ${userId}`);
+      throw new Error("User not found or not associated with a business");
     }
 
     console.log(`📊 [Dashboard] User found: ${user.first_name} - Business ID: ${user.business_id}`);
@@ -33,6 +37,7 @@ export async function getBusinessBookingsByUserId(userId: string): Promise<Booki
     const bookingsRepo = new BookingsRepository();
     const bookingServiceRepo = new BookingServiceRepository();
     const serviceRepo = new ServiceRepository();
+    const addressRepo = new AddressRepository();
 
     // Get all bookings for the business
     const bookings = await bookingsRepo.findAll(
@@ -42,7 +47,7 @@ export async function getBusinessBookingsByUserId(userId: string): Promise<Booki
 
     console.log(`📊 [Dashboard] Found ${bookings.length} bookings for business ${user.business_id}`);
 
-    // For each booking, get its services
+    // For each booking, get its services and addresses
     const bookingsWithServices = await Promise.all(
       bookings.map(async (booking, index) => {
         console.log(`📊 [Dashboard] Processing booking ${index + 1}/${bookings.length}: ${booking.id} (${booking.status})`);
@@ -64,9 +69,23 @@ export async function getBusinessBookingsByUserId(userId: string): Promise<Booki
         const validServices = services.filter((s): s is Service => s !== null);
         console.log(`📊 [Dashboard] Booking ${booking.id} has ${validServices.length} valid services`);
 
+        // Get addresses for this booking through the services
+        // Addresses are linked to services, not directly to bookings
+        let addresses: Address[] = [];
+        if (validServices.length > 0) {
+          // Query addresses for each service individually since base repository doesn't support array values
+          const addressPromises = validServices.map(service =>
+            addressRepo.findAll({}, { service_id: service.id })
+          );
+          const addressArrays = await Promise.all(addressPromises);
+          addresses = addressArrays.flat();
+        }
+        console.log(`📊 [Dashboard] Found ${addresses.length} addresses for booking ${booking.id}`);
+
         return {
           ...booking,
           services: validServices,
+          addresses: addresses,
         };
       })
     );
@@ -92,13 +111,13 @@ export async function getBusinessSessionsByUserId(userId: string): Promise<Sessi
     try {
         console.log(`📊 [Dashboard] Fetching sessions for user: ${userId}`);
 
-        // Get user record to find their business_id
+        // Get user record to extract verified business_id (security: can't trust client params)
         const userRepo = new UserRepository();
         const user = await userRepo.findOne({ id: userId });
 
-        if (!user) {
-            console.error(`📊 [Dashboard] User not found: ${userId}`);
-            throw new Error("User not found");
+        if (!user?.business_id) {
+            console.error(`📊 [Dashboard] User not found or has no business: ${userId}`);
+            throw new Error("User not found or not associated with a business");
         }
 
         console.log(`📊 [Dashboard] User found: ${user.first_name} - Business ID: ${user.business_id}`);
@@ -168,18 +187,13 @@ export async function createNewCustomer(data: {
   try {
     console.log(`📊 [Dashboard] Creating new customer for user: ${data.currentUserId}`);
 
-    // Get current user record to find their business_id
+    // Get current user record to extract verified business_id (security: can't trust client params)
     const userRepo = new UserRepository();
     const currentUser = await userRepo.findOne({ id: data.currentUserId });
 
-    if (!currentUser) {
-      console.error(`📊 [Dashboard] User not found: ${data.currentUserId}`);
-      throw new Error("User not found");
-    }
-
-    if (!currentUser.business_id) {
-      console.error(`📊 [Dashboard] User has no business_id: ${data.currentUserId}`);
-      throw new Error("User has no associated business");
+    if (!currentUser?.business_id) {
+      console.error(`📊 [Dashboard] User not found or has no business: ${data.currentUserId}`);
+      throw new Error("User not found or not associated with a business");
     }
 
     // Create auth user data
@@ -200,7 +214,7 @@ export async function createNewCustomer(data: {
 
     // Create user data
     const userData = {
-      role: 'customer' as any,
+      role: UserRole.CUSTOMER,
       first_name: data.firstName.trim(),
       last_name: data.lastName?.trim() || null,
       business_id: currentUser.business_id,
@@ -221,32 +235,27 @@ export async function createNewCustomer(data: {
   }
 }
 
-export async function getBusinessServices(currentUserId: string): Promise<{ id: string; name: string }[]> {
+export async function getBusinessServices(userId: string): Promise<{ id: string; name: string }[]> {
   try {
-    console.log(`📊 [Dashboard] Fetching services for user: ${currentUserId}`);
+    console.log(`📊 [Dashboard] Fetching services for user: ${userId}`);
 
-    // Get current user record to find their business_id
+    // Get user record to extract verified business_id (security: can't trust client params)
     const userRepo = new UserRepository();
-    const currentUser = await userRepo.findOne({ id: currentUserId });
+    const user = await userRepo.findOne({ id: userId });
 
-    if (!currentUser) {
-      console.error(`📊 [Dashboard] User not found: ${currentUserId}`);
-      throw new Error("User not found");
-    }
-
-    if (!currentUser.business_id) {
-      console.error(`📊 [Dashboard] User has no business_id: ${currentUserId}`);
-      throw new Error("User has no associated business");
+    if (!user?.business_id) {
+      console.error(`📊 [Dashboard] User not found or has no business: ${userId}`);
+      throw new Error("User not found or not associated with a business");
     }
 
     // Get all services for this business
     const serviceRepo = new ServiceRepository();
     const services = await serviceRepo.findAll(
       { orderBy: 'name', ascending: true },
-      { business_id: currentUser.business_id }
+      { business_id: user.business_id }
     );
 
-    console.log(`📊 [Dashboard] Found ${services.length} services for business ${currentUser.business_id}`);
+    console.log(`📊 [Dashboard] Found ${services.length} services for business ${user.business_id}`);
 
     return services.map(service => ({
       id: service.id,
@@ -258,31 +267,62 @@ export async function getBusinessServices(currentUserId: string): Promise<{ id: 
   }
 }
 
-export async function getBusinessCustomers(currentUserId: string): Promise<{ id: string; name: string; email: string | null; phone: string | null }[]> {
+export async function getServiceDetails(userId: string, serviceId: string): Promise<Service> {
   try {
-    console.log(`📊 [Dashboard] Fetching customers for user: ${currentUserId}`);
+    console.log(`📊 [Dashboard] Fetching service details: ${serviceId} for user: ${userId}`);
 
-    // Get current user record to find their business_id
+    // Get user record to extract verified business_id (security: can't trust client params)
     const userRepo = new UserRepository();
-    const currentUser = await userRepo.findOne({ id: currentUserId });
+    const user = await userRepo.findOne({ id: userId });
 
-    if (!currentUser) {
-      console.error(`📊 [Dashboard] User not found: ${currentUserId}`);
-      throw new Error("User not found");
+    if (!user?.business_id) {
+      console.error(`📊 [Dashboard] User not found or has no business: ${userId}`);
+      throw new Error("User not found or not associated with a business");
     }
 
-    if (!currentUser.business_id) {
-      console.error(`📊 [Dashboard] User has no business_id: ${currentUserId}`);
-      throw new Error("User has no associated business");
+    // Get service details
+    const serviceRepo = new ServiceRepository();
+    const service = await serviceRepo.findOne({ id: serviceId });
+
+    if (!service) {
+      console.error(`📊 [Dashboard] Service not found: ${serviceId}`);
+      throw new Error("Service not found");
+    }
+
+    // Verify service belongs to user's business (security: prevent cross-business access)
+    if (service.business_id !== user.business_id) {
+      console.error(`📊 [Dashboard] Service ${serviceId} does not belong to business ${user.business_id}`);
+      throw new Error("Service does not belong to your business");
+    }
+
+    console.log(`📊 [Dashboard] Found service: ${service.name} (location_type: ${service.location_type})`);
+    return service;
+  } catch (error) {
+    console.error("Failed to fetch service details:", error);
+    throw new Error("Failed to fetch service details");
+  }
+}
+
+export async function getBusinessCustomers(userId: string): Promise<{ id: string; name: string; email: string | null; phone: string | null }[]> {
+  try {
+    console.log(`📊 [Dashboard] Fetching customers for user: ${userId}`);
+
+    // Get user record to extract verified business_id (security: can't trust client params)
+    const userRepo = new UserRepository();
+    const user = await userRepo.findOne({ id: userId });
+
+    if (!user?.business_id) {
+      console.error(`📊 [Dashboard] User not found or has no business: ${userId}`);
+      throw new Error("User not found or not associated with a business");
     }
 
     // Get all customers for this business
     const customers = await userRepo.findAll(
       { orderBy: 'first_name', ascending: true },
-      { business_id: currentUser.business_id, role: 'customer' }
+      { business_id: user.business_id, role: 'customer' }
     );
 
-    console.log(`📊 [Dashboard] Found ${customers.length} customers for business ${currentUser.business_id}`);
+    console.log(`📊 [Dashboard] Found ${customers.length} customers for business ${user.business_id}`);
 
     return customers.map(customer => ({
       id: customer.id,
@@ -296,6 +336,14 @@ export async function getBusinessCustomers(currentUserId: string): Promise<{ id:
   }
 }
 
+/**
+ * Dashboard booking address input - combines service/type metadata with address data
+ */
+export type DashboardBookingAddressInput = {
+  service_id: string;
+  type: AddressType;
+} & AddressInput;
+
 export async function createSimpleBooking(data: {
   userId: string;
   customerId: string; // The customer this booking is for
@@ -307,73 +355,58 @@ export async function createSimpleBooking(data: {
   totalEstimateAmount: number;
   totalEstimateTimeInMinutes: number;
   depositAmount: number;
-  remainingBalance: number;
   depositPaid: boolean;
-  gstAmount: number;
+  addresses?: DashboardBookingAddressInput[]; // Optional addresses for mobile services
 }): Promise<Booking> {
   try {
     console.log(`📊 [Dashboard] Creating booking for customer: ${data.customerId}`);
 
-    // Get user record to find their business_id
+    // Get user record to extract verified business_id (security: can't trust client params)
     const userRepo = new UserRepository();
     const user = await userRepo.findOne({ id: data.userId });
 
-    if (!user) {
-      console.error(`📊 [Dashboard] User not found: ${data.userId}`);
-      throw new Error("User not found");
+    if (!user?.business_id) {
+      console.error(`📊 [Dashboard] User not found or has no business: ${data.userId}`);
+      throw new Error("User not found or not associated with a business");
     }
 
-    if (!user.business_id) {
-      console.error(`📊 [Dashboard] User has no business_id: ${data.userId}`);
-      throw new Error("User has no associated business");
-    }
+    // Get business details for availability updates
+    const { BusinessRepository } = await import("@/features/shared/lib/database/repositories/business-repository");
+    const businessRepo = new BusinessRepository();
+    const business = await businessRepo.findOne({ id: user.business_id });
 
     const bookingsRepo = new BookingsRepository();
-    const bookingServiceRepo = new BookingServiceRepository();
 
-    // Create booking with proper price breakdown
-    const booking = await bookingsRepo.create({
-      user_id: data.customerId, // Use the selected customer ID
+    // Map addresses to CreateAddressData (IDs and timestamps will be generated by Supabase)
+    const bookingAddresses: CreateAddressData[] | undefined = data.addresses?.map(addr => ({
+      service_id: addr.service_id,
+      type: addr.type,
+      address_line_1: addr.address_line_1,
+      address_line_2: addr.address_line_2 || null,
+      city: addr.city,
+      postcode: addr.postcode,
+      state: addr.state || null,
+      country: addr.country
+    }));
+
+    // Use new createBookingManual method
+    // Note: remaining_balance is calculated server-side in createBookingManual
+    const booking = await bookingsRepo.createBookingManual({
+      user_id: data.customerId,
       business_id: user.business_id,
-      status: data.status as any,
       start_at: data.startAt,
       end_at: data.endAt,
+      status: data.status as BookingStatus,
       total_estimate_amount: data.totalEstimateAmount,
       total_estimate_time_in_minutes: data.totalEstimateTimeInMinutes,
       deposit_amount: data.depositAmount,
-      remaining_balance: data.remainingBalance,
       deposit_paid: data.depositPaid,
-      price_breakdown: {
-        service_breakdowns: [
-          {
-            service_id: data.serviceId,
-            service_name: data.serviceName,
-            quantity: 1,
-            service_cost: data.totalEstimateAmount - data.gstAmount,
-            total_cost: data.totalEstimateAmount - data.gstAmount,
-            estimated_duration_mins: data.totalEstimateTimeInMinutes,
-            component_breakdowns: []
-          }
-        ],
-        travel_breakdown: {
-          total_distance_km: 0,
-          total_travel_time_mins: 0,
-          total_travel_cost: 0,
-          route_segments: []
-        },
-        business_fees: {
-          gst_amount: data.gstAmount,
-          platform_fee: 0,
-          payment_processing_fee: 0,
-          other_fees: []
-        }
-      }
-    });
-
-    // Create booking_service relationship
-    await bookingServiceRepo.create({
-      booking_id: booking.id,
-      service_id: data.serviceId
+      services: [{
+        service_id: data.serviceId,
+        service_name: data.serviceName
+      }],
+      addresses: bookingAddresses,
+      business: business!
     });
 
     console.log(`📊 [Dashboard] Created booking: ${booking.id} with service: ${data.serviceId}`);
@@ -395,7 +428,7 @@ export async function updateBooking(data: {
   totalEstimateTimeInMinutes?: number;
   depositAmount?: number;
   depositPaid?: boolean;
-  gstAmount?: number;
+  addresses?: DashboardBookingAddressInput[];
 }): Promise<Booking> {
   try {
     console.log(`📊 [Dashboard] Updating booking: ${data.bookingId}`);
@@ -410,62 +443,93 @@ export async function updateBooking(data: {
     }
 
     // Prepare update data
-    const updateData: any = {};
-    
+    const updateData: Partial<Booking> = {};
+
     if (data.startAt) updateData.start_at = data.startAt;
     if (data.endAt) updateData.end_at = data.endAt;
-    if (data.status) updateData.status = data.status;
+    if (data.status) updateData.status = data.status as BookingStatus;
     if (data.totalEstimateAmount !== undefined) updateData.total_estimate_amount = data.totalEstimateAmount;
     if (data.totalEstimateTimeInMinutes !== undefined) updateData.total_estimate_time_in_minutes = data.totalEstimateTimeInMinutes;
     if (data.depositAmount !== undefined) updateData.deposit_amount = data.depositAmount;
     if (data.depositPaid !== undefined) updateData.deposit_paid = data.depositPaid;
 
-    // Calculate remaining balance if amounts changed
-    if (data.totalEstimateAmount !== undefined || data.depositAmount !== undefined) {
+    // Calculate remaining balance if amounts or payment status changed
+    if (data.totalEstimateAmount !== undefined || data.depositAmount !== undefined || data.depositPaid !== undefined) {
       const totalAmount = data.totalEstimateAmount ?? existingBooking.total_estimate_amount;
       const depositAmount = data.depositAmount ?? existingBooking.deposit_amount;
-      updateData.remaining_balance = data.depositPaid ? totalAmount - depositAmount : totalAmount;
+      const depositPaidStatus = data.depositPaid ?? existingBooking.deposit_paid;
+      updateData.remaining_balance = depositPaidStatus ? totalAmount - depositAmount : totalAmount;
     }
 
-    // Update price breakdown if service or amounts changed
-    if (data.serviceId || data.totalEstimateAmount !== undefined || data.gstAmount !== undefined) {
-      const serviceId = data.serviceId ?? existingBooking.price_breakdown.service_breakdowns[0]?.service_id;
-      const serviceName = data.serviceName ?? existingBooking.price_breakdown.service_breakdowns[0]?.service_name;
-      const totalAmount = data.totalEstimateAmount ?? existingBooking.total_estimate_amount;
-      const gstAmount = data.gstAmount ?? existingBooking.price_breakdown.business_fees.gst_amount;
-      const duration = data.totalEstimateTimeInMinutes ?? existingBooking.total_estimate_time_in_minutes;
+    // Update booking_service if service changed
+    if (data.serviceId) {
+      // Get existing service relationship from booking_services junction table
+      const existingBookingServices = await bookingServiceRepo.findAll(
+        {},
+        { booking_id: data.bookingId }
+      );
+      const oldServiceId = existingBookingServices[0]?.service_id;
 
-      updateData.price_breakdown = {
-        service_breakdowns: [
-          {
-            service_id: serviceId,
-            service_name: serviceName,
-            quantity: 1,
-            service_cost: totalAmount - gstAmount,
-            total_cost: totalAmount - gstAmount,
-            estimated_duration_mins: duration,
-            component_breakdowns: []
-          }
-        ],
-        travel_breakdown: existingBooking.price_breakdown.travel_breakdown,
-        business_fees: {
-          ...existingBooking.price_breakdown.business_fees,
-          gst_amount: gstAmount
-        }
-      };
-
-      // Update booking_service if service changed
-      if (data.serviceId && data.serviceId !== existingBooking.price_breakdown.service_breakdowns[0]?.service_id) {
-        // Delete old booking_service
+      if (oldServiceId && data.serviceId !== oldServiceId) {
+        // Service changed: delete old and create new
         await bookingServiceRepo.deleteOne({ booking_id: data.bookingId });
-        
-        // Create new booking_service
+        await bookingServiceRepo.create({
+          booking_id: data.bookingId,
+          service_id: data.serviceId
+        });
+      } else if (!oldServiceId) {
+        // No existing service relationship (should not happen in normal flow, but handle it)
         await bookingServiceRepo.create({
           booking_id: data.bookingId,
           service_id: data.serviceId
         });
       }
+      // If oldServiceId === data.serviceId, no change needed
     }
+
+    // Update addresses if provided
+    if (data.addresses !== undefined) {
+      const addressRepo = new AddressRepository();
+
+      // Get current service ID (either from update or existing)
+      let currentServiceId = data.serviceId;
+      if (!currentServiceId) {
+        const existingBookingServices = await bookingServiceRepo.findAll(
+          {},
+          { booking_id: data.bookingId }
+        );
+        currentServiceId = existingBookingServices[0]?.service_id;
+      }
+
+      if (currentServiceId) {
+        // Delete existing addresses for this service
+        const existingAddresses = await addressRepo.findAll(
+          {},
+          { service_id: currentServiceId }
+        );
+
+        for (const address of existingAddresses) {
+          await addressRepo.deleteOne({ id: address.id });
+        }
+
+        // Create new addresses
+        for (const addr of data.addresses) {
+          await addressRepo.create({
+            service_id: addr.service_id,
+            type: addr.type,
+            address_line_1: addr.address_line_1,
+            address_line_2: addr.address_line_2 || null,
+            city: addr.city,
+            postcode: addr.postcode,
+            state: addr.state || null,
+            country: addr.country
+          });
+        }
+      }
+    }
+
+    // Note: We don't update price_breakdown for manual bookings
+    // Manual bookings have price_breakdown = null (no calculations)
 
     const updatedBooking = await bookingsRepo.updateOne({ id: data.bookingId }, updateData);
     console.log(`📊 [Dashboard] Updated booking: ${data.bookingId}`);
@@ -496,6 +560,9 @@ export async function deleteBooking(bookingId: string): Promise<void> {
   }
 }
 
-// Aliases for backward compatibility
-export const getUserBookings = getBusinessBookingsByUserId;
-export const getUserSessions = getBusinessSessionsByUserId;
+export async function getGoogleMapsApiKey(): Promise<string> {
+  // Return the API key for client-side use
+  // This is safe because Google Maps API keys are meant to be public
+  // and should be restricted by HTTP referrer or domain in Google Cloud Console
+  return process.env.GOOGLE_MAPS_API_KEY || '';
+}

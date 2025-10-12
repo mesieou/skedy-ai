@@ -2,7 +2,7 @@ import type { MobileService } from '../../../../../shared/lib/database/types/ser
 import { TravelChargingModel, PricingCombination } from '../../../../../shared/lib/database/types/service';
 import type { Business } from '../../../../../shared/lib/database/types/business';
 import type { TravelBreakdown, ServiceWithQuantity, BookingAddress, RouteSegment } from '../../../types/booking-calculations';
-import { AddressRole } from '../../../types/booking-calculations';
+import { AddressType } from '../../../types/booking-calculations';
 import { isMobileService } from '../../../../../shared/lib/database/types/service';
 import { computeDefaultTravelModel } from '../../../../../shared/lib/database/utils/business-utils';
 import { GoogleDistanceApiService } from '../../../services/google-distance-api';
@@ -241,7 +241,7 @@ export class TravelCalculator {
       case TravelChargingModel.BETWEEN_CUSTOMER_LOCATIONS:
         // Only charge between customer addresses (skip business base)
         const customerAddresses = sortedAddresses.filter(
-          (a) => a.role !== AddressRole.BUSINESS_BASE
+          (a) => a.type !== AddressType.BUSINESS
         );
         for (let i = 0; i < customerAddresses.length - 1; i++) {
           segments.push({
@@ -260,8 +260,8 @@ export class TravelCalculator {
         // Include base to first customer, then customer-to-customer
         for (let i = 0; i < sortedAddresses.length - 1; i++) {
           const isFirstSegment = i === 0;
-          const fromBase = sortedAddresses[i].role === AddressRole.BUSINESS_BASE;
-          const toBase = sortedAddresses[i + 1].role === AddressRole.BUSINESS_BASE;
+          const fromBase = sortedAddresses[i].type === AddressType.BUSINESS;
+          const toBase = sortedAddresses[i + 1].type === AddressType.BUSINESS;
 
           let segmentType: 'customer_to_customer' | 'base_to_customer' | 'customer_to_base';
           if (fromBase) {
@@ -288,8 +288,8 @@ export class TravelCalculator {
         // Charge between customers + last customer back to base
         const allAddresses = sortedAddresses;
         for (let i = 0; i < allAddresses.length - 1; i++) {
-          const isFromBase = allAddresses[i].role === AddressRole.BUSINESS_BASE;
-          const isToBase = allAddresses[i + 1].role === AddressRole.BUSINESS_BASE;
+          const isFromBase = allAddresses[i].type === AddressType.BUSINESS;
+          const isToBase = allAddresses[i + 1].type === AddressType.BUSINESS;
 
           let segmentType: 'customer_to_customer' | 'base_to_customer' | 'customer_to_base';
           if (isFromBase) {
@@ -315,8 +315,8 @@ export class TravelCalculator {
       case TravelChargingModel.FULL_ROUTE:
         // Charge for everything including return to base
         for (let i = 0; i < sortedAddresses.length - 1; i++) {
-          const isFromBase = sortedAddresses[i].role === AddressRole.BUSINESS_BASE;
-          const isToBase = sortedAddresses[i + 1].role === AddressRole.BUSINESS_BASE;
+          const isFromBase = sortedAddresses[i].type === AddressType.BUSINESS;
+          const isToBase = sortedAddresses[i + 1].type === AddressType.BUSINESS;
 
           let segmentType: 'customer_to_customer' | 'base_to_customer' | 'customer_to_base';
           if (isFromBase) {
@@ -342,8 +342,8 @@ export class TravelCalculator {
       case TravelChargingModel.BETWEEN_CUSTOMERS_AND_BACK_TO_BASE:
         // Charge between customer locations and return to base (skip initial base to customer)
         for (let i = 0; i < sortedAddresses.length - 1; i++) {
-          const isFromBase = sortedAddresses[i].role === AddressRole.BUSINESS_BASE;
-          const isToBase = sortedAddresses[i + 1].role === AddressRole.BUSINESS_BASE;
+          const isFromBase = sortedAddresses[i].type === AddressType.BUSINESS;
+          const isToBase = sortedAddresses[i + 1].type === AddressType.BUSINESS;
           const isBetweenCustomers = !isFromBase && !isToBase;
 
           let segmentType: 'customer_to_customer' | 'base_to_customer' | 'customer_to_base';
@@ -370,8 +370,8 @@ export class TravelCalculator {
       case TravelChargingModel.FROM_BASE_AND_BETWEEN_CUSTOMERS:
         // Charge from base to customers + between customers (skip return to base)
         for (let i = 0; i < sortedAddresses.length - 1; i++) {
-          const isFromBase = sortedAddresses[i].role === AddressRole.BUSINESS_BASE;
-          const isToBase = sortedAddresses[i + 1].role === AddressRole.BUSINESS_BASE;
+          const isFromBase = sortedAddresses[i].type === AddressType.BUSINESS;
+          const isToBase = sortedAddresses[i + 1].type === AddressType.BUSINESS;
 
           let segmentType: 'customer_to_customer' | 'base_to_customer' | 'customer_to_base';
           if (isFromBase) {

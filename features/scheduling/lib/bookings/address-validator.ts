@@ -6,11 +6,11 @@
  */
 
 import { GoogleAddressValidationService, type AddressValidationResult } from '../services/google-address-validation';
-import { AddressRole } from '../types/booking-calculations';
+import { AddressType } from '../types/booking-calculations';
 
 export interface AddressValidationRequest {
   addresses: string[];
-  addressTypes?: Record<string, AddressRole>;
+  addressTypes?: Record<string, AddressType>;
   requirements?: string[]; // AI function requirements from service
 }
 
@@ -19,7 +19,7 @@ export interface ValidationResult {
   message: string;
   addressResults?: Array<{
     address: string;
-    type: AddressRole;
+    type: AddressType;
     result: AddressValidationResult;
   }>;
 }
@@ -114,13 +114,13 @@ export class AddressValidator {
     service_address?: string;
   }, requirements: string[] = []): Promise<ValidationResult> {
     const addresses: string[] = [];
-    const addressTypes: Record<string, AddressRole> = {};
+    const addressTypes: Record<string, AddressType> = {};
 
     // Collect pickup addresses
     if (args.pickup_addresses && Array.isArray(args.pickup_addresses)) {
       for (const address of args.pickup_addresses) {
         addresses.push(address);
-        addressTypes[address] = AddressRole.PICKUP;
+        addressTypes[address] = AddressType.PICKUP;
       }
     }
 
@@ -128,39 +128,39 @@ export class AddressValidator {
     if (args.dropoff_addresses && Array.isArray(args.dropoff_addresses)) {
       for (const address of args.dropoff_addresses) {
         addresses.push(address);
-        addressTypes[address] = AddressRole.DROPOFF;
+        addressTypes[address] = AddressType.DROPOFF;
       }
     }
 
     // Handle single addresses (fallback)
     if (args.pickup_address) {
       addresses.push(args.pickup_address);
-      addressTypes[args.pickup_address] = AddressRole.PICKUP;
+      addressTypes[args.pickup_address] = AddressType.PICKUP;
     }
 
     if (args.dropoff_address) {
       addresses.push(args.dropoff_address);
-      addressTypes[args.dropoff_address] = AddressRole.DROPOFF;
+      addressTypes[args.dropoff_address] = AddressType.DROPOFF;
     }
 
     // Handle customer addresses (used by plumber/mobile services)
     if (args.customer_addresses && Array.isArray(args.customer_addresses)) {
       for (const address of args.customer_addresses) {
         addresses.push(address);
-        addressTypes[address] = AddressRole.SERVICE;
+        addressTypes[address] = AddressType.CUSTOMER;
       }
     }
 
     // Handle single customer address (AI sends this field)
     if (args.customer_address) {
       addresses.push(args.customer_address);
-      addressTypes[args.customer_address] = AddressRole.SERVICE;
+      addressTypes[args.customer_address] = AddressType.CUSTOMER;
     }
 
     // Handle single service address
     if (args.service_address) {
       addresses.push(args.service_address);
-      addressTypes[args.service_address] = AddressRole.SERVICE;
+      addressTypes[args.service_address] = AddressType.CUSTOMER;
     }
 
     return this.validateAddresses({ addresses, addressTypes, requirements });
@@ -237,8 +237,8 @@ export class AddressValidator {
   /**
    * Determine address type for better error messages
    */
-  private getAddressType(address: string, addressTypes: Record<string, AddressRole>): AddressRole {
-    return addressTypes[address] || AddressRole.SERVICE;
+  private getAddressType(address: string, addressTypes: Record<string, AddressType>): AddressType {
+    return addressTypes[address] || AddressType.CUSTOMER;
   }
 
   /**
@@ -246,7 +246,7 @@ export class AddressValidator {
    */
   private basicAddressValidation(
     addresses: string[],
-    addressTypes: Record<string, AddressRole>
+    addressTypes: Record<string, AddressType>
   ): ValidationResult {
     for (const address of addresses) {
       if (!address || address.trim().length < 10 || !address.includes(',')) {
