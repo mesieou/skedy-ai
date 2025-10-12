@@ -128,24 +128,19 @@ jobs:
           systemctl disable nginx
         fi
 
-        # Update Docker nginx configuration
+        # Update Nginx configuration (host-side, zero-downtime)
         if docker ps | grep -q skedy-ai-nginx-1; then
-          echo "🔧 Updating nginx configuration..."
-          # Copy to temp location first (can't overwrite while in use)
-          docker cp \$APP_DIR/nginx.conf skedy-ai-nginx-1:/tmp/nginx.conf.new
-          
-          # Test the new configuration
-          docker exec skedy-ai-nginx-1 sh -c "nginx -t -c /tmp/nginx.conf.new"
-          if [ \$? -eq 0 ]; then
-            echo "✅ Nginx config is valid, applying..."
-            # Move the new config into place
-            docker exec skedy-ai-nginx-1 sh -c "mv /tmp/nginx.conf.new /etc/nginx/nginx.conf"
-            # Reload nginx with the new config
+          echo "🔧 Updating nginx configuration on host..."
+          # Atomic update on host (nginx will pick it up via mounted volume)
+          cp \$APP_DIR/nginx.conf \$APP_DIR/nginx.conf.tmp
+          mv \$APP_DIR/nginx.conf.tmp \$APP_DIR/nginx.conf
+
+          # Test and reload nginx inside container
+          if docker exec skedy-ai-nginx-1 nginx -t; then
             docker exec skedy-ai-nginx-1 nginx -s reload
             echo "✅ Nginx configuration updated and reloaded successfully"
           else
-            echo "❌ Nginx config test failed - keeping old configuration"
-            docker exec skedy-ai-nginx-1 rm -f /tmp/nginx.conf.new
+            echo "❌ Nginx test failed, keeping old config (not reloaded)"
             exit 1
           fi
         fi
@@ -255,6 +250,22 @@ jobs:
             networks:
               - skedy-network
 
+          # Nginx Reverse Proxy with SSL
+          nginx:
+            image: nginx:latest
+            ports:
+              - "80:80"
+              - "443:443"
+            volumes:
+              - ./nginx.conf:/etc/nginx/nginx.conf:ro
+              - /etc/letsencrypt:/etc/letsencrypt:ro
+              - /var/www/certbot:/var/www/certbot:ro
+            depends_on:
+              - skedy-app
+            restart: unless-stopped
+            networks:
+              - skedy-network
+
           # Availability Rollover Cron Job
           availability-cron:
             image: \$NEW_IMAGE
@@ -278,11 +289,12 @@ jobs:
         # Zero-downtime deployment with health checks
         echo "🧪 Starting new containers for testing on port 3001..."
 
-        # Create test compose file
-        sed 's|"3000:3000"|"3001:3000"|g' docker-compose.registry.yml > docker-compose.test.yml
+        # Create test compose file (exclude nginx - we'll test app directly)
+        sed 's|"3000:3000"|"3001:3000"|g' docker-compose.registry.yml | \
+        sed '/# Nginx Reverse Proxy/,/skedy-network/d' > docker-compose.test.yml
 
-        # Try to start test containers
-        if ! docker compose -f docker-compose.test.yml up -d; then
+        # Try to start test containers (app only, no nginx)
+        if ! docker compose -f docker-compose.test.yml up -d skedy-app availability-cron; then
           echo "❌ Failed to start test containers - keeping old containers running"
           docker compose -f docker-compose.test.yml down || true
           rm -f docker-compose.test.yml
