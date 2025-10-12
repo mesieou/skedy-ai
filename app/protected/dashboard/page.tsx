@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createAuthenticatedServerClient as createClient } from "@/features/shared/lib/supabase/server";
 import { DashboardTabs } from "@/features/dashboard";
-import { getBusinessBookingsByUserId, getBusinessSessionsByUserId } from "@/features/dashboard/lib/actions";
+import { getBusinessBookingsByUserId, getBusinessSessionsByUserId, getBusinessTimezoneByUserId } from "@/features/dashboard/lib/actions";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -14,9 +14,10 @@ export default async function DashboardPage() {
   console.log(`📊 [DashboardPage] Loading dashboard for user: ${data.claims.sub}`);
   console.log(`📊 [DashboardPage] User email: ${data.claims.email}`);
 
-  const [bookings, sessions] = await Promise.all([
+  const [bookings, sessions, businessTimezone] = await Promise.all([
     getBusinessBookingsByUserId(data.claims.sub),
     getBusinessSessionsByUserId(data.claims.sub),
+    getBusinessTimezoneByUserId(data.claims.sub),
   ]);
 
   console.log(`📊 [DashboardPage] Loaded ${bookings.length} bookings and ${sessions.length} sessions`);
@@ -31,5 +32,5 @@ export default async function DashboardPage() {
     });
   }
 
-  return <DashboardTabs user={data.claims} bookings={bookings} sessions={sessions} />;
+  return <DashboardTabs user={data.claims} bookings={bookings} sessions={sessions} businessTimezone={businessTimezone} />;
 }

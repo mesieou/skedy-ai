@@ -22,6 +22,7 @@ import { BookingAddressInputs } from "./booking-address-inputs";
 interface WeeklyCalendarProps {
   bookings: BookingWithServices[];
   user: User;
+  businessTimezone: string;
   onBookingCreated?: () => void;
 }
 
@@ -86,8 +87,8 @@ const groupAddressesByType = (addresses: Address[], serviceLocationType: Locatio
   return grouped;
 };
 
-export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalendarProps) {
-  const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
+export function WeeklyCalendar({ bookings, user, businessTimezone, onBookingCreated }: WeeklyCalendarProps) {
+  const [viewMode, setViewMode] = useState<'week' | 'month' | 'today'>('week');
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const today = new Date();
     const day = today.getDay();
@@ -97,6 +98,9 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
   const [currentMonth, setCurrentMonth] = useState(() => {
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
+  const [currentDay, setCurrentDay] = useState(() => {
+    return new Date();
   });
 
   // Modal state
@@ -210,7 +214,8 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
 
   const weekDays = getWeekDays(currentWeekStart);
   const monthDays = getMonthDays(currentMonth);
-  const displayDays = viewMode === 'week' ? weekDays : monthDays;
+  const todayDays = [currentDay];
+  const displayDays = viewMode === 'week' ? weekDays : viewMode === 'month' ? monthDays : todayDays;
 
   const goToPreviousWeek = () => {
     const newDate = new Date(currentWeekStart);
@@ -224,12 +229,17 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
     setCurrentWeekStart(newDate);
   };
 
-  const goToToday = () => {
-    const today = new Date();
-    const day = today.getDay();
-    const diff = today.getDate() - day;
-    setCurrentWeekStart(new Date(today.setDate(diff)));
-    setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1));
+
+  const goToPreviousDay = () => {
+    const newDate = new Date(currentDay);
+    newDate.setDate(newDate.getDate() - 1);
+    setCurrentDay(newDate);
+  };
+
+  const goToNextDay = () => {
+    const newDate = new Date(currentDay);
+    newDate.setDate(newDate.getDate() + 1);
+    setCurrentDay(newDate);
   };
 
   const goToPreviousMonth = () => {
@@ -244,17 +254,18 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
     setCurrentMonth(newDate);
   };
 
-  const toggleViewMode = () => {
-    setViewMode(viewMode === 'week' ? 'month' : 'week');
-  };
 
   const getBookingsForDay = (date: Date) => {
     return bookings.filter((booking) => {
       try {
-        // Convert UTC booking time to Melbourne timezone
-        const { date: bookingDateStr } = DateUtils.convertUTCToTimezone(booking.start_at, 'Australia/Melbourne');
-        const localDateStr = date.toISOString().split('T')[0];
-        return bookingDateStr === localDateStr;
+        // Convert UTC booking time to business timezone
+        const { date: bookingDateStr } = DateUtils.convertUTCToTimezone(booking.start_at, businessTimezone);
+
+        // Convert the calendar date to business timezone for proper comparison
+        const calendarDateUTC = date.toISOString();
+        const { date: calendarDateStr } = DateUtils.convertUTCToTimezone(calendarDateUTC, businessTimezone);
+
+        return bookingDateStr === calendarDateStr;
       } catch (error) {
         console.error('Error filtering booking:', error);
         return false;
@@ -264,7 +275,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
 
   const formatTime = (utcIsoString: string) => {
     try {
-      const { time } = DateUtils.convertUTCToTimezone(utcIsoString, 'Australia/Melbourne');
+      const { time } = DateUtils.convertUTCToTimezone(utcIsoString, businessTimezone);
       return DateUtils.formatTimeForDisplay(time);
     } catch (error) {
       console.error('Error formatting time:', error);
@@ -275,9 +286,13 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
   const isToday = (date: Date) => {
     try {
       const todayUtc = DateUtils.nowUTC();
-      const { date: todayMelbourne } = DateUtils.convertUTCToTimezone(todayUtc, 'Australia/Melbourne');
-      const localDateStr = date.toISOString().split('T')[0];
-      return todayMelbourne === localDateStr;
+      const { date: todayBusiness } = DateUtils.convertUTCToTimezone(todayUtc, businessTimezone);
+
+      // Convert the calendar date to business timezone for proper comparison
+      const calendarDateUTC = date.toISOString();
+      const { date: calendarDateStr } = DateUtils.convertUTCToTimezone(calendarDateUTC, businessTimezone);
+
+      return todayBusiness === calendarDateStr;
     } catch (error) {
       console.error('Error checking if today:', error);
       const today = new Date();
@@ -516,29 +531,38 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
         <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           <h2 className="text-lg sm:text-2xl font-semibold">
-            {formatMonthYear(viewMode === 'week' ? currentWeekStart : currentMonth)}
+            {viewMode === 'today'
+              ? `${currentDay.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}`
+              : formatMonthYear(viewMode === 'week' ? currentWeekStart : currentMonth)
+            }
           </h2>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Button
-              variant="outline"
+              variant={viewMode === 'today' ? "default" : "outline"}
               size="sm"
-              onClick={goToToday}
+              onClick={() => {
+                setViewMode('today');
+                setCurrentDay(new Date());
+              }}
               className="hover:text-foreground text-xs sm:text-sm"
             >
-              Today
+              Day
             </Button>
             <Button
-              variant="outline"
-              size={viewMode === 'month' ? 'sm' : 'icon'}
-              onClick={toggleViewMode}
-              title={viewMode === 'week' ? 'Switch to month view' : 'Switch to week view'}
-              className="hover:text-foreground"
+              variant={viewMode === 'week' ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode('week')}
+              className="hover:text-foreground text-xs sm:text-sm"
             >
-              {viewMode === 'week' ? (
-                <Calendar className="w-4 h-4" />
-              ) : (
-                <span className="text-xs sm:text-sm">Weekly</span>
-              )}
+              Week
+            </Button>
+            <Button
+              variant={viewMode === 'month' ? "default" : "outline"}
+              size="sm"
+              onClick={() => setViewMode('month')}
+              className="hover:text-foreground text-xs sm:text-sm"
+            >
+              Month
             </Button>
           </div>
         </div>
@@ -546,7 +570,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
           <Button
             variant="outline"
             size="icon"
-            onClick={handlePrevious}
+            onClick={viewMode === 'today' ? goToPreviousDay : handlePrevious}
             className="hover:text-foreground h-8 w-8 sm:h-10 sm:w-10"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -554,7 +578,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
           <Button
             variant="outline"
             size="icon"
-            onClick={handleNext}
+            onClick={viewMode === 'today' ? goToNextDay : handleNext}
             className="hover:text-foreground h-8 w-8 sm:h-10 sm:w-10"
           >
             <ChevronRight className="w-4 h-4" />
@@ -563,7 +587,11 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
       </div>
 
       {/* Calendar Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2">
+      <div className={`grid gap-2 ${
+        viewMode === 'today'
+          ? 'grid-cols-1 max-w-md mx-auto'
+          : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7'
+      }`}>
         {displayDays.map((day, index) => {
           const dayBookings = getBookingsForDay(day);
           const isTodayDate = isToday(day);
@@ -572,7 +600,13 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
           return (
             <Card
               key={index}
-              className={`p-2 sm:p-3 ${viewMode === 'week' ? 'min-h-[150px] sm:min-h-[200px]' : 'min-h-[100px] sm:min-h-[120px]'} ${
+              className={`p-2 sm:p-3 ${
+                viewMode === 'today'
+                  ? 'min-h-[300px] sm:min-h-[400px]'
+                  : viewMode === 'week'
+                    ? 'min-h-[150px] sm:min-h-[200px]'
+                    : 'min-h-[100px] sm:min-h-[120px]'
+              } ${
                 isTodayDate ? "ring-2 ring-primary" : ""
               } ${
                 viewMode === 'month' && !isInCurrentMonth ? "opacity-40" : ""
@@ -640,7 +674,7 @@ export function WeeklyCalendar({ bookings, user, onBookingCreated }: WeeklyCalen
                               {formatTime(booking.start_at)}
                             </span>
                           </div>
-                          <p className="text-sm sm:text-sm font-medium line-clamp-1 text-foreground/90">
+                          <p className="text-sm sm:text-sm font-medium line-clamp-1 sm:line-clamp-2 text-foreground/90">
                             {booking.services.length > 0
                               ? booking.services.map((s) => s.name).join(", ")
                               : "No service"}

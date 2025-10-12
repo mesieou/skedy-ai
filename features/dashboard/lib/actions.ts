@@ -12,11 +12,42 @@ import { UserRole } from "@/features/shared/lib/database/types/user";
 import { ChatMessage, ChatSession } from "@/features/shared/lib/database/types";
 import { ChatSessionRepository } from "@/features/shared/lib/database/repositories/chat-session-repository";
 import { InteractionsRepository } from "@/features/shared/lib/database/repositories/interactions-repository";
+import { BusinessRepository } from "@/features/shared/lib/database/repositories/business-repository";
 import type { Interaction } from "@/features/shared/lib/database/types/interactions";
 
 export interface BookingWithServices extends Booking {
   services: Service[];
   addresses: Address[];
+}
+
+export async function getBusinessTimezoneByUserId(userId: string): Promise<string> {
+  try {
+    console.log(`📊 [Dashboard] Fetching business timezone for user: ${userId}`);
+
+    // Get user record to extract business_id
+    const userRepo = new UserRepository();
+    const user = await userRepo.findOne({ id: userId });
+
+    if (!user?.business_id) {
+      console.error(`📊 [Dashboard] User not found or has no business: ${userId}`);
+      throw new Error("User not found or not associated with a business");
+    }
+
+    // Get business record to extract timezone
+    const businessRepo = new BusinessRepository();
+    const business = await businessRepo.findOne({ id: user.business_id });
+
+    if (!business?.time_zone) {
+      console.error(`📊 [Dashboard] Business not found or has no timezone: ${user.business_id}`);
+      throw new Error("Business not found or has no timezone configured");
+    }
+
+    console.log(`📊 [Dashboard] Business timezone for user ${userId}: ${business.time_zone}`);
+    return business.time_zone;
+  } catch (error) {
+    console.error("Failed to fetch business timezone:", error);
+    throw new Error("Failed to fetch business timezone");
+  }
 }
 
 export async function getBusinessBookingsByUserId(userId: string): Promise<BookingWithServices[]> {

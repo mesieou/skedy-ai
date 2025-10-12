@@ -92,7 +92,7 @@ export function InteractionMessage({ interaction, onFeedback }: InteractionMessa
             onMouseLeave={() => setIsHovered(false)}
           >
             <p className="text-sm whitespace-pre-wrap">{interaction.model_output}</p>
-            
+
             {/* Feedback Buttons - Show on hover or if feedback exists */}
             {(isHovered || localFeedback !== null) && (
               <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border">
@@ -120,7 +120,7 @@ export function InteractionMessage({ interaction, onFeedback }: InteractionMessa
                 >
                   <ThumbsDown className={`w-3 h-3 ${localFeedback === false ? "fill-current" : ""}`} />
                 </Button>
-                
+
                 {/* Comment Icon - Show if comment exists */}
                 {localFeedback === false && interaction.human_critique && (
                   <Button
@@ -144,7 +144,7 @@ export function InteractionMessage({ interaction, onFeedback }: InteractionMessa
                 What could be improved?
               </p>
               <textarea
-                className="w-full p-2 text-sm border border-border rounded resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full p-2 text-sm text-foreground bg-background border border-border rounded resize-none focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-muted-foreground"
                 rows={3}
                 placeholder="Add your feedback..."
                 value={comment}

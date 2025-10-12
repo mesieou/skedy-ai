@@ -14,9 +14,10 @@ interface DashboardTabsProps {
   user: User;
   bookings: BookingWithServices[];
   sessions: SessionWithInteractions[];
+  businessTimezone: string;
 }
 
-export function DashboardTabs({ user, bookings, sessions }: DashboardTabsProps) {
+export function DashboardTabs({ user, bookings, sessions, businessTimezone }: DashboardTabsProps) {
   const router = useRouter();
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const selectedSession = sessions.find(s => s.id === selectedSessionId);
@@ -61,7 +62,7 @@ export function DashboardTabs({ user, bookings, sessions }: DashboardTabsProps) 
                   View and manage your scheduled appointments
                 </p>
               </div>
-              <WeeklyCalendar bookings={bookings} user={user} onBookingCreated={handleBookingCreated} />
+              <WeeklyCalendar bookings={bookings} user={user} businessTimezone={businessTimezone} onBookingCreated={handleBookingCreated} />
             </div>
           </TabsContent>
 
