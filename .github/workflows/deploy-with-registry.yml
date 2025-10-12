@@ -131,16 +131,21 @@ jobs:
         # Update Docker nginx configuration
         if docker ps | grep -q skedy-ai-nginx-1; then
           echo "🔧 Updating nginx configuration..."
-          # Copy the updated nginx.conf from repo to the container
-          docker cp \$APP_DIR/nginx.conf skedy-ai-nginx-1:/etc/nginx/nginx.conf
-
-          # Test the configuration before reloading
-          if docker exec skedy-ai-nginx-1 nginx -t; then
-            echo "✅ Nginx config is valid, reloading..."
+          # Copy to temp location first (can't overwrite while in use)
+          docker cp \$APP_DIR/nginx.conf skedy-ai-nginx-1:/tmp/nginx.conf.new
+          
+          # Test the new configuration
+          docker exec skedy-ai-nginx-1 sh -c "nginx -t -c /tmp/nginx.conf.new"
+          if [ \$? -eq 0 ]; then
+            echo "✅ Nginx config is valid, applying..."
+            # Move the new config into place
+            docker exec skedy-ai-nginx-1 sh -c "mv /tmp/nginx.conf.new /etc/nginx/nginx.conf"
+            # Reload nginx with the new config
             docker exec skedy-ai-nginx-1 nginx -s reload
             echo "✅ Nginx configuration updated and reloaded successfully"
           else
             echo "❌ Nginx config test failed - keeping old configuration"
+            docker exec skedy-ai-nginx-1 rm -f /tmp/nginx.conf.new
             exit 1
           fi
         fi
