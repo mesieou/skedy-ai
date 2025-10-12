@@ -31,16 +31,6 @@ export function DashboardTabs({ user, bookings, sessions, businessTimezone }: Da
   return (
     <div className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-8 pb-16">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="space-y-2 text-center">
-          <h1 className="text-3xl font-bold text-foreground">
-            Welcome back, {user.email?.split('@')[0]}!
-          </h1>
-          <p className="text-muted-foreground">
-            Manage your bookings and conversations
-          </p>
-        </div>
-
         {/* Tabs */}
         <Tabs defaultValue="bookings" className="w-full">
           <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
@@ -54,33 +44,22 @@ export function DashboardTabs({ user, bookings, sessions, businessTimezone }: Da
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="bookings" className="space-y-4">
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-2xl font-semibold">Your Bookings</h2>
-                <p className="text-muted-foreground">
-                  View and manage your scheduled appointments
-                </p>
-              </div>
-              <WeeklyCalendar bookings={bookings} user={user} businessTimezone={businessTimezone} onBookingCreated={handleBookingCreated} />
-            </div>
+          <TabsContent value="bookings" className="mt-8 space-y-4">
+            <WeeklyCalendar bookings={bookings} user={user} businessTimezone={businessTimezone} onBookingCreated={handleBookingCreated} />
           </TabsContent>
 
-          <TabsContent value="transcription" className="space-y-4">
+          <TabsContent value="transcription" className="mt-8 space-y-4">
             {selectedSession ? (
               <ConversationDetail
                 session={selectedSession}
                 onBack={() => setSelectedSessionId(null)}
               />
             ) : (
-              <div>
-                <h2 className="text-2xl font-semibold mb-4">Your Conversations</h2>
-                <ConversationsList
-                  sessions={sessions}
-                  selectedSessionId={selectedSessionId}
-                  onSelectSession={setSelectedSessionId}
-                />
-              </div>
+              <ConversationsList
+                sessions={sessions}
+                selectedSessionId={selectedSessionId}
+                onSelectSession={setSelectedSessionId}
+              />
             )}
           </TabsContent>
         </Tabs>
