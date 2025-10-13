@@ -126,7 +126,8 @@ export function useRealtimeSession() {
     return () => {
       sessionManagerRef.current?.disconnect();
     };
-  }, [addMessage, updateStreamingMessage, currentAgent.name]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run once on mount/unmount
 
   const connect = useCallback(async (config: SessionConfig) => {
     if (!sessionManagerRef.current || isConnectingRef.current) {

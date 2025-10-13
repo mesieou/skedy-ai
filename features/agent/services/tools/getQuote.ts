@@ -53,6 +53,10 @@ export async function getQuote(
     const calculator = new BookingCalculator();
     const { quoteResult: detailedResult, quoteRequest } = await calculator.calculateBooking(args, service, session.businessEntity);
 
+    // DEBUG: Log what addresses are in the quote request
+    console.log(`📍 [GetQuote] QuoteRequest addresses count: ${quoteRequest.addresses?.length || 0}`);
+    console.log(`📍 [GetQuote] QuoteRequest addresses:`, JSON.stringify(quoteRequest.addresses, null, 2));
+
     // Update session with detailed result and request data
     session.quotes.push({
       result: detailedResult,

@@ -138,7 +138,7 @@ const formatAddress = (addr: BookingAddress): string => {
 };
 
 const formatAddressesByType = (addresses: BookingAddress[], type: AddressType): string => {
-  const filtered = addresses.filter(addr => addr.address.type === type);
+  const filtered = addresses.filter(addr => addr.type === type);
   if (filtered.length === 0) return 'Not specified';
 
   return filtered
@@ -164,6 +164,10 @@ const extractNotificationData = (session: Session, preferredDate?: string, prefe
     finalDate = date;
     finalTime = time;
   }
+
+  // DEBUG: Log addresses being used for notification
+  console.log(`📍 [Notification] QuoteRequest addresses count: ${quoteRequest.addresses?.length || 0}`);
+  console.log(`📍 [Notification] QuoteRequest addresses:`, JSON.stringify(quoteRequest.addresses, null, 2));
 
   // Base data for all businesses
   const baseData = {
