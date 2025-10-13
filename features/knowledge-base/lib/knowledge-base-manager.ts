@@ -2,7 +2,7 @@ import { LoadWebsiteParams, LoadWebsiteResult, KnowledgeBaseConfig } from './typ
 
 // MCP imports - will need to install: npm install @modelcontextprotocol/sdk
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamablehttp.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 
 /**
  * KnowledgeBaseManager - Manages loading and interacting with business knowledge bases via MCP server
