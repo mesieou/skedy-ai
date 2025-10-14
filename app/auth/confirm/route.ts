@@ -4,7 +4,8 @@ import { type NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const code = searchParams.get("code");
+  const token_hash = searchParams.get("token_hash");
+  const type = searchParams.get("type");
   const next = searchParams.get("next") ?? "/protected/dashboard";
   const returnUrl = searchParams.get("returnUrl");
 
@@ -15,7 +16,8 @@ export async function GET(request: NextRequest) {
     : new URL(request.url).origin;
 
   console.log("Confirmation route called with:", {
-    code: !!code,
+    token_hash: !!token_hash,
+    type,
     next,
     returnUrl,
     requestUrl: request.url,
@@ -23,16 +25,19 @@ export async function GET(request: NextRequest) {
     nodeEnv: process.env.NODE_ENV
   });
 
-  if (!code) {
-    console.log("Missing confirmation code in URL");
-    return NextResponse.redirect(`${origin}/auth/error?error=${encodeURIComponent('Invalid confirmation link - missing confirmation code')}`);
+  if (!token_hash || !type) {
+    console.log("Missing confirmation token_hash or type in URL");
+    return NextResponse.redirect(`${origin}/auth/error?error=${encodeURIComponent('Invalid confirmation link - missing token')}`);
   }
 
   const supabase = await createAuthenticatedServerClient();
 
   try {
-    // Use exchangeCodeForSession instead of verifyOtp for email confirmation
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    // Use verifyOtp for email confirmation tokens
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash,
+      type: type as any,
+    });
 
     if (!error) {
       // Check for returnUrl first (from sign-up with return URL), then next, then default to protected
@@ -49,11 +54,11 @@ export async function GET(request: NextRequest) {
       console.log("✅ Email confirmation successful, redirecting to:", `${origin}${redirectPath}`);
       return NextResponse.redirect(`${origin}${redirectPath}`);
     } else {
-      console.error("❌ Email confirmation error with code:", error);
+      console.error("Email confirmation error:", error);
       return NextResponse.redirect(`${origin}/auth/error?error=${encodeURIComponent(error?.message || 'Confirmation failed')}`);
     }
   } catch (err) {
-    console.error("💥 Unexpected error during code confirmation:", err);
+    console.error("Unexpected error during email confirmation:", err);
     return NextResponse.redirect(`${origin}/auth/error?error=${encodeURIComponent('Unexpected error during confirmation')}`);
   }
 }

@@ -28,25 +28,35 @@ export async function getBusinessTimezoneByUserId(userId: string): Promise<strin
     const userRepo = new UserRepository();
     const user = await userRepo.findOne({ id: userId });
 
-    if (!user?.business_id) {
-      console.error(`📊 [Dashboard] User not found or has no business: ${userId}`);
-      throw new Error("User not found or not associated with a business");
+    if (!user) {
+      console.error(`User not found: ${userId}`);
+      throw new Error("USER_NOT_FOUND");
+    }
+
+    if (!user.business_id) {
+      console.error(`User has no business: ${userId}`);
+      throw new Error("NO_BUSINESS_ASSOCIATED");
     }
 
     // Get business record to extract timezone
     const businessRepo = new BusinessRepository();
     const business = await businessRepo.findOne({ id: user.business_id });
 
-    if (!business?.time_zone) {
-      console.error(`📊 [Dashboard] Business not found or has no timezone: ${user.business_id}`);
-      throw new Error("Business not found or has no timezone configured");
+    if (!business) {
+      console.error(`Business not found: ${user.business_id}`);
+      throw new Error("BUSINESS_NOT_FOUND");
+    }
+
+    if (!business.time_zone) {
+      console.error(`Business has no timezone: ${user.business_id}`);
+      throw new Error("NO_TIMEZONE_CONFIGURED");
     }
 
     console.log(`📊 [Dashboard] Business timezone for user ${userId}: ${business.time_zone}`);
     return business.time_zone;
   } catch (error) {
     console.error("Failed to fetch business timezone:", error);
-    throw new Error("Failed to fetch business timezone");
+    throw error;
   }
 }
 
@@ -58,9 +68,14 @@ export async function getBusinessBookingsByUserId(userId: string): Promise<Booki
     const userRepo = new UserRepository();
     const user = await userRepo.findOne({ id: userId });
 
-    if (!user?.business_id) {
-      console.error(`📊 [Dashboard] User not found or has no business: ${userId}`);
-      throw new Error("User not found or not associated with a business");
+    if (!user) {
+      console.error(`User not found: ${userId}`);
+      throw new Error("USER_NOT_FOUND");
+    }
+
+    if (!user.business_id) {
+      console.error(`User has no business: ${userId}`);
+      throw new Error("NO_BUSINESS_ASSOCIATED");
     }
 
     console.log(`📊 [Dashboard] User found: ${user.first_name} - Business ID: ${user.business_id}`);
@@ -125,7 +140,7 @@ export async function getBusinessBookingsByUserId(userId: string): Promise<Booki
     return bookingsWithServices;
   } catch (error) {
     console.error("Failed to fetch business bookings:", error);
-    throw new Error("Failed to fetch bookings");
+    throw error;
   }
 }
 
@@ -146,9 +161,14 @@ export async function getBusinessSessionsByUserId(userId: string): Promise<Sessi
         const userRepo = new UserRepository();
         const user = await userRepo.findOne({ id: userId });
 
-        if (!user?.business_id) {
-            console.error(`📊 [Dashboard] User not found or has no business: ${userId}`);
-            throw new Error("User not found or not associated with a business");
+        if (!user) {
+            console.error(`User not found: ${userId}`);
+            throw new Error("USER_NOT_FOUND");
+        }
+
+        if (!user.business_id) {
+            console.error(`User has no business: ${userId}`);
+            throw new Error("NO_BUSINESS_ASSOCIATED");
         }
 
         console.log(`📊 [Dashboard] User found: ${user.first_name} - Business ID: ${user.business_id}`);
@@ -183,7 +203,7 @@ export async function getBusinessSessionsByUserId(userId: string): Promise<Sessi
         return sessionsWithInteractions;
     } catch (error) {
         console.error("Failed to fetch business sessions:", error);
-        throw new Error("Failed to fetch sessions");
+        throw error;
     }
 }
 
