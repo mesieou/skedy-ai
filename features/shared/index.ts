@@ -2,6 +2,7 @@
 export { Footer } from './components/layout/footer';
 export { ThemeSwitcher } from './components/layout/theme-switcher';
 export { Hero } from './components/layout/hero';
+export { ErrorSuppressor } from './components/error-suppressor';
 // Note: MainLayout and Navbar should be imported directly to avoid server/client conflicts
 
 // Section components
@@ -22,6 +23,7 @@ export * from './components/ui/label';
 export * from './components/ui/dropdown-menu';
 export * from './components/ui/badge';
 export * from './components/ui/checkbox';
+export * from './components/ui/progress';
 export { FloatingElements } from './components/ui/floating-elements';
 
 // Utilities

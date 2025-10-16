@@ -14,6 +14,16 @@ export default async function DashboardPage() {
   console.log(`📊 [DashboardPage] Loading dashboard for user: ${data.claims.sub}`);
   console.log(`📊 [DashboardPage] User email: ${data.claims.email}`);
 
+  // Check if user has a business - if not, redirect to onboarding
+  const { UserRepository } = await import("@/features/shared/lib/database/repositories/user-repository");
+  const userRepo = new UserRepository();
+  const user = await userRepo.findOne({ id: data.claims.sub });
+
+  if (!user?.business_id) {
+    console.log(`📊 [DashboardPage] User has no business, redirecting to onboarding`);
+    redirect("/onboarding");
+  }
+
   const [bookings, sessions, businessTimezone] = await Promise.all([
     getBusinessBookingsByUserId(data.claims.sub),
     getBusinessSessionsByUserId(data.claims.sub),

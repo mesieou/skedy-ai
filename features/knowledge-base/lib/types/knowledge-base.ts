@@ -12,6 +12,7 @@ export interface LoadWebsiteResult {
   duration: number;
   tableName: string;
   error?: string;
+  partialScrape?: boolean;
 }
 
 export interface KnowledgeBaseConfig {

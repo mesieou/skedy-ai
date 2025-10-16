@@ -5,6 +5,14 @@ const nextConfig: NextConfig = {
   // Optimize for production - exclude packages that shouldn't be bundled
   serverExternalPackages: ['@sentry/nextjs', 'ws', 'openai'],
 
+  // Experimental features for long-running API routes
+  experimental: {
+    // Allow longer server actions for website scraping
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
+  },
+
   // Exclude standalone scripts from Next.js compilation
   webpack: (config, { isServer }) => {
     if (isServer) {
