@@ -20,6 +20,14 @@ export interface BookingWithServices extends Booking {
   addresses: Address[];
 }
 
+// TypeScript assertion helper
+function assert(condition: unknown, message: string): asserts condition {
+  if (!condition) {
+    console.error(message);
+    throw new Error(message);
+  }
+}
+
 export async function getBusinessTimezoneByUserId(userId: string): Promise<string> {
   try {
     console.log(`📊 [Dashboard] Fetching business timezone for user: ${userId}`);
@@ -27,11 +35,7 @@ export async function getBusinessTimezoneByUserId(userId: string): Promise<strin
     // Get user record to extract business_id
     const userRepo = new UserRepository();
     const user = await userRepo.findOne({ id: userId });
-
-    if (!user) {
-      console.error(`User not found: ${userId}`);
-      throw new Error("USER_NOT_FOUND");
-    }
+    assert(user, `User not found: ${userId}`);
 
     if (!user.business_id) {
       console.error(`User has no business: ${userId}`);
