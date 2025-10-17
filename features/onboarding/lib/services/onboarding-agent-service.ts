@@ -178,13 +178,43 @@ Current session context:
 - Completed steps: ${session.data.completedSteps.join(', ')}
 ${session.data.websiteUrl ? `- Website: ${session.data.websiteUrl}` : ''}
 ${session.data.businessAnalysis?.businessName ? `- Business: ${session.data.businessAnalysis.businessName}` : ''}
+${session.data.businessAnalysis ? `
+Extracted Business Information:
+- Business Name: ${session.data.businessAnalysis.businessName || 'Not found'}
+- Description: ${session.data.businessAnalysis.description || 'Not found'}
+- Services: ${session.data.businessAnalysis.services?.map(s => s.name).join(', ') || 'None found'}
+- Email: ${session.data.businessAnalysis.email || 'Not found'}
+- Phone: ${session.data.businessAnalysis.phone || 'Not found'}
+- Address: ${session.data.businessAnalysis.address || 'Not found'}
+- Mobile Services: ${session.data.businessAnalysis.hasMobileServices ? 'Yes' : 'No'}
+` : ''}
 
-Remember:
-- Be conversational and friendly
-- Ask one question at a time
-- Confirm information before moving forward
-- Use tools when appropriate
-- Guide the user smoothly through the process`;
+**CRITICAL CONVERSATION RULES - FOLLOW STRICTLY:**
+
+🚨 **MOST IMPORTANT RULE:** 
+NEVER ask multiple questions in one message. EVER. This is the #1 rule.
+
+❌ **WRONG - Multiple questions:**
+"Does this describe the service? What's the duration? How do you price it? Does it require travel?"
+
+✅ **CORRECT - One question:**
+"Does this accurately describe the service, or would you like to add anything?"
+[WAIT FOR RESPONSE]
+Then ask: "Perfect! What's the typical duration for this service?"
+[WAIT FOR RESPONSE]
+Then ask: "Got it! How do you structure the pricing?"
+
+**Other Rules:**
+- Keep responses SHORT - maximum 2 sentences before asking your ONE question
+- Be warm and conversational: "Perfect!", "Got it!", "Awesome!", "Great!"
+- Track what you've confirmed to avoid repeating
+- If user says something is wrong, ask for correction immediately
+- Make it feel natural, not like an interrogation
+
+**If you catch yourself about to ask multiple questions:**
+STOP. Pick the MOST IMPORTANT question. Ask only that one. Save the rest for later.
+
+Remember: You're having a conversation with a human, not filling out a form! One question at a time makes users feel heard and reduces stress.`;
 
     messages.push({
       role: 'system',
@@ -275,6 +305,37 @@ Remember:
       });
     }
 
+    // Save services tool
+    if (status === OnboardingStatus.SERVICE_CONFIGURATION) {
+      tools.push({
+        type: 'function',
+        function: {
+          name: 'save_services',
+          description: 'Save configured services with pricing and duration',
+          parameters: {
+            type: 'object',
+            properties: {
+              services: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string' },
+                    description: { type: 'string' },
+                    price: { type: 'number' },
+                    duration: { type: 'number' },
+                    requiresTravel: { type: 'boolean' }
+                  },
+                  required: ['name']
+                }
+              }
+            },
+            required: ['services']
+          }
+        }
+      });
+    }
+
     return tools;
   }
 
@@ -298,9 +359,11 @@ Remember:
       case 'save_business_info':
         return this.handleSaveBusinessInfo(session, args);
 
+      case 'save_services':
+        return this.handleSaveServices(session, args);
+
       default:
-        console.warn(`⚠️ [OnboardingAgent] Unknown tool: ${toolName}`);
-        return { error: `Unknown tool: ${toolName}` };
+        throw new Error(`Unknown tool: ${toolName}`);
     }
   }
 
@@ -476,6 +539,36 @@ Remember:
     return {
       success: true,
       message: 'Business information saved'
+    };
+  }
+
+  /**
+   * Handle save services tool
+   */
+  private async handleSaveServices(
+    session: OnboardingSession,
+    args: Record<string, unknown>
+  ): Promise<unknown> {
+    const services = args.services as Array<{
+      name: string;
+      description?: string;
+      price?: number;
+      duration?: number;
+      requiresTravel?: boolean;
+    }>;
+
+    console.log(`💾 [OnboardingAgent] Saving ${services.length} services:`, services.map(s => s.name).join(', '));
+
+    await OnboardingSessionService.update(session.id, {
+      data: {
+        services
+      }
+    });
+
+    return {
+      success: true,
+      message: `Saved ${services.length} services`,
+      services
     };
   }
 

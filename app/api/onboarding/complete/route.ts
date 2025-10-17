@@ -53,6 +53,8 @@ export async function POST(request: NextRequest) {
     const validation = setupService.validateSession(session);
 
     if (!validation.valid) {
+      console.error('❌ [Complete API] Validation failed:', validation.errors);
+      console.error('❌ [Complete API] Session data:', JSON.stringify(session.data, null, 2));
       return NextResponse.json(
         { 
           error: 'Incomplete onboarding data',

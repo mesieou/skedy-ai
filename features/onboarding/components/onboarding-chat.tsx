@@ -3,9 +3,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { OnboardingSession, OnboardingInteraction } from '../lib/types/onboarding-session';
 import { Button, Input, Card, CardContent } from '@/features/shared';
-import { Send, Loader2 } from 'lucide-react';
+import { Send, Loader2, Mic, MicOff, Phone, PhoneOff } from 'lucide-react';
 import { AnalysisProgress } from './analysis-progress';
 import { ScrapingProgress } from './scraping-progress';
+import { useRealtimeOnboarding } from '../hooks/use-realtime-onboarding';
 
 interface OnboardingChatProps {
   session: OnboardingSession;
@@ -18,7 +19,25 @@ export function OnboardingChat({ session, onSessionUpdate }: OnboardingChatProps
   const [isAnalyzingWebsite, setIsAnalyzingWebsite] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('Thinking...');
   const [interactions, setInteractions] = useState<OnboardingInteraction[]>(session.interactions);
+  const [showVoiceMode, setShowVoiceMode] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Realtime voice chat hook
+  const realtime = useRealtimeOnboarding(session, {
+    onTranscriptDelta: (delta, isUser) => {
+      // Transcripts are handled by the realtime hook's messages
+      console.log(`${isUser ? '🎤' : '🤖'} [Voice]`, delta);
+    },
+    onUserSpeaking: (speaking) => {
+      console.log('🎤 [Voice] User speaking:', speaking);
+    },
+    onAiThinking: (thinking) => {
+      console.log('🤖 [Voice] AI thinking:', thinking);
+    },
+    onError: (error) => {
+      console.error('❌ [Voice] Error:', error);
+    }
+  });
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -155,13 +174,6 @@ export function OnboardingChat({ session, onSessionUpdate }: OnboardingChatProps
             >
               <CardContent className="p-3">
                 <div className="text-sm whitespace-pre-wrap">{interaction.content}</div>
-                {interaction.metadata?.toolCalls && (
-                  <div className="mt-2 pt-2 border-t border-border/50">
-                    <div className="text-xs opacity-70">
-                      Tools used: {interaction.metadata.toolCalls.map(tc => tc.name).join(', ')}
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </div>
@@ -204,17 +216,61 @@ export function OnboardingChat({ session, onSessionUpdate }: OnboardingChatProps
       {/* Input area */}
       <div className="border-t p-4">
         <div className="flex gap-2">
+          {/* Voice call button */}
+          <Button
+            onClick={() => {
+              if (realtime.status === 'CONNECTED') {
+                realtime.disconnect();
+                setShowVoiceMode(false);
+              } else {
+                realtime.connect();
+                setShowVoiceMode(true);
+              }
+            }}
+            variant={realtime.status === 'CONNECTED' ? "destructive" : "outline"}
+            size="icon"
+            title={realtime.status === 'CONNECTED' ? "End voice call" : "Start voice call"}
+          >
+            {realtime.status === 'CONNECTED' ? (
+              <PhoneOff className="h-4 w-4" />
+            ) : realtime.status === 'CONNECTING' ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Phone className="h-4 w-4" />
+            )}
+          </Button>
+          
+          {/* Mute button (only show when connected) */}
+          {realtime.status === 'CONNECTED' && (
+            <Button
+              onClick={realtime.toggleMute}
+              variant={realtime.isMuted ? "destructive" : "outline"}
+              size="icon"
+              title={realtime.isMuted ? "Unmute" : "Mute"}
+            >
+              {realtime.isMuted ? (
+                <MicOff className="h-4 w-4" />
+              ) : (
+                <Mic className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+          
           <Input
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Type your message..."
-            disabled={isLoading}
+            placeholder={
+              realtime.status === 'CONNECTED' 
+                ? (realtime.isUserSpeaking ? "🎤 Listening..." : "Speaking...") 
+                : "Type your message..."
+            }
+            disabled={isLoading || realtime.status === 'CONNECTED'}
             className="flex-1"
           />
           <Button
             onClick={handleSendMessage}
-            disabled={!message.trim() || isLoading}
+            disabled={!message.trim() || isLoading || realtime.status === 'CONNECTED'}
             size="icon"
           >
             {isLoading ? (
@@ -224,6 +280,15 @@ export function OnboardingChat({ session, onSessionUpdate }: OnboardingChatProps
             )}
           </Button>
         </div>
+        
+        {/* Voice mode indicator */}
+        {realtime.status === 'CONNECTED' && (
+          <div className="mt-2 text-xs text-center text-muted-foreground flex items-center justify-center gap-2">
+            {realtime.isUserSpeaking && <span className="animate-pulse">🎤 You're speaking...</span>}
+            {realtime.isAiThinking && <span className="animate-pulse">🤖 AI is responding...</span>}
+            {!realtime.isUserSpeaking && !realtime.isAiThinking && <span>💬 Voice call active - speak naturally</span>}
+          </div>
+        )}
       </div>
     </div>
   );

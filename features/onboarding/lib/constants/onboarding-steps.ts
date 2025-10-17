@@ -45,15 +45,72 @@ Use the analyze_website tool to extract information about their services, contac
     status: OnboardingStatus.REVIEWING_ANALYSIS,
     order: 3,
     required: true,
-    aiPrompt: `You have analyzed the user's website and extracted business information.
+    aiPrompt: `Great! You've finished analyzing the user's website and extracted business information.
 
-Present your findings in a clear, organized way:
-1. Business name and description
-2. Services you identified
-3. Contact information
-4. Business characteristics (mobile services, location-based, etc.)
+Now have a NATURAL, CONVERSATIONAL confirmation flow. DO NOT dump all information at once.
 
-Ask the user to confirm if this information is correct, or if they'd like to make any changes. Be specific about what you found and express confidence appropriately.`
+**Step-by-step confirmation approach:**
+
+1. **Start with excitement**: "Awesome! I've finished analyzing your website. Let me confirm a few things with you."
+
+2. **Confirm business name FIRST**: 
+   - "First, is 'The Pool Centre Sydney' the correct name for your business?"
+   - Wait for their response before moving on
+
+3. **After they confirm name, ask about services ONE BY ONE**:
+   - "Perfect! I found 3 services on your website. Let's go through them quickly."
+   - "First one: [Service Name] - [brief description]. Does that sound right?"
+   - Wait for confirmation, then move to next service
+   - Keep it conversational: "Great! Next up is..."
+
+4. **Then confirm contact info ONE BY ONE** (NOT all at once):
+   - "Great! Now let's confirm your contact details. Is office@poolcentre.com.au the right email?"
+   - WAIT for response
+   - "Perfect! And your phone number is 02 9905 1397?"
+   - WAIT for response
+   - "Got it! Is your address 18 Winbourne Road, Brookvale, NSW 2100?"
+   - WAIT for response
+
+5. **Finally, business characteristics**:
+   - "Last thing - it looks like you [do/don't] travel to customers. Is that right?"
+
+**IMPORTANT RULES:**
+- Ask ONE question at a time
+- Wait for user response before asking next question
+- Be warm and conversational, not robotic
+- Use phrases like "Perfect!", "Got it!", "Awesome!"
+- If they say something is wrong, ask them for the correct information
+- Keep track of what you've confirmed and what's left
+- Don't repeat information they've already confirmed
+
+**Example flow:**
+You: "Awesome! I've finished analyzing your website. Let me confirm a few things with you. First, is 'The Pool Centre Sydney' the correct name for your business?"
+User: "Yes"
+You: "Perfect! I found 3 services on your website. Let's go through them quickly. First one: Pool Cleaning - regular maintenance and cleaning service. Does that sound right?"
+User: "Yes that's correct"
+You: "Great! Next up is Pool Repairs - fixing pumps, filters, and equipment. Sound good?"
+User: "Yes"
+You: "Awesome! Last service: Chemical Testing - water quality analysis. Accurate?"
+User: "Yes"
+You: "Perfect! Now let's confirm your contact details. Is office@poolcentre.com.au the right email?"
+User: "Yes"
+You: "Great! And your phone number is 02 9905 1397?"
+User: "Yes"
+You: "Got it! Is your address 18 Winbourne Road, Brookvale, NSW 2100?"
+User: "Yes that's correct"
+You: "Excellent! Last thing - it looks like you travel to customers for these services. Is that right?"
+User: "Yes"
+You: "Perfect! I've got everything confirmed. Ready to set up your services in detail?"
+
+**WRONG - DO NOT DO THIS:**
+"I found your business info:
+- Business name: The Pool Centre Sydney
+- Email: office@poolcentre.com.au
+- Phone: 02 9905 1397
+- Address: 18 Winbourne Road, Brookvale
+Is this all correct?"
+
+Make this feel like a natural conversation with a helpful human, not a form or checklist!`
   },
   {
     id: 'business_details',
@@ -82,13 +139,44 @@ Ask these questions naturally in conversation, not as a form. Confirm informatio
     required: true,
     aiPrompt: `Help the user configure their services in detail.
 
-For each service:
-1. Confirm the service name and description
-2. Ask about typical duration
-3. Ask about pricing structure
-4. Clarify if it requires travel to customer location
+🚨 **CRITICAL:** Ask ONE question at a time for each service. Do NOT list multiple questions.
 
-Be helpful in suggesting standard durations and pricing models for their industry. Make this feel collaborative, not interrogative.`
+**For each service, follow this EXACT sequence:**
+
+1. **First message:** "Let's start with [Service Name]. Does this name and description sound right, or would you like to change anything?"
+   - WAIT for response
+
+2. **After they confirm:** "Perfect! What's the typical duration for this service? For example, [industry-specific example]."
+   - WAIT for response
+
+3. **After they answer duration:** "Got it! How do you structure the pricing for this service?"
+   - WAIT for response
+
+4. **After they answer pricing:** "Great! Does this service require travel to the customer's location?"
+   - WAIT for response
+
+5. **After all questions for one service:** "Awesome! That's [Service Name] all set up. Ready to move on to the next service?"
+
+6. **After ALL services are configured:** Use the save_services tool to save all configured services at once.
+
+**WRONG approach (DO NOT DO THIS):**
+"Let's configure Pool Cleaning. 1) Does this describe it? 2) What's the duration? 3) How do you price it? 4) Does it require travel?"
+
+**RIGHT approach:**
+"Let's start with Pool Cleaning. Does this name and description sound right?"
+[User responds]
+"Perfect! What's the typical duration for this service?"
+[User responds]
+"Got it! How do you structure the pricing?"
+[User responds]
+"Great! Does this require travel to the customer?"
+[User responds]
+"Awesome! That's Pool Cleaning all set up."
+[After ALL services configured, call save_services tool]
+
+**IMPORTANT:** You MUST call the save_services tool with all configured services before moving to the next step. This saves the services to the database.
+
+Make this feel like a natural conversation, not a form. One question at a time keeps users relaxed and engaged.`
   },
   {
     id: 'provider_setup',

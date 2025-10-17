@@ -59,7 +59,9 @@ export function OnboardingContainer() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to complete onboarding');
+        const errorData = await response.json();
+        console.error('❌ [OnboardingContainer] Validation errors:', errorData.details);
+        throw new Error(errorData.details ? errorData.details.join(', ') : 'Failed to complete onboarding');
       }
 
       const data = await response.json();
@@ -68,7 +70,8 @@ export function OnboardingContainer() {
       router.push(`/protected/dashboard?businessId=${data.business.id}`);
     } catch (error) {
       console.error('Error completing onboarding:', error);
-      alert('Failed to complete onboarding. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to complete onboarding. Please try again.';
+      alert(`Failed to complete onboarding:\n\n${errorMessage}`);
     } finally {
       setIsCompleting(false);
     }

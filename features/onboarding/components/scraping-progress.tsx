@@ -165,11 +165,14 @@ export function ScrapingProgress({ sessionId, onComplete, onError }: ScrapingPro
   }
 
   // Scraping/Analyzing state
+  // Calculate progress based on elapsed time and status
+  const elapsedSeconds = job.progress.elapsedSeconds || 0;
   const progressPercentage = job.progress.rowsScraped 
     ? Math.min((job.progress.rowsScraped / 100) * 100, 95) 
     : job.status === 'analyzing' ? 85 
-    : job.progress.message.includes('MCP timeout') ? 60 // Show 60% when checking for data
-    : 15;
+    : job.progress.message.includes('MCP timeout') 
+      ? Math.min(50 + (elapsedSeconds / 300) * 40, 90) // 50-90% over 5 minutes
+      : Math.min(10 + (elapsedSeconds / 30) * 40, 50); // 10-50% for first 30 seconds
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 border border-primary/20 p-6">
@@ -233,9 +236,13 @@ export function ScrapingProgress({ sessionId, onComplete, onError }: ScrapingPro
             {job.progress.message}
             <span className="block text-xs mt-1 italic opacity-75">
               {job.progress.message.includes('MCP timeout') ? (
-                <>Request timed out but scraping continues in background. Checking for saved data...</>
+                elapsedSeconds > 180 ? (
+                  <>Large website detected. This may take up to 5 minutes. Please wait...</>
+                ) : (
+                  <>Request timed out but scraping continues in background. Checking for saved data...</>
+                )
               ) : (
-                <>This may take 2-5 minutes depending on website size</>
+                <>Analyzing your website content and extracting business information</>
               )}
             </span>
           </p>

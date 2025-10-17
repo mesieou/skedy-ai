@@ -127,12 +127,15 @@ export class OnboardingSessionService {
 
     // Apply updates
     if (updates.status) {
-      session.status = updates.status;
-      
-      // Track completed steps
-      if (!session.data.completedSteps.includes(updates.status)) {
-        session.data.completedSteps.push(updates.status);
+      // Mark CURRENT step as completed before moving to new step
+      if (!session.data.completedSteps.includes(session.status)) {
+        session.data.completedSteps.push(session.status);
+        console.log(`✅ [SessionService] Marked ${session.status} as completed`);
       }
+      
+      // Update to new status
+      session.status = updates.status;
+      console.log(`➡️ [SessionService] Moved to ${updates.status}`);
     }
 
     if (updates.currentStep !== undefined) {

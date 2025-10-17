@@ -108,18 +108,44 @@ export class WebsiteAnalyzerService {
         // FALLBACK: Check if data exists in the table even though scraping failed/timed out
         // For MCP timeouts, retry more times with longer delays since scraping continues in background
         let fallbackData = null;
-        const maxRetries = isMcpTimeout ? 20 : 3; // More retries for timeouts (100 seconds total)
-        const retryDelay = isMcpTimeout ? 5000 : 3000; // Longer delay for timeouts (5 seconds)
+        const maxRetries = isMcpTimeout ? 50 : 3; // More retries for timeouts (250 seconds = 4+ minutes)
+        const retryDelay = isMcpTimeout ? 5000 : 3000; // Check every 5 seconds
+        
+        // Fun messages to keep users engaged during long scrapes
+        const funMessages = [
+          "🔍 Reading every page like it's a bestseller...",
+          "🕵️ Investigating your website's secrets...",
+          "📚 Taking notes on your awesome content...",
+          "🎨 Admiring your website design while we work...",
+          "🤖 Teaching our AI about your business...",
+          "☕ Grabbing a virtual coffee while we scrape...",
+          "🧠 Processing all that juicy information...",
+          "🎯 Almost there! Finding the good stuff...",
+          "🚀 Your website has a lot to say! We're listening...",
+          "🔬 Analyzing every detail with care...",
+          "📖 Reading between the lines...",
+          "🎪 Your website is quite the show! Still watching...",
+          "🏗️ Building a complete picture of your business...",
+          "🎵 Humming along while we work...",
+          "🌟 Discovering what makes your business special...",
+          "🔮 Predicting your business needs...",
+          "🎨 Painting a picture of your services...",
+          "🧩 Putting all the pieces together...",
+          "🎭 Your website tells a great story! Still reading...",
+          "🏆 Finding all your best features..."
+        ];
         
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           console.log(`🔍 [WebsiteAnalyzer] Fallback attempt ${attempt}/${maxRetries}...`);
           
-          // Update job status to show we're checking
+          // Update job status with fun, rotating messages
           if (job) {
+            const messageIndex = (attempt - 1) % funMessages.length;
+            const funMessage = funMessages[messageIndex];
             ScrapingJobService.updateProgress(
               job.id, 
               'scraping', 
-              `MCP timeout - checking for saved data (attempt ${attempt}/${maxRetries})...`
+              funMessage
             );
           }
           
@@ -257,6 +283,10 @@ export class WebsiteAnalyzerService {
     const contentStr = typeof rawContent === 'string' 
       ? rawContent 
       : JSON.stringify(rawContent);
+
+    console.log(`🤖 [WebsiteAnalyzer] Sending to OpenAI for analysis...`);
+    console.log(`🤖 [WebsiteAnalyzer] Content length: ${contentStr.length} characters`);
+    console.log(`🤖 [WebsiteAnalyzer] Content preview (first 500 chars): ${contentStr.substring(0, 500)}`);
 
     const systemPrompt = `You are a business analyst AI. Analyze website content and extract structured business information.
     ${partialScrape ? '\n⚠️ NOTE: This content may be incomplete due to an interrupted scrape. Extract what you can from the available data.\n' : ''}
@@ -444,11 +474,32 @@ export class WebsiteAnalyzerService {
       
       console.log(`✅ [WebsiteAnalyzer] Found ${count || data.length} rows in ${tableName}`);
       
+      // Log first row to see structure
+      if (data.length > 0) {
+        console.log(`📋 [WebsiteAnalyzer] Sample row structure:`, Object.keys(data[0]));
+        console.log(`📋 [WebsiteAnalyzer] First row sample:`, JSON.stringify(data[0]).substring(0, 200));
+      }
+      
       // Combine all content from the rows
-      // Assuming the table has a 'content' or 'text' column
+      // The MCP server saves data with 'text' and 'metadata' columns
       const combinedContent = data
-        .map(row => row.content || row.text || JSON.stringify(row))
+        .map(row => {
+          // Extract text content
+          const text = row.text || row.content || '';
+          
+          // Extract metadata if available
+          const metadata = row.metadata ? 
+            (typeof row.metadata === 'string' ? row.metadata : JSON.stringify(row.metadata)) 
+            : '';
+          
+          // Combine text and metadata
+          return `${text}\n${metadata}`.trim();
+        })
+        .filter(content => content.length > 0) // Remove empty entries
         .join('\n\n');
+      
+      console.log(`📄 [WebsiteAnalyzer] Combined content length: ${combinedContent.length} characters`);
+      console.log(`📄 [WebsiteAnalyzer] Content preview: ${combinedContent.substring(0, 500)}...`);
       
       return {
         content: combinedContent,
