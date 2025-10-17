@@ -411,10 +411,14 @@ Remember:
       
       // Return detailed error for AI to understand
       const errorMessage = error instanceof Error ? error.message : 'Analysis failed';
+      const isMcpTimeout = errorMessage.includes('timed out') || errorMessage.includes('-32001');
+      
       return {
         success: false,
         error: errorMessage,
-        details: `Failed to analyze website ${websiteUrl}. Error: ${errorMessage}. Please ask the user to provide business information manually.`
+        details: isMcpTimeout 
+          ? `The website analysis timed out. This can happen with large websites. The scraping may still be running in the background, but we couldn't retrieve the data in time. Please ask the user to provide their business information manually, or they can try again with a simpler page URL (like their homepage).`
+          : `Failed to analyze website ${websiteUrl}. Error: ${errorMessage}. Please ask the user to provide business information manually.`
       };
     }
   }
