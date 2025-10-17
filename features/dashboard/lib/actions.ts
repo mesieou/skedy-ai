@@ -20,6 +20,14 @@ export interface BookingWithServices extends Booking {
   addresses: Address[];
 }
 
+// TypeScript assertion helper
+function assert(condition: unknown, message: string): asserts condition {
+  if (!condition) {
+    console.error(message);
+    throw new Error(message);
+  }
+}
+
 export async function getBusinessTimezoneByUserId(userId: string): Promise<string> {
   try {
     console.log(`📊 [Dashboard] Fetching business timezone for user: ${userId}`);
@@ -27,26 +35,21 @@ export async function getBusinessTimezoneByUserId(userId: string): Promise<strin
     // Get user record to extract business_id
     const userRepo = new UserRepository();
     const user = await userRepo.findOne({ id: userId });
+    assert(user, `User not found: ${userId}`);
 
-    if (!user?.business_id) {
-      console.error(`📊 [Dashboard] User not found or has no business: ${userId}`);
-      throw new Error("User not found or not associated with a business");
-    }
+    assert(user.business_id, `User has no business: ${userId}`);
 
     // Get business record to extract timezone
     const businessRepo = new BusinessRepository();
     const business = await businessRepo.findOne({ id: user.business_id });
-
-    if (!business?.time_zone) {
-      console.error(`📊 [Dashboard] Business not found or has no timezone: ${user.business_id}`);
-      throw new Error("Business not found or has no timezone configured");
-    }
+    assert(business, `Business not found: ${user.business_id}`);
+    assert(business.time_zone, `Business has no timezone: ${user.business_id}`);
 
     console.log(`📊 [Dashboard] Business timezone for user ${userId}: ${business.time_zone}`);
     return business.time_zone;
   } catch (error) {
     console.error("Failed to fetch business timezone:", error);
-    throw new Error("Failed to fetch business timezone");
+    throw error;
   }
 }
 
@@ -57,11 +60,8 @@ export async function getBusinessBookingsByUserId(userId: string): Promise<Booki
     // Get user record to extract verified business_id (security: can't trust client params)
     const userRepo = new UserRepository();
     const user = await userRepo.findOne({ id: userId });
-
-    if (!user?.business_id) {
-      console.error(`📊 [Dashboard] User not found or has no business: ${userId}`);
-      throw new Error("User not found or not associated with a business");
-    }
+    assert(user, `User not found: ${userId}`);
+    assert(user.business_id, `User has no business: ${userId}`);
 
     console.log(`📊 [Dashboard] User found: ${user.first_name} - Business ID: ${user.business_id}`);
 
@@ -125,7 +125,7 @@ export async function getBusinessBookingsByUserId(userId: string): Promise<Booki
     return bookingsWithServices;
   } catch (error) {
     console.error("Failed to fetch business bookings:", error);
-    throw new Error("Failed to fetch bookings");
+    throw error;
   }
 }
 
@@ -145,11 +145,8 @@ export async function getBusinessSessionsByUserId(userId: string): Promise<Sessi
         // Get user record to extract verified business_id (security: can't trust client params)
         const userRepo = new UserRepository();
         const user = await userRepo.findOne({ id: userId });
-
-        if (!user?.business_id) {
-            console.error(`📊 [Dashboard] User not found or has no business: ${userId}`);
-            throw new Error("User not found or not associated with a business");
-        }
+        assert(user, `User not found: ${userId}`);
+        assert(user.business_id, `User has no business: ${userId}`);
 
         console.log(`📊 [Dashboard] User found: ${user.first_name} - Business ID: ${user.business_id}`);
 
@@ -183,7 +180,7 @@ export async function getBusinessSessionsByUserId(userId: string): Promise<Sessi
         return sessionsWithInteractions;
     } catch (error) {
         console.error("Failed to fetch business sessions:", error);
-        throw new Error("Failed to fetch sessions");
+        throw error;
     }
 }
 
@@ -221,11 +218,7 @@ export async function createNewCustomer(data: {
     // Get current user record to extract verified business_id (security: can't trust client params)
     const userRepo = new UserRepository();
     const currentUser = await userRepo.findOne({ id: data.currentUserId });
-
-    if (!currentUser?.business_id) {
-      console.error(`📊 [Dashboard] User not found or has no business: ${data.currentUserId}`);
-      throw new Error("User not found or not associated with a business");
-    }
+    assert(currentUser?.business_id, `📊 [Dashboard] User not found or has no business: ${data.currentUserId}`);
 
     // Create auth user data
     const authUserData = {
@@ -273,11 +266,7 @@ export async function getBusinessServices(userId: string): Promise<{ id: string;
     // Get user record to extract verified business_id (security: can't trust client params)
     const userRepo = new UserRepository();
     const user = await userRepo.findOne({ id: userId });
-
-    if (!user?.business_id) {
-      console.error(`📊 [Dashboard] User not found or has no business: ${userId}`);
-      throw new Error("User not found or not associated with a business");
-    }
+    assert(user?.business_id, `📊 [Dashboard] User not found or has no business: ${userId}`);
 
     // Get all services for this business
     const serviceRepo = new ServiceRepository();
@@ -305,26 +294,15 @@ export async function getServiceDetails(userId: string, serviceId: string): Prom
     // Get user record to extract verified business_id (security: can't trust client params)
     const userRepo = new UserRepository();
     const user = await userRepo.findOne({ id: userId });
-
-    if (!user?.business_id) {
-      console.error(`📊 [Dashboard] User not found or has no business: ${userId}`);
-      throw new Error("User not found or not associated with a business");
-    }
+    assert(user?.business_id, `📊 [Dashboard] User not found or has no business: ${userId}`);
 
     // Get service details
     const serviceRepo = new ServiceRepository();
     const service = await serviceRepo.findOne({ id: serviceId });
-
-    if (!service) {
-      console.error(`📊 [Dashboard] Service not found: ${serviceId}`);
-      throw new Error("Service not found");
-    }
+    assert(service, `📊 [Dashboard] Service not found: ${serviceId}`);
 
     // Verify service belongs to user's business (security: prevent cross-business access)
-    if (service.business_id !== user.business_id) {
-      console.error(`📊 [Dashboard] Service ${serviceId} does not belong to business ${user.business_id}`);
-      throw new Error("Service does not belong to your business");
-    }
+    assert(service.business_id === user.business_id, `📊 [Dashboard] Service ${serviceId} does not belong to business ${user.business_id}`);
 
     console.log(`📊 [Dashboard] Found service: ${service.name} (location_type: ${service.location_type})`);
     return service;
@@ -341,11 +319,7 @@ export async function getBusinessCustomers(userId: string): Promise<{ id: string
     // Get user record to extract verified business_id (security: can't trust client params)
     const userRepo = new UserRepository();
     const user = await userRepo.findOne({ id: userId });
-
-    if (!user?.business_id) {
-      console.error(`📊 [Dashboard] User not found or has no business: ${userId}`);
-      throw new Error("User not found or not associated with a business");
-    }
+    assert(user?.business_id, `📊 [Dashboard] User not found or has no business: ${userId}`);
 
     // Get all customers for this business
     const customers = await userRepo.findAll(
@@ -395,11 +369,7 @@ export async function createSimpleBooking(data: {
     // Get user record to extract verified business_id (security: can't trust client params)
     const userRepo = new UserRepository();
     const user = await userRepo.findOne({ id: data.userId });
-
-    if (!user?.business_id) {
-      console.error(`📊 [Dashboard] User not found or has no business: ${data.userId}`);
-      throw new Error("User not found or not associated with a business");
-    }
+    assert(user?.business_id, `📊 [Dashboard] User not found or has no business: ${data.userId}`);
 
     // Get business details for availability updates
     const { BusinessRepository } = await import("@/features/shared/lib/database/repositories/business-repository");
@@ -469,9 +439,7 @@ export async function updateBooking(data: {
 
     // Get existing booking
     const existingBooking = await bookingsRepo.findOne({ id: data.bookingId });
-    if (!existingBooking) {
-      throw new Error("Booking not found");
-    }
+    assert(existingBooking, "Booking not found");
 
     // Prepare update data
     const updateData: Partial<Booking> = {};
