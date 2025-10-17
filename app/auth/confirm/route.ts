@@ -32,11 +32,11 @@ export async function GET(request: NextRequest) {
 
   try {
     // Use exchangeCodeForSession instead of verifyOtp for email confirmation
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
-    if (!error) {
-      // Check for returnUrl first (from sign-up with return URL), then next, then default to protected
-      let redirectPath = "/protected/dashboard";
+    if (!error && data?.user) {
+      // Check for returnUrl first (from sign-up with return URL), then next, then default
+      let redirectPath = "/protected/onboarding"; // Default to onboarding for new users
 
       if (returnUrl) {
         // Decode the return URL and redirect to it
@@ -44,6 +44,19 @@ export async function GET(request: NextRequest) {
         redirectPath = decodedReturnUrl;
       } else if (next && next !== "/protected/dashboard") {
         redirectPath = next;
+      } else {
+        // Check if user has a business - if yes, go to dashboard instead of onboarding
+        const { UserRepository } = await import("@/features/shared/lib/database/repositories/user-repository");
+        const userRepo = new UserRepository();
+        const user = await userRepo.findOne({ id: data.user.id });
+
+        if (user?.business_id) {
+          console.log("✅ Email confirmed - Existing user with business, redirecting to dashboard");
+          redirectPath = "/protected/dashboard";
+        } else {
+          console.log("✅ Email confirmed - New user detected, redirecting to onboarding");
+          redirectPath = "/protected/onboarding";
+        }
       }
 
       console.log("✅ Email confirmation successful, redirecting to:", `${origin}${redirectPath}`);

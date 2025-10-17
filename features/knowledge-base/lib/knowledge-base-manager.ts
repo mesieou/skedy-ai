@@ -177,8 +177,22 @@ export class KnowledgeBaseManager {
    * Static helper to create a manager with environment config
    */
   static fromEnv(databaseUrl?: string): KnowledgeBaseManager {
-    const mcpServerUrl = process.env.MCP_SERVER_URL || 'http://localhost:8000/mcp';
-    const dbUrl = databaseUrl || process.env.DATABASE_URL || '';
+    const mcpServerUrl = process.env.MCP_SERVER_URL;
+    const dbUrl = databaseUrl || process.env.DATABASE_URL;
+
+    if (!mcpServerUrl) {
+      console.error('❌ MCP_SERVER_URL environment variable is not set!');
+      console.error('❌ Please set MCP_SERVER_URL in your .env.local file');
+      throw new Error('MCP_SERVER_URL environment variable is required');
+    }
+
+    if (!dbUrl) {
+      console.error('❌ DATABASE_URL environment variable is not set!');
+      throw new Error('DATABASE_URL environment variable is required');
+    }
+
+    console.log(`✅ [KnowledgeBaseManager] Using MCP server: ${mcpServerUrl}`);
+    console.log(`✅ [KnowledgeBaseManager] Database URL: ${dbUrl.substring(0, 30)}...`);
 
     return new KnowledgeBaseManager({
       mcpServerUrl,

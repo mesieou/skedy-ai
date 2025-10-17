@@ -4,6 +4,7 @@ import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { GoogleAnalyticsProvider } from "../features/shared/components/analytics/google-analytics-provider";
 import { FacebookPixelProvider } from "../features/shared/components/analytics/facebook-pixel-provider";
+import { ErrorSuppressor } from "../features/shared/components/error-suppressor";
 import "./globals.css";
 
 // 2️⃣ Default URL for metadata
@@ -142,6 +143,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
 
       <body className={`${geistSans.className} antialiased`}>
+        <ErrorSuppressor />
         <GoogleAnalyticsProvider>
           <FacebookPixelProvider>
             <ThemeProvider
