@@ -66,7 +66,7 @@ Current session context:
 ${session.data.websiteUrl ? `- Website: ${session.data.websiteUrl}` : ''}
 ${session.data.businessAnalysis ? `
 - Business: ${session.data.businessAnalysis.businessName}
-- Services: ${session.data.businessAnalysis.services?.map((s: any) => s.name).join(', ')}
+- Services: ${session.data.businessAnalysis.services?.map((s: { name: string }) => s.name).join(', ')}
 ` : ''}
 
 CRITICAL RULES FOR VOICE CONVERSATION:
