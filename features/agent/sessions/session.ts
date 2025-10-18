@@ -85,6 +85,57 @@ export interface Session {
   // Payment state management
   depositPaymentState?: DepositPaymentState;
 
+  // MWAV Integration - Enquiry data collection (optional, only for MWAV partnerships)
+  // Note: This structure is designed to be extractable into generic workflow system later
+  mwavEnquiry?: {
+    pickupLocations: Array<{
+      index: number;
+      address: string;
+      parking_distance: string;  // Enum: 'at_the_door' | 'on_the_street' | etc.
+      stairs_count: string;       // Enum: 'none' | '1' | '2' | '3' | '4' | '5+'
+      has_lift: boolean;
+    }>;
+    dropoffLocations: Array<{
+      index: number;
+      address: string;
+      parking_distance: string;  // Enum: 'at_the_door' | 'on_the_street' | etc.
+      stairs_count: string;       // Enum: 'none' | '1' | '2' | '3' | '4' | '5+'
+      has_lift: boolean;
+    }>;
+    items: Array<{
+      item_name: string;
+      quantity: number;
+      category?: string;
+      pickup_index: number;
+      dropoff_index: number;
+      notes?: string;
+    }>;
+    customerDetails?: {           // Customer info (NOT stored in Skedy DB)
+      first_name: string;
+      last_name: string;
+      phone: string;
+      email: string;
+    };
+    dateTime?: {                  // Move date/time
+      preferred_date: string;
+      time_preference: 'morning' | 'afternoon';
+    };
+    mwavQuote?: {                 // Quote from MWAV API
+      quote_id: string;
+      duration: {
+        hours: number;
+        minutes: number;
+        display: string;
+      };
+      estimate: number;           // Total estimate amount
+      currency: string;
+      truck: string;              // e.g., "1x M Truck"
+      movers: string;             // e.g., "2x Movers"
+      accuracy_note: string;      // Their accuracy disclaimer
+    };
+    confirmationId?: string;      // Set when send_enquiry_confirmation is called
+  };
+
   // Demo-specific fields
   ephemeralToken?: string;                   // WebRTC ephemeral token for demo sessions
 }

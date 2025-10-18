@@ -194,6 +194,43 @@ export function createUniquePlumberBusinessData(): CreateBusinessData {
   };
 }
 
+// Function to create Man With A Van business data
+export function createMWAVBusinessData(): CreateBusinessData {
+  return {
+    name: "Man With A Van",
+    email: "info@manwithavan.com.au",
+    phone_number: "+61394173443",  // (03) 9417 3443
+    address: "13-29 Nelson St, Abbotsford VIC 3067",  // Primary location
+    time_zone: "Australia/Melbourne",
+    language: "en",
+    business_category: BusinessCategory.REMOVALIST,
+    charges_gst: true,
+    prices_include_gst: true,  // Australian businesses typically include GST in displayed prices
+    gst_rate: 10.00,
+    charges_deposit: false,  // MWAV handles payments, not Skedy
+    payment_processing_fee_percentage: 0,
+    booking_platform_fee_percentage: 0,  // Partnership model - no Skedy fees
+    currency_code: "AUD",
+    number_of_providers: 30,
+    subscription_type: SubscriptionType.FREE,  // Partnership arrangement
+    payment_methods: [PaymentMethod.CREDIT_CARD],  // EFTPOS, Visa, MasterCard = CREDIT_CARD
+    preferred_payment_method: PaymentMethod.CREDIT_CARD,
+    deposit_type: DepositType.FIXED,
+    deposit_percentage: null,
+    deposit_fixed_amount: 0.0,  // No deposit through Skedy
+    website_url: "https://www.manwithavan.com.au/",
+    whatsapp_number: null,  // Not provided
+    whatsapp_phone_number_id: null,
+    stripe_connect_account_id: null,  // MWAV handles their own payments
+    stripe_account_status: "inactive",  // Not using Skedy payment processing
+    offers_mobile_services: true,   // Yes, they travel to customers for pickup/dropoff
+    offers_location_services: false, // Customers don't come to warehouse
+    minimum_charge: 0,  // No minimum through Skedy (MWAV handles pricing)
+    twilio_number: "+61879436787",
+    openai_api_key_name: "MWAV"
+  };
+}
+
 // Function to create Skedy business data for tests
 export function createSkedyBusinessData(): CreateBusinessData {
   return {

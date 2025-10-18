@@ -64,6 +64,7 @@ export class ServiceRequirementsGenerator {
       case TravelChargingModel.FULL_ROUTE:
       case TravelChargingModel.BETWEEN_CUSTOMERS_AND_BACK_TO_BASE:
       case TravelChargingModel.FROM_BASE_AND_BETWEEN_CUSTOMERS:
+      case TravelChargingModel.FROM_BASE_TO_CUSTOMERS_AND_BACK_TO_BASE:  // MWAV model
         return ['pickup_addresses', 'dropoff_addresses'];  // Multiple pickups/dropoffs
 
       case TravelChargingModel.FROM_BASE_TO_CUSTOMERS:

@@ -11,7 +11,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 
 // Load environment variables (same as Jest)
-dotenv.config({ path: path.join(__dirname, '../.env.production') });
+dotenv.config({ path: path.join(__dirname, '../.env.local') });
 
 import { toolsSeeder } from '../features/shared/lib/database/seeds/tools-seeder';
 import { allAvailableTools } from '../features/shared/lib/database/seeds/data/tools-data';
@@ -44,10 +44,9 @@ async function createUpdateTools(toolName?: string) {
     let updatedCount = 0;
 
     for (const toolData of toolsToProcess) {
-      // Check if tool already exists to avoid duplicates
+      // Check if tool already exists by name only (name is unique in DB)
       const existing = await toolsSeeder.findOne({
-        name: toolData.name,
-        version: toolData.version
+        name: toolData.name
       });
 
       if (!existing) {
@@ -55,9 +54,9 @@ async function createUpdateTools(toolName?: string) {
         console.log(`✅ Created: ${toolData.name} v${toolData.version}`);
         createdCount++;
       } else {
-        // Update existing tool
+        // Update existing tool (version may have changed)
         await toolsSeeder.updateOne(
-          { name: toolData.name, version: toolData.version },
+          { name: toolData.name },
           toolData
         );
         console.log(`🔄 Updated: ${toolData.name} v${toolData.version}`);

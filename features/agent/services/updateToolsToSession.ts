@@ -16,6 +16,11 @@ export async function updateToolsToSession(session: Session, toolNames: string[]
   const startTime = Date.now();
 
   try {
+    console.log(`🔧 [UpdateTools] Session ${session.id} | Updating tools...`);
+    console.log(`📋 [UpdateTools] Requested tool names:`, toolNames);
+    console.log(`📋 [UpdateTools] Permanent tools:`, PERMANENT_TOOLS);
+    console.log(`📋 [UpdateTools] All available tools in session:`, session.allAvailableToolNames);
+
     // Add breadcrumb
     sentry.addBreadcrumb(`Updating session tools`, 'tool-management', {
       sessionId: session.id,
@@ -28,23 +33,27 @@ export async function updateToolsToSession(session: Session, toolNames: string[]
 
     // Always include permanent tools + requested tools
     const allToolNames = [...PERMANENT_TOOLS, ...toolNames];
+    console.log(`📋 [UpdateTools] Combined tool names (permanent + requested):`, allToolNames);
 
     // Filter to only valid ones
     const validToolNames = allToolNames.filter(name => session.allAvailableToolNames.includes(name));
     const invalidTools = allToolNames.filter(name => !session.allAvailableToolNames.includes(name));
 
+    console.log(`✅ [UpdateTools] Valid tool names:`, validToolNames);
     if (invalidTools.length > 0) {
-      console.warn(`⚠️ [SessionTools] Invalid tools requested: ${invalidTools.join(', ')}`);
+      console.warn(`⚠️ [UpdateTools] Invalid tools requested: ${invalidTools.join(', ')}`);
     }
 
     if (validToolNames.length === 0) {
-      console.warn(`⚠️ [SessionTools] No valid tools to add from: ${allToolNames.join(', ')}`);
+      console.warn(`⚠️ [UpdateTools] No valid tools to add from: ${allToolNames.join(', ')}`);
       return;
     }
 
     // Get tools from database using business_tools junction table
+    console.log(`🔍 [UpdateTools] Fetching tool definitions from database for business ${session.businessId}...`);
     const businessToolsRepo = new BusinessToolsRepository();
     const allValidTools = await businessToolsRepo.getActiveToolsByNamesForBusiness(session.businessId, validToolNames);
+    console.log(`✅ [UpdateTools] Fetched ${allValidTools.length} tool definitions:`, allValidTools.map(t => t.name));
 
     // Update dynamic tool schemas if needed
     if (serviceName && toolNames.includes('get_quote')) {
@@ -58,9 +67,11 @@ export async function updateToolsToSession(session: Session, toolNames: string[]
 
     // Update session tools
     session.currentTools = allValidTools;
+    console.log(`💾 [UpdateTools] Session tools updated in memory`);
+    console.log(`📋 [UpdateTools] Current tools now in session:`, session.currentTools.map(t => t.name));
 
     const duration = Date.now() - startTime;
-    console.log(`✅ [SessionTools] Updated ${allValidTools.length} tools (${duration}ms): ${allValidTools.map(t => t.name).join(', ')}`);
+    console.log(`✅ [UpdateTools] Updated ${allValidTools.length} tools (${duration}ms): ${allValidTools.map(t => t.name).join(', ')}`);
 
     // Success breadcrumb
     sentry.addBreadcrumb(`Tools updated successfully`, 'tool-management', {

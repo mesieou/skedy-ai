@@ -15,6 +15,17 @@ import { checkPaymentStatusTool } from './tools/checkPaymentStatus';
 import { sendSMSBookingConfirmationTool } from './tools/sendSMSBookingConfirmationTool';
 import { createBooking } from './tools/createBooking';
 import { requestTool } from './tools/requestTool';
+import { getAdditionalInfo } from './tools/getAdditionalInfo';
+
+// MWAV Integration tools
+import { collectLocationDetails } from '../integrations/mwav/tools/collectLocationDetails';
+import { searchMovingItems } from '../integrations/mwav/tools/searchMovingItems';
+import { addMovingItems } from '../integrations/mwav/tools/addMovingItems';
+import { collectCustomerDetails } from '../integrations/mwav/tools/collectCustomerDetails';
+import { collectDateTime } from '../integrations/mwav/tools/collectDateTime';
+import { sendEnquiryConfirmation } from '../integrations/mwav/tools/sendEnquiryConfirmation';
+import { getMWAVQuote } from '../integrations/mwav/tools/getMWAVQuote';
+import { sendMWAVEnquiry } from '../integrations/mwav/tools/sendMWAVEnquiry';
 
 /**
  * Execute tool function and update session state
@@ -32,6 +43,11 @@ export async function executeToolFunction(
   const startTime = Date.now();
 
   try {
+    console.log(`🔧 [ExecuteTool] Starting execution for: ${toolName}`);
+    console.log(`📋 [ExecuteTool] Session ${session.id} | Current tools in session:`, session.currentTools?.map(t => t.name) || []);
+    console.log(`📋 [ExecuteTool] Session ${session.id} | All available tools:`, session.allAvailableToolNames || []);
+    console.log(`📥 [ExecuteTool] Tool ${toolName} | Input args:`, JSON.stringify(args, null, 2));
+
     // Add breadcrumb for tool execution start
     sentry.addBreadcrumb(`Executing tool ${toolName}`, 'tool-execution', {
       sessionId: session.id,
@@ -44,6 +60,10 @@ export async function executeToolFunction(
     // Find the tool in currently available tools
     const tool = session.currentTools?.find(t => t.name === toolName);
     if (!tool) {
+      console.error(`❌ [ExecuteTool] Tool NOT FOUND: ${toolName}`);
+      console.error(`❌ [ExecuteTool] Current tools: ${JSON.stringify(session.currentTools?.map(t => t.name))}`);
+      console.error(`❌ [ExecuteTool] All available: ${JSON.stringify(session.allAvailableToolNames)}`);
+
       const errorResult = {
         success: false,
         error: `${toolName} unavailable`,
@@ -62,8 +82,11 @@ export async function executeToolFunction(
         }
       });
 
+      console.log(`📤 [ExecuteTool] Returning error result:`, errorResult);
       return errorResult;
     }
+
+    console.log(`✅ [ExecuteTool] Tool found in currentTools: ${toolName}`);
 
     let result: Record<string, unknown>;
 
@@ -114,6 +137,60 @@ export async function executeToolFunction(
           session
         );
         break;
+      case 'collect_location_details':
+        result = await collectLocationDetails(
+          args as { location_type: 'pickup' | 'dropoff'; address: string; parking_distance: string; stairs_count: string; has_lift: boolean },
+          session
+        );
+        break;
+      case 'search_moving_items':
+        result = await searchMovingItems(
+          args as { items_description: string },
+          session
+        );
+        break;
+      case 'add_moving_items':
+        result = await addMovingItems(
+          args as { items: Array<{ item_name: string; quantity: number; pickup_index: number; dropoff_index: number; notes?: string }> },
+          session
+        );
+        break;
+      case 'collect_customer_details':
+        result = await collectCustomerDetails(
+          args as { first_name: string; last_name: string; phone: string; email: string },
+          session
+        );
+        break;
+      case 'collect_date_time':
+        result = await collectDateTime(
+          args as { preferred_date: string; time_preference: 'morning' | 'afternoon' },
+          session
+        );
+        break;
+      case 'send_enquiry_confirmation':
+        result = await sendEnquiryConfirmation(
+          args as { send_via: 'sms' | 'email' | 'both' },
+          session
+        );
+        break;
+      case 'get_mwav_quote':
+        result = await getMWAVQuote(
+          args as { confirm_locations_collected: string; confirm_items_collected: string; confirm_customer_details: string; confirm_date_time: string },
+          session
+        );
+        break;
+      case 'send_mwav_enquiry':
+        result = await sendMWAVEnquiry(
+          args as { customer_confirmation: string; confirmation_message?: string },
+          session
+        );
+        break;
+      case 'get_additional_info':
+        result = await getAdditionalInfo(
+          args as { question: string },
+          session
+        );
+        break;
       default:
         result = buildToolResponse(null, `Unknown tool: ${toolName}`, false);
 
@@ -130,6 +207,9 @@ export async function executeToolFunction(
     }
 
     const duration = Date.now() - startTime;
+
+    console.log(`📤 [ExecuteTool] Tool ${toolName} | Output result:`, JSON.stringify(result, null, 2));
+    console.log(`⏱️ [ExecuteTool] Tool ${toolName} | Execution time: ${duration}ms`);
 
     // Add success breadcrumb
     sentry.addBreadcrumb(`Tool execution completed successfully`, 'tool-execution', {

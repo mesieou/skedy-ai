@@ -1,5 +1,4 @@
 import { BusinessPromptRepository } from '../../shared/lib/database/repositories/business-prompt-repository';
-import { PROMPTS_NAMES } from '../../shared/lib/database/types/prompt';
 import { BusinessRepository } from '../../shared/lib/database/repositories/business-repository';
 import { BusinessToolsRepository } from '../../shared/lib/database/repositories/business-tools-repository';
 import { sentry } from '../../shared/utils/sentryService';
@@ -42,9 +41,10 @@ export async function addPromptToSession(session: Session): Promise<void> {
     const businessInfoString = businessRepo.buildBusinessInfoForCustomers(business);
     console.log(`🤖 [GeneratePrompt] Business info string: ${businessInfoString}`);
     // Get active prompt data for business in ONE query using JOIN
-    const promptData = await businessPromptRepo.getActivePromptByNameForBusiness(business.id, PROMPTS_NAMES.MAIN_CONVERSATION);
+    // Use dynamic lookup - each business can have their own prompt (main_conversation, mwav_removalist, etc.)
+    const promptData = await businessPromptRepo.getActivePromptForBusiness(business.id);
 
-    assert(promptData, `${PROMPTS_NAMES.MAIN_CONVERSATION} prompt not found for business ${business.id}`);
+    assert(promptData, `No active prompt found for business ${business.id}`);
 
 
     // Get current date and time in business timezone using DateUtils

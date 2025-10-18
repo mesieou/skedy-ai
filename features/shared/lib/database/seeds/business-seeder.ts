@@ -2,7 +2,7 @@
 import { BaseSeeder } from './base-seeder';
 import { BusinessRepository } from '../repositories/business-repository';
 import type { Business, CreateBusinessData } from '../types/business';
-import { createUniqueRemovalistBusinessData, createUniqueMobileManicuristBusinessData, createUniqueMassageBusinessData, createSkedyBusinessData, createTigaRemovalistBusinessData } from './data/business-data';
+import { createUniqueRemovalistBusinessData, createUniqueMobileManicuristBusinessData, createUniqueMassageBusinessData, createSkedyBusinessData, createTigaRemovalistBusinessData, createMWAVBusinessData } from './data/business-data';
 
 export class BusinessSeeder extends BaseSeeder<Business> {
   constructor() {
@@ -37,5 +37,10 @@ export class BusinessSeeder extends BaseSeeder<Business> {
   // Create Tiga removalist business
   async createTigaRemovalistBusiness(): Promise<Business> {
     return await this.create(createTigaRemovalistBusinessData());
+  }
+
+  // Create Man With A Van business
+  async createMWAVBusiness(): Promise<Business> {
+    return await this.create(createMWAVBusinessData());
   }
 }

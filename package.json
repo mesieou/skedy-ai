@@ -17,7 +17,9 @@
     "seed:business": "tsx scripts/seed-business.ts",
     "setup-tool": "tsx scripts/setup-single-tool.ts",
     "setup-tools": "tsx scripts/setup-tools.ts",
+    "setup-mwav": "tsx scripts/setup-mwav-business.ts",
     "deploy-tool": "tsx scripts/deploy-tool-to-businesses.ts",
+    "regenerate-request-tool": "tsx scripts/regenerate-request-tool-schemas.ts",
     "remove-tool": "tsx scripts/remove-tool-from-businesses.ts",
     "rd-monthly": "tsx scripts/git-sheets/simple-rd-system.ts monthly-summary",
     "load-website": "tsx scripts/load-business-website.ts"

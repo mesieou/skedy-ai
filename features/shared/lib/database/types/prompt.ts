@@ -2,6 +2,7 @@ import { BaseEntity } from "./base";
 
 export enum PROMPTS_NAMES {
   MAIN_CONVERSATION = 'main_conversation',
+  MWAV_REMOVALIST = 'mwav_removalist',
 }
 
 export interface Prompt extends BaseEntity {

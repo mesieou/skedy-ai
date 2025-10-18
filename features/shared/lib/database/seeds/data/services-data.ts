@@ -842,6 +842,184 @@ export const massageExample9Service2Data: CreateServiceData = {
 };
 
 // ===================================================================
+// MAN WITH A VAN SERVICES - Item-based removals (API pricing)
+// ===================================================================
+// Note: MWAV uses item-based pricing with day-of-week rates
+// These services are for display only - actual pricing comes from MWAV API
+
+export const mwavMediumTruckService: CreateServiceData = {
+  business_id: "placeholder-business-id",
+  name: "Medium Truck + 2 Movers",
+  description: "Our Medium trucks can manage a student apartment, small office or a bouncing baby hippo",
+  how_it_works: "Book for as little as 30 minutes plus travel for fully trained charming movers. Fully insured at no extra cost. Only pay on completion.",
+  location_type: LocationType.PICKUP_AND_DROPOFF,
+  travel_charging_model: TravelChargingModel.FROM_BASE_TO_CUSTOMERS_AND_BACK_TO_BASE,
+  pricing_config: {
+    components: [
+      {
+        name: "Moving Service",
+        pricing_combination: PricingCombination.LABOR_PER_HOUR_TEAM_RATE,
+        tiers: [
+          {
+            min_quantity: 2,
+            max_quantity: 2,
+            price: 217.00,
+            day_type: 'weekday'
+          },
+          {
+            min_quantity: 2,
+            max_quantity: 2,
+            price: 236.00,
+            day_type: 'saturday'
+          },
+          {
+            min_quantity: 2,
+            max_quantity: 2,
+            price: 275.00,
+            day_type: 'sunday'
+          },
+          {
+            min_quantity: 2,
+            max_quantity: 2,
+            price: 344.00,
+            day_type: 'public_holiday'
+          }
+        ]
+      }
+    ]
+  }
+};
+
+export const mwavLargeTruckService: CreateServiceData = {
+  business_id: "placeholder-business-id",
+  name: "Large Truck + 2 Movers",
+  description: "Our Large trucks can handle a two-bedroom house, averaged-sized office or an annoyed juvenile elephant",
+  how_it_works: "Book for as little as 30 minutes plus travel for fully trained charming movers. Fully insured at no extra cost. Only pay on completion.",
+  location_type: LocationType.PICKUP_AND_DROPOFF,
+  travel_charging_model: TravelChargingModel.FROM_BASE_TO_CUSTOMERS_AND_BACK_TO_BASE,
+  pricing_config: {
+    components: [
+      {
+        name: "Moving Service",
+        pricing_combination: PricingCombination.LABOR_PER_HOUR_TEAM_RATE,
+        tiers: [
+          {
+            min_quantity: 2,
+            max_quantity: 2,
+            price: 241.00,
+            day_type: 'weekday'
+          },
+          {
+            min_quantity: 2,
+            max_quantity: 2,
+            price: 262.00,
+            day_type: 'saturday'
+          },
+          {
+            min_quantity: 2,
+            max_quantity: 2,
+            price: 300.00,
+            day_type: 'sunday'
+          },
+          {
+            min_quantity: 2,
+            max_quantity: 2,
+            price: 392.00,
+            day_type: 'public_holiday'
+          }
+        ]
+      }
+    ]
+  }
+};
+
+export const mwavXLTruck2MoversService: CreateServiceData = {
+  business_id: "placeholder-business-id",
+  name: "XL Truck + 2 Movers",
+  description: "Our Extra Large trucks can fit a full family home, large office or two reincarnated woolly mammoths",
+  how_it_works: "Book for as little as 30 minutes plus travel for fully trained charming movers. Fully insured at no extra cost. Only pay on completion.",
+  location_type: LocationType.PICKUP_AND_DROPOFF,
+  travel_charging_model: TravelChargingModel.FROM_BASE_TO_CUSTOMERS_AND_BACK_TO_BASE,
+  pricing_config: {
+    components: [
+      {
+        name: "Moving Service",
+        pricing_combination: PricingCombination.LABOR_PER_HOUR_TEAM_RATE,
+        tiers: [
+          {
+            min_quantity: 2,
+            max_quantity: 2,
+            price: 276.00,
+            day_type: 'weekday'
+          },
+          {
+            min_quantity: 2,
+            max_quantity: 2,
+            price: 299.00,
+            day_type: 'saturday'
+          },
+          {
+            min_quantity: 2,
+            max_quantity: 2,
+            price: 344.00,
+            day_type: 'sunday'
+          },
+          {
+            min_quantity: 2,
+            max_quantity: 2,
+            price: 445.00,
+            day_type: 'public_holiday'
+          }
+        ]
+      }
+    ]
+  }
+};
+
+export const mwavXLTruck3MoversService: CreateServiceData = {
+  business_id: "placeholder-business-id",
+  name: "XL Truck + 3 Movers",
+  description: "Our Extra Large trucks with 3 movers can fit a full family home, large office or two reincarnated woolly mammoths",
+  how_it_works: "Book for as little as 30 minutes plus travel for fully trained charming movers. Fully insured at no extra cost. Only pay on completion.",
+  location_type: LocationType.PICKUP_AND_DROPOFF,
+  travel_charging_model: TravelChargingModel.FROM_BASE_TO_CUSTOMERS_AND_BACK_TO_BASE,
+  pricing_config: {
+    components: [
+      {
+        name: "Moving Service",
+        pricing_combination: PricingCombination.LABOR_PER_HOUR_TEAM_RATE,
+        tiers: [
+          {
+            min_quantity: 3,
+            max_quantity: 3,
+            price: 329.00,
+            day_type: 'weekday'
+          },
+          {
+            min_quantity: 3,
+            max_quantity: 3,
+            price: 377.00,
+            day_type: 'saturday'
+          },
+          {
+            min_quantity: 3,
+            max_quantity: 3,
+            price: 419.00,
+            day_type: 'sunday'
+          },
+          {
+            min_quantity: 3,
+            max_quantity: 3,
+            price: 534.00,
+            day_type: 'public_holiday'
+          }
+        ]
+      }
+    ]
+  }
+};
+
+// ===================================================================
 // SKEDY AI AGENT SERVICE - Pay-as-you-go
 // ===================================================================
 // Service: AI phone agent service

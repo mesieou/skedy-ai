@@ -76,6 +76,11 @@ ALWAYS Follow each step in order:
 };
 
 // ============================================================================
+// MWAV Integration Prompt
+// ============================================================================
+import { mwavRemovalistPrompt } from '../../../../../agent/integrations/mwav/prompts/mwav-prompt';
+
+// ============================================================================
 // PROMPT COLLECTIONS
 // ============================================================================
 
@@ -84,5 +89,6 @@ ALWAYS Follow each step in order:
  * Generic prompt works for all business types: removalist, manicurist, plumber
  */
 export const allAvailablePrompts = [
-  genericServicePrompt
+  genericServicePrompt,
+  mwavRemovalistPrompt
 ];

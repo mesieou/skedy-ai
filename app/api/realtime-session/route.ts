@@ -43,7 +43,7 @@ export async function GET(request: Request) {
     };
     const session = await SessionService.createOrGet(callId, event);
 
-    // Initialize session with prompt and tools
+    // Initialize session with prompt and tools (business-specific based on promptName)
     await addPromptToSession(session);
     await updateToolsToSession(session, [...getInitialRequestedTools()]);
 

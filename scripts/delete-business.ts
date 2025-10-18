@@ -11,7 +11,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 
 // Load environment variables
-dotenv.config({ path: path.join(__dirname, '../.env.production') });
+dotenv.config({ path: path.join(__dirname, '../.env.local') });
 // dotenv.config({ path: path.join(__dirname, '../.env.test'), override: true });
 
 import { BusinessRepository } from '../features/shared/lib/database/repositories/business-repository';

@@ -159,4 +159,84 @@ export class BusinessToolsRepository extends BaseRepository<BusinessTool> {
       throw error;
     }
   }
+
+  /**
+   * Generate dynamic schema for request_tool with business-specific enum
+   *
+   * The request_tool allows AI to request additional tools during conversation.
+   * The tool_name enum must be customized per business to only show their available tools.
+   */
+  async generateRequestToolSchema(businessId: string): Promise<OpenAIFunctionSchema> {
+    // Get all active tool names for this business
+    const allTools = await this.getActiveToolNamesForBusiness(businessId);
+
+    // Remove request_tool itself from the enum (can't request itself)
+    const requestableTools = allTools.filter(name => name !== 'request_tool');
+
+    // Sort alphabetically for consistency
+    requestableTools.sort();
+
+    console.log(`🔧 [RequestTool] Generating schema for business ${businessId} with ${requestableTools.length} requestable tools`);
+
+    return {
+      type: 'function',
+      name: 'request_tool',
+      description: 'Request tool access for conversation flow changes',
+      parameters: {
+        type: 'object',
+        strict: true,
+        properties: {
+          tool_name: {
+            type: 'string',
+            description: 'Tool needed',
+            enum: requestableTools  // Dynamic! Customized per business
+          },
+          service_name: {
+            type: 'string',
+            description: 'Service name (required when requesting get_quote tool)'
+          },
+          reason: {
+            type: 'string',
+            description: 'Why needed'
+          }
+        },
+        required: ['tool_name'],
+        additionalProperties: false
+      }
+    };
+  }
+
+  /**
+   * Update request_tool dynamic schema for a business
+   *
+   * Call this after adding/removing tools for a business to regenerate
+   * the request_tool enum with current available tools
+   */
+  async updateRequestToolDynamicSchema(
+    businessId: string,
+    requestToolId: string
+  ): Promise<void> {
+    // Find the business_tools record for request_tool
+    const businessTool = await this.findOne({
+      business_id: businessId,
+      tool_id: requestToolId
+    });
+
+    if (!businessTool) {
+      console.warn(`⚠️ [RequestTool] request_tool not found for business ${businessId}`);
+      return;
+    }
+
+    // Generate new dynamic schema
+    const dynamicSchema = await this.generateRequestToolSchema(businessId);
+
+    // Update business_tools with dynamic schema
+    await this.updateOne(
+      { id: businessTool.id },
+      { dynamic_schema: dynamicSchema }
+    );
+
+    console.log(`✅ [RequestTool] Updated request_tool schema for business ${businessId}`);
+    console.log(`   Available tools: ${dynamicSchema.parameters.properties.tool_name.enum?.join(', ')}`);
+  }
 }

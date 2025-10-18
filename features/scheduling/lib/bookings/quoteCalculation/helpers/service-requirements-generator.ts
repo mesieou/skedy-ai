@@ -69,6 +69,8 @@ export class ServiceRequirementsGenerator {
       case TravelChargingModel.FROM_BASE_TO_CUSTOMERS:
       case TravelChargingModel.CUSTOMERS_AND_BACK_TO_BASE:
         return ['customer_address'];  // Single customer location (we handle base) // Multiple service locations possible
+      default:
+        return [];
     }
   }
 

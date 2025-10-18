@@ -1,4 +1,4 @@
-import { LoadWebsiteParams, LoadWebsiteResult, KnowledgeBaseConfig } from './types/knowledge-base';
+import { LoadWebsiteParams, LoadWebsiteResult, KnowledgeBaseConfig, QueryKnowledgeParams, QueryKnowledgeResult } from './types/knowledge-base';
 
 // MCP imports - will need to install: npm install @modelcontextprotocol/sdk
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -171,6 +171,85 @@ export class KnowledgeBaseManager {
         setTimeout(() => reject(new Error('Timeout')), timeoutMs)
       )
     ]);
+  }
+
+  /**
+   * Query the knowledge base using vector similarity search
+   *
+   * Returns relevant source documents for the agent to synthesize into an answer.
+   * The Realtime API agent will naturally incorporate these sources into the conversation.
+   * Uses MCP server's query_knowledge_tool
+   */
+  async queryKnowledge(params: QueryKnowledgeParams): Promise<QueryKnowledgeResult> {
+    const startTime = Date.now();
+
+    console.log(`🔍 Querying knowledge base: "${params.question}"`);
+    console.log(`📊 Database: ${params.databaseUrl.substring(0, 50)}...`);
+    console.log(`📋 Table: ${params.tableName}`);
+    console.log(`🏢 Business ID: ${params.businessId}`);
+
+    try {
+      // Create transport for streamable HTTP connection
+      const transport = new StreamableHTTPClientTransport(
+        new URL(this.config.mcpServerUrl)
+      );
+
+      // Create MCP client
+      const client = new Client({
+        name: 'skedy-ai-knowledge-query-client',
+        version: '1.0.0',
+      }, {
+        capabilities: {}
+      });
+
+      // Connect to MCP server
+      console.log('🔗 Connecting to MCP server...');
+      await client.connect(transport);
+      console.log(`✅ Connected`);
+
+      // Prepare query arguments
+      const toolArgs: Record<string, unknown> = {
+        question: params.question,
+        table_name: params.tableName,
+        database_url: params.databaseUrl,
+        business_id: params.businessId,
+        match_threshold: params.matchThreshold || 0.7,
+        match_count: params.matchCount || 3
+      };
+
+      // Call the query_knowledge_tool
+      console.log('🔍 Searching knowledge base...');
+      const result = await this.timedToolCall(client, 'query_knowledge_tool', toolArgs);
+
+      const totalDuration = Date.now() - startTime;
+      console.log(`⏱️  Query completed in ${totalDuration / 1000}s`);
+
+      // Close connection
+      await client.close();
+
+      // Parse MCP response
+      const response = result.content as {
+        sources: Array<{ text: string; similarity: number; metadata?: Record<string, unknown> }>;
+        context_count: number;
+      };
+
+      return {
+        success: true,
+        sources: response.sources || [],
+        duration: totalDuration
+      };
+
+    } catch (error) {
+      const totalDuration = Date.now() - startTime;
+      console.error(`❌ Query failed after ${totalDuration / 1000}s:`, error);
+
+      return {
+        success: false,
+        sources: [],
+        duration: totalDuration,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
   }
 
   /**

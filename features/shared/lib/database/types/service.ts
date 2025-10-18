@@ -16,10 +16,12 @@ export enum TravelChargingModel {
   CUSTOMERS_AND_BACK_TO_BASE = 'customers_and_back_to_base',
   // Charge entire route (base → customers → base)
   FULL_ROUTE = 'full_route',
-  // Charge between customers + return to base (skip initial base to customer
+  // Charge between customers + return to base (skip initial base to customer)
   BETWEEN_CUSTOMERS_AND_BACK_TO_BASE = 'between_customers_and_back_to_base',
   // Charge from base + between customers (skip return to base)
   FROM_BASE_AND_BETWEEN_CUSTOMERS = 'from_base_and_between_customers',
+  // Charge from base to customers + return to base (skip between customers)
+  FROM_BASE_TO_CUSTOMERS_AND_BACK_TO_BASE = 'from_base_to_customers_and_back_to_base',
 }
 
 // Pricing combinations enum
@@ -84,6 +86,7 @@ export interface PricingTier {
   max_quantity: number;
   price: number;
   duration_estimate_mins?: number | Record<string, number> | null;
+  day_type?: 'weekday' | 'saturday' | 'sunday' | 'public_holiday';  // Optional: for day-of-week pricing
 }
 
 export interface PricingComponent {

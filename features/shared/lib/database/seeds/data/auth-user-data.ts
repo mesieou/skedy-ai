@@ -68,3 +68,11 @@ export function createPlumberOwnerAuthUserData(): CreateAuthUserData {
     email_confirm: true
   };
 }
+
+export function createMWAVOwnerAuthUserData(): CreateAuthUserData {
+  return {
+    email: "tim@manwithavan.com.au",
+    password: "demo123",
+    email_confirm: true
+  };
+}

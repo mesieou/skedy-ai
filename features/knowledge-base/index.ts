@@ -3,5 +3,7 @@ export type {
   LoadWebsiteParams,
   LoadWebsiteResult,
   KnowledgeBaseConfig,
-  ToolCallResult
+  ToolCallResult,
+  QueryKnowledgeParams,
+  QueryKnowledgeResult
 } from './lib/types/knowledge-base';

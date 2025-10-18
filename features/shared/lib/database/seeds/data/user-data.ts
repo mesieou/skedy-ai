@@ -135,3 +135,14 @@ export function createPlumberOwnerUserData(businessId: string): CreateUserData {
     email: "mike@fixitplumbing.com.au",
   };
 }
+
+export function createMWAVOwnerUserData(businessId: string): CreateUserData {
+  return {
+    role: UserRole.ADMIN_PROVIDER,
+    first_name: "Tim",
+    business_id: businessId,
+    last_name: "Bishop",
+    phone_number: "+61394173443",
+    email: "tim@manwithavan.com.au",
+  };
+}
